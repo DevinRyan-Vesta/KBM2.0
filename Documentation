@@ -1,0 +1,117 @@
+Keybox Manager Project Documentation
+
+Current Progress
+
+Project Structure
+
+The current project structure:
+
+KBM2.0/
+├── app.py                  # Main app file
+├── auth/
+│   ├── __init__.py         # Blueprint initialization
+│   ├── models.py           # Authentication models
+│   ├── views.py            # Authentication routes
+├── checkout/               # Checkout module
+│   ├── __init__.py
+│   ├── views.py
+├── inventory/              # Item management module
+│   ├── __init__.py
+│   ├── models.py
+│   ├── views.py
+├── logging/                # Logging module
+│   ├── __init__.py
+│   ├── views.py
+├── sync/                   # Google Sheets sync module
+│   ├── __init__.py
+│   ├── views.py
+├── static/                 # Static files (CSS, JS, images)
+├── templates/              # HTML templates (if needed)
+├── tests/                  # Test files
+├── utilities/              # Shared utilities
+│   ├── database.py         # Database connection helper
+│   ├── logger.py           # Logging utilities
+│   ├── __init__.py
+├── venv/                   # Virtual environment
+├── config.py               # Configuration file
+├── environment.env         # Environment variables
+├── README.md               # Documentation
+├── requirements.txt        # Python dependencies
+
+Setup Completed
+
+Blueprints Created:
+
+auth/__init__.py defines the auth_bp blueprint and imports views.py.
+
+Other modules (checkout, inventory, logging, sync) have their respective views.py and __init__.py files prepared for future development.
+
+Virtual Environment Activated:
+
+Virtual environment (venv/) is set up and active.
+
+Dependencies installed:
+
+Flask
+
+Flask-SQLAlchemy
+
+Flask-Migrate
+
+Database Configured:
+
+SQLite is being used with Flask-SQLAlchemy.
+
+app.py initializes the database and connects it to the Flask app.
+
+Next Steps
+
+Debugging Issue:
+
+Fix the ImportError: cannot import name 'auth_bp' issue.
+
+Ensure auth/__init__.py and auth/views.py follow proper structure:
+
+# auth/__init__.py
+from flask import Blueprint
+
+auth_bp = Blueprint('auth', __name__)
+from . import views
+
+# auth/views.py
+from flask import jsonify
+from . import auth_bp
+
+@auth_bp.route('/login', methods=['POST'])
+def login():
+    return jsonify({"message": "Login endpoint"}), 200
+
+Initialize Database Migrations:
+
+Run flask db init to create the migrations folder.
+
+Verify that Flask-Migrate is properly connected in app.py:
+
+from flask_migrate import Migrate
+migrate = Migrate(app, db)
+
+Set Environment Variables:
+
+Ensure the FLASK_APP variable is set:
+
+set FLASK_APP=app.py  # For Windows
+
+Testing the App:
+
+Test that the app runs using flask run.
+
+Ensure /auth/login is reachable and responds correctly.
+
+Reminders for Return
+
+Fix the import issue in auth/views.py and verify blueprint registration in app.py.
+
+Continue with database migration setup and test the Flask app.
+
+Refer to this documentation to quickly get back up to speed.
+
