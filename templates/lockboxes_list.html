@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Lockboxes</title>
+    <style>
+      body { font-family: system-ui, Arial, sans-serif; max-width: 680px; margin: 40px auto; }
+      form, table { margin-top: 16px; }
+      input { padding: 6px 8px; }
+      button { padding: 6px 10px; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 8px; }
+      th { background: #f4f4f4; text-align: left; }
+    </style>
+  </head>
+  <body>
+    <h1>Lockboxes</h1>
+
+    <form action="/inventory/lockboxes" method="post">
+      <label>
+        Label:
+        <input name="label" placeholder="e.g., LB-A12" required />
+      </label>
+      <label style="margin-left: 8px;">
+        Location:
+        <input name="location" placeholder="e.g., Front Desk" />
+      </label>
+      <button type="submit">Add</button>
+    </form>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Label</th>
+          <th>Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lb in lockboxes %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ lb.label }}</td>
+            <td>{{ lb.location }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3">No lockboxes yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </body>
+</html>
