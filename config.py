@@ -1,6 +1,13 @@
 import os
 from dotenv import load_dotenv
 
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
 # Load the main .env first (to get ENV_FILE)
 load_dotenv()
 
@@ -15,6 +22,7 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URI", "sqlite:///:memory:")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    AUTO_CREATE_SCHEMA = _env_flag("AUTO_CREATE_SCHEMA", False)
 
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URI", "mysql://user@localhost/foo")

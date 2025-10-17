@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Add Lockbox - KBM{% endblock %}
+
+{% block content %}
+<h2 style="margin:8px 0 16px 0;">Add Lockbox</h2>
+<form method="post" action="{{ url_for('inventory.add_lockbox') }}" class="card" style="max-width:520px;">
+  <div class="field">
+    <label>Label *</label>
+    <input type="text" name="label" required placeholder="LB-001">
+  </div>
+  <div class="field">
+    <label>Initial Code *</label>
+    <input type="text" name="code" required placeholder="e.g. 1234">
+  </div>
+  <div class="field">
+    <label>Location</label>
+    <input type="text" name="location" placeholder="Front desk">
+  </div>
+  <div class="field">
+    <label>Address</label>
+    <input type="text" name="address" placeholder="123 Main St">
+  </div>
+
+  <div style="display:flex; gap:8px; margin-top:8px;">
+    <button class="btn primary">Save</button>
+    <a class="btn" href="{{ url_for('inventory.list_lockboxes') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

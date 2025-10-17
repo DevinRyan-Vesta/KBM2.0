@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Home - KBM{% endblock %}
+
+{% block content %}
+  <h2 style="margin:8px 0 16px 0;">Overview</h2>
+
+  <div class="grid">
+    <!-- Lockboxes -->
+    <div class="card">
+      <h3>Lockboxes</h3>
+      {% if lockboxes %}
+        <table>
+          <thead>
+            <tr><th>Label</th><th>Location</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for i in lockboxes %}
+              <tr>
+                <td>{{ i.label }}</td>
+                <td class="muted">{{ i.location or "-" }}</td>
+                <td class="muted">{{ i.status or "-" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">No lockboxes yet.</p>
+      {% endif %}
+      <div class="row-actions">
+        <a class="btn primary" href="{{ safe_url('inventory.list_lockboxes') }}">Go to Lockboxes</a>
+        <a class="btn" href="{{ safe_url('inventory.add_lockbox') }}">Add Lockbox</a>
+      </div>
+    </div>
+
+    <!-- Keys -->
+    <div class="card">
+      <h3>Keys</h3>
+      {% if keys %}
+        <table>
+          <thead>
+            <tr><th>Label</th><th>Location</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for i in keys %}
+              <tr>
+                <td>{{ i.label }}</td>
+                <td class="muted">{{ i.location or "-" }}</td>
+                <td class="muted">{{ i.status or "-" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">No keys yet.</p>
+      {% endif %}
+      <div class="row-actions">
+        <a class="btn primary" href="{{ safe_url('inventory.list_keys') }}">Go to Keys</a>
+        <a class="btn" href="{{ safe_url('inventory.add_key') }}">Add Key</a>
+      </div>
+    </div>
+
+    <!-- Signs -->
+    <div class="card">
+      <h3>Signs</h3>
+      {% if signs %}
+        <table>
+          <thead>
+            <tr><th>Label</th><th>Location</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for i in signs %}
+              <tr>
+                <td>{{ i.label }}</td>
+                <td class="muted">{{ i.location or "-" }}</td>
+                <td class="muted">{{ i.status or "-" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">No signs yet.</p>
+      {% endif %}
+      <div class="row-actions">
+        <a class="btn primary" href="{{ safe_url('inventory.list_signs') }}">Go to Signs</a>
+        <a class="btn" href="{{ safe_url('inventory.add_sign') }}">Add Sign</a>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <a class="btn primary" href="{{ safe_url('checkout.start') }}">Go to Checkout</a>
+  </div>
+{% endblock %}

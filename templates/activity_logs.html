@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Activity Logs - KBM{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <h2 style="margin:0;">Activity Logs</h2>
+  <span class="muted">Showing latest {{ logs|length }} entries</span>
+</div>
+
+<div class="card" style="overflow:auto;">
+  {% if logs %}
+    <table style="width:100%; border-collapse:collapse; min-width:720px;">
+      <thead>
+        <tr>
+          <th style="padding:10px 12px; text-align:left;">When</th>
+          <th style="padding:10px 12px; text-align:left;">User</th>
+          <th style="padding:10px 12px; text-align:left;">Action</th>
+          <th style="padding:10px 12px; text-align:left;">Target</th>
+          <th style="padding:10px 12px; text-align:left;">Summary</th>
+          <th style="padding:10px 12px; text-align:left;">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+          <tr style="border-bottom:1px solid #f0f0f0;">
+            <td style="padding:10px 12px; white-space:nowrap;">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td style="padding:10px 12px;">
+              {% if log.user %}
+                {{ log.user.name }}<br>
+                <span class="muted">{{ log.user.email }}</span>
+              {% else %}
+                <span class="muted">System</span>
+              {% endif %}
+            </td>
+            <td style="padding:10px 12px;"><span class="tag">{{ log.action }}</span></td>
+            <td style="padding:10px 12px;">
+              {% if log.target_type %}
+                {{ log.target_type }}{% if log.target_id %} #{{ log.target_id }}{% endif %}
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+            <td style="padding:10px 12px;">
+              {{ log.summary or '-' }}
+            </td>
+            <td style="padding:10px 12px; font-family:ui-monospace, monospace; font-size:0.85rem; max-width:320px; white-space:pre-wrap;">
+              {% if log.meta %}
+                {{ log.meta|tojson(indent=2) }}
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted" style="margin:0;">No activity recorded yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
