@@ -637,6 +637,8 @@
           width: var(--sidebar-width);
           transition: transform 0.2s ease;
           z-index: 20;
+          max-height: 100dvh;  /* Use dynamic viewport height for mobile */
+          overflow-y: auto;     /* Make sidebar scrollable on mobile */
         }
 
         .layout.sidebar-open .sidebar {
