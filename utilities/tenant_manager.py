@@ -49,7 +49,7 @@ class TenantManager:
         else:
             subdomain = account.subdomain
 
-        base_dir = Path(self.app.config.get('TENANT_DATA_DIR', 'KBM2_data/tenants'))
+        base_dir = Path(self.app.config.get('TENANT_DATA_DIR', 'tenant_dbs'))
         base_dir.mkdir(parents=True, exist_ok=True)
 
         db_path = (base_dir / f"{subdomain}.db").resolve()

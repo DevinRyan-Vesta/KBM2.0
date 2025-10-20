@@ -53,8 +53,8 @@ def create_app():
     # 1) Load config
     app.config.from_object(get_config())
 
-    # 2) Set up master database path
-    master_base_dir = Path() / "KBM2_data"
+    # 2) Set up master database path (use Docker volume mount)
+    master_base_dir = Path("master_db")
     master_base_dir.mkdir(parents=True, exist_ok=True)
     master_db_path = (master_base_dir / "master.db").resolve()
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{master_db_path.as_posix()}"
