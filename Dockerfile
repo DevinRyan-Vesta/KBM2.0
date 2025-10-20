@@ -19,10 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --link requirements.txt ./
 
 # Create virtual environment and install dependencies
-RUN python -m venv .venv \
-    && .venv/bin/pip install --upgrade pip \
-    && --mount=type=cache,target=/root/.cache/pip \
-       .venv/bin/pip install -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m venv .venv && \
+    .venv/bin/pip install --upgrade pip && \
+    .venv/bin/pip install -r requirements.txt
 
 # Copy the rest of the application code (excluding secrets and unnecessary files)
 COPY --link . .
