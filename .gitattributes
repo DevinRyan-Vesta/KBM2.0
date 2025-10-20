@@ -1,0 +1,18 @@
+# Ensure shell scripts always use LF line endings (Unix-style)
+# This prevents "No such file or directory" errors in Docker containers
+*.sh text eol=lf
+
+# Python files
+*.py text eol=lf
+
+# Docker and config files
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+compose.yaml text eol=lf
+.dockerignore text eol=lf
+
+# Environment files
+.env* text eol=lf
+
+# Documentation
+*.md text eol=auto
