@@ -2,6 +2,31 @@
 {% block title %}{{ page_title or "User" }} - KBM{% endblock %}
 
 {% block content %}
+<style>
+  .form-card select {
+    appearance: none;
+    width: 100%;
+    padding: 12px 44px 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.02));
+    color: var(--color-text);
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  .form-card select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+    background: linear-gradient(135deg, rgba(229, 57, 53, 0.12), rgba(148, 163, 184, 0.05));
+  }
+  .form-card select option {
+    background: var(--color-card);
+    color: var(--color-text);
+    padding: 8px;
+  }
+</style>
+
 {% set values = form_values or {} %}
 {% set errors = errors or {} %}
 

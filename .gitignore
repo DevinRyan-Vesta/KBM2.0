@@ -1,2 +1,102 @@
+# ==========================================
+# KBM 2.0 .gitignore
+# ==========================================
+
+# Environment files (NEVER COMMIT THESE!)
 .env
+.env.*
+!.env.example
+environment.env
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 data/
+KBM2_data/
+instance/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+ENV/
+env/
+.env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Migrations (keep structure, ignore auto-generated)
+migrations_master/versions/*.pyc
+migrations/versions/*.pyc
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+.cache/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Docker
+.dockerignore.bak
+Dockerfile.bak
+
+# Backups
+*.sql
+*.dump
+backup/
+backups/
+
+# Secrets and credentials
+secrets/
+credentials/
+*.key
+*.pem
+*.crt
+*.p12

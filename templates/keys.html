@@ -574,7 +574,6 @@
 
       openModal('checkout', [
         { name: 'copies', label: 'Number of Copies', type: 'number', required: true, defaultValue: '1', help: `${available} copies available` },
-        { name: 'checked_out_to', label: 'Checked Out To (optional)', required: false, placeholder: 'Leave empty to use your name' },
         { name: 'purpose', label: 'Purpose', placeholder: 'Optional' },
         { name: 'expected_return_date', label: 'Expected Return Date', type: 'date', placeholder: 'Optional' },
       ], (formData) => {
@@ -585,7 +584,6 @@
         }
         submitAction(actionUrl, {
           copies: copies,
-          checked_out_to: (formData.get('checked_out_to') || '').trim(),
           purpose: (formData.get('purpose') || '').trim(),
           expected_return_date: (formData.get('expected_return_date') || '').trim(),
         });

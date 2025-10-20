@@ -204,6 +204,10 @@
         <div class="item-info-label">Key Hook #</div>
         <div id="preview-hook" class="item-info-value">-</div>
       </div>
+      <div class="item-info-field" id="preview-master-key-field" style="display: none;">
+        <div class="item-info-label">Master Key</div>
+        <div id="preview-master-key" class="item-info-value">-</div>
+      </div>
     </div>
 
     <div class="action-buttons">
@@ -273,6 +277,7 @@
   const assignBtn = document.getElementById('assign-btn');
   const clearBtn = document.getElementById('clear-btn');
   const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+  const unitField = document.getElementById('preview-unit-field');
 
   const actionModal = document.getElementById('action-modal');
   const actionForm = document.getElementById('action-modal-form');
@@ -322,6 +327,7 @@
     // Show/hide key-specific fields
     const copiesField = document.getElementById('preview-copies-field');
     const hookField = document.getElementById('preview-hook-field');
+    const masterKeyField = document.getElementById('preview-master-key-field');
 
     if (item.type === 'Key') {
       copiesField.style.display = 'flex';
@@ -332,10 +338,21 @@
       const available = total - checkedOut;
       document.getElementById('preview-copies').textContent = `${available}/${total} available`;
       document.getElementById('preview-hook').textContent = item.key_hook_number || '-';
+
+      // Show master key info if available
+      if (item.master_key_custom_id || item.master_key_label) {
+        masterKeyField.style.display = 'flex';
+        const masterKeyDisplay = item.master_key_custom_id
+          ? `${item.master_key_custom_id} - ${item.master_key_label || 'Master Key'}`
+          : item.master_key_label || 'Master Key';
+        document.getElementById('preview-master-key').textContent = masterKeyDisplay;
+      } else {
+        masterKeyField.style.display = 'none';
+      }
     } else {
       copiesField.style.display = 'none';
-      
       hookField.style.display = 'none';
+      masterKeyField.style.display = 'none';
     }
 
     // Show appropriate action buttons

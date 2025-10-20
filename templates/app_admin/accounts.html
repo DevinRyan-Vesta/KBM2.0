@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Accounts{% endblock %}
+
+{% block content %}
+<style>
+  select {
+    appearance: none;
+    padding: 12px 44px 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.02));
+    color: var(--color-text);
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+    background: linear-gradient(135deg, rgba(229, 57, 53, 0.12), rgba(148, 163, 184, 0.05));
+  }
+  select option {
+    background: var(--color-card);
+    color: var(--color-text);
+    padding: 8px;
+  }
+</style>
+
+<div class="page-header">
+  <h1>All Accounts</h1>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <form method="GET" class="toolbar">
+    <select name="status" class="form-field" style="max-width: 200px;">
+      <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+      <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspended</option>
+      <option value="deleted" {% if status_filter == 'deleted' %}selected{% endif %}>Deleted</option>
+    </select>
+    <div class="searchbar" style="flex: 1;">
+      <input type="text" name="q" value="{{ search_query }}" placeholder="Search...">
+    </div>
+    <button type="submit" class="btn primary">Filter</button>
+  </form>
+</div>
+
+<div class="card table-card">
+  <table>
+    <thead>
+      <tr>
+        <th>Company</th>
+        <th>Subdomain</th>
+        <th>Status</th>
+        <th>Users</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for account in accounts %}
+      <tr>
+        <td>{{ account.company_name }}</td>
+        <td class="meta-cell">{{ account.subdomain }}</td>
+        <td>
+          {% if account.status == 'active' %}
+          <span class="tag ok">Active</span>
+          {% elif account.status == 'suspended' %}
+          <span class="tag warn">Suspended</span>
+          {% else %}
+          <span class="tag warn">{{ account.status }}</span>
+          {% endif %}
+        </td>
+        <td>{{ account.users|length }}</td>
+        <td class="text-small">{{ account.created_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          <a href="{{ url_for('app_admin.view_account', account_id=account.id) }}" class="btn small">
+            View
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="empty-state">
+          No accounts found
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

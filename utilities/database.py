@@ -45,19 +45,25 @@ class Item(db.Model):
 
     last_action = db.Column(db.String(50), nullable=True)   # "added" | "checked_out" | "checked_in" | "assigned"
     last_action_at = db.Column(db.DateTime, nullable=True)
-    last_action_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    last_action_by = db.relationship("User", foreign_keys=[last_action_by_id])
+    # In multi-tenant setup, user IDs reference MasterUser in master DB, not tenant users table
+    last_action_by_id = db.Column(db.Integer, nullable=True)
 
     # optional assignment target (agent, property, etc.)
     assigned_to = db.Column(db.String(120), nullable=True)
     property_id = db.Column(db.Integer, db.ForeignKey("properties.id"), nullable=True)
     property_unit_id = db.Column(db.Integer, db.ForeignKey("property_units.id"), nullable=True)
 
+    # Master key relationship - links a key to another key as its master
+    master_key_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=True)
+
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
     updated_at = db.Column(db.DateTime, nullable=False, default=utc_now, onupdate=utc_now)
 
     property = db.relationship("Property", back_populates="items")
     property_unit = db.relationship("PropertyUnit", back_populates="items")
+
+    # Master key relationships
+    master_key = db.relationship("Item", remote_side=[id], foreign_keys=[master_key_id], backref="child_keys")
 
     def record_action(self, action: str, user: "User"):
         self.last_action = action
@@ -90,17 +96,22 @@ class Item(db.Model):
             "condition": self.condition,
             "last_action": self.last_action,
             "last_action_at": self.last_action_at.isoformat() if self.last_action_at else None,
-            "last_action_by": self.last_action_by.name if self.last_action_by else None,
+            "last_action_by_id": self.last_action_by_id,
             "assigned_to": self.assigned_to,
             "property_id": self.property_id,
             "property_name": self.property.name if self.property else None,
             "property_unit_id": self.property_unit_id,
             "property_unit_label": self.property_unit.label if self.property_unit else None,
+            "master_key_id": self.master_key_id,
+            "master_key_label": self.master_key.label if self.master_key else None,
+            "master_key_custom_id": self.master_key.custom_id if self.master_key else None,
         }
 
     @staticmethod
     def generate_custom_id(item_type: str, sign_subtype: Optional[str] = None) -> str:
         """Generate next available custom ID for given item type"""
+        from utilities.tenant_helpers import get_tenant_session
+
         # Define prefixes and ranges
         if item_type == "Lockbox":
             prefix = "LB"
@@ -119,7 +130,7 @@ class Item(db.Model):
             raise ValueError(f"Unknown item type: {item_type}")
 
         # Find the highest existing ID for this type and prefix
-        existing_ids = db.session.query(Item.custom_id).filter(
+        existing_ids = get_tenant_session().query(Item.custom_id).filter(
             Item.type == item_type,
             Item.custom_id.isnot(None),
             Item.custom_id.like(f"{prefix}%")
@@ -261,12 +272,11 @@ class Contact(db.Model):
     company = db.Column(db.String(255), nullable=True)
     email = db.Column(db.String(255), nullable=True, index=True)
     phone = db.Column(db.String(50), nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, unique=True)
+    # In multi-tenant setup, user IDs reference MasterUser in master DB
+    user_id = db.Column(db.Integer, nullable=True, unique=True)
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
     updated_at = db.Column(db.DateTime, nullable=False, default=utc_now, onupdate=utc_now)
-
-    user = db.relationship("User", backref=db.backref("contact_profile", uselist=False))
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -291,8 +301,8 @@ class ItemCheckout(db.Model):
 
     # Who has it
     checked_out_to = db.Column(db.String(255), nullable=False)  # Name or company
-    checked_out_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    checked_out_by = db.relationship("User", foreign_keys=[checked_out_by_id])
+    # In multi-tenant setup, user IDs reference MasterUser in master DB
+    checked_out_by_id = db.Column(db.Integer, nullable=True)
 
     # Details
     quantity = db.Column(db.Integer, nullable=False, default=1)  # Number of copies (for keys)
@@ -304,8 +314,8 @@ class ItemCheckout(db.Model):
     # Timestamps
     checked_out_at = db.Column(db.DateTime, nullable=False, default=utc_now)
     checked_in_at = db.Column(db.DateTime, nullable=True)  # NULL if still checked out
-    checked_in_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    checked_in_by = db.relationship("User", foreign_keys=[checked_in_by_id])
+    # In multi-tenant setup, user IDs reference MasterUser in master DB
+    checked_in_by_id = db.Column(db.Integer, nullable=True)
 
     # Status
     is_active = db.Column(db.Boolean, nullable=False, default=True)  # False if returned
@@ -365,8 +375,8 @@ class ActivityLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
-    user = db.relationship("User", lazy="joined")
+    # In multi-tenant setup, user IDs reference MasterUser in master DB
+    user_id = db.Column(db.Integer, nullable=True, index=True)
     action = db.Column(db.String(120), nullable=False)
     target_type = db.Column(db.String(120), nullable=True)
     target_id = db.Column(db.Integer, nullable=True)
@@ -397,6 +407,8 @@ def log_activity(
     commit: bool = False,
 ) -> ActivityLog:
     """Persist a structured audit trail entry."""
+    from utilities.tenant_helpers import tenant_add, tenant_commit, tenant_rollback
+
     entry = ActivityLog(
         action=action,
         user_id=_extract_id(user),
@@ -405,13 +417,13 @@ def log_activity(
         summary=summary,
         meta=meta or None,
     )
-    db.session.add(entry)
+    tenant_add(entry)
 
     if commit:
         try:
-            db.session.commit()
+            tenant_commit()
         except Exception:
-            db.session.rollback()
+            tenant_rollback()
             raise
 
     return entry

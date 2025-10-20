@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to KBM - Key & Lockbox Management{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <!-- Hero Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 text-center">
+        <h1 class="text-5xl font-bold text-gray-900 mb-6">
+            Key & Lockbox Management System
+        </h1>
+        <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            Streamline your real estate inventory management. Track keys, lockboxes, signs, and more with our intuitive platform.
+        </p>
+
+        <div class="flex justify-center gap-4">
+            <a href="{{ url_for('accounts.signup') }}" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg">
+                Create Free Account
+            </a>
+            <a href="{{ url_for('auth.login') }}" class="px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors shadow-lg border-2 border-blue-600">
+                App Admin Login
+            </a>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h2 class="text-3xl font-bold text-center text-gray-900 mb-12">
+            Everything You Need
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="text-blue-600 text-4xl mb-4">🔑</div>
+                <h3 class="text-xl font-semibold mb-2">Key Management</h3>
+                <p class="text-gray-600">
+                    Track keys, copies, and assignments. Know who has what, when, and why.
+                </p>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="text-blue-600 text-4xl mb-4">🔒</div>
+                <h3 class="text-xl font-semibold mb-2">Lockbox Tracking</h3>
+                <p class="text-gray-600">
+                    Manage lockboxes with codes, locations, and property assignments.
+                </p>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="text-blue-600 text-4xl mb-4">🏠</div>
+                <h3 class="text-xl font-semibold mb-2">Property Integration</h3>
+                <p class="text-gray-600">
+                    Link items to properties and units. Manage smart locks and access codes.
+                </p>
+            </div>
+
+            <!-- Feature 4 -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="text-blue-600 text-4xl mb-4">👥</div>
+                <h3 class="text-xl font-semibold mb-2">Team Collaboration</h3>
+                <p class="text-gray-600">
+                    Invite team members, assign roles, and track activity across your organization.
+                </p>
+            </div>
+
+            <!-- Feature 5 -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="text-blue-600 text-4xl mb-4">📊</div>
+                <h3 class="text-xl font-semibold mb-2">Reporting & Export</h3>
+                <p class="text-gray-600">
+                    Generate reports, export data, and keep records for compliance.
+                </p>
+            </div>
+
+            <!-- Feature 6 -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="text-blue-600 text-4xl mb-4">🌐</div>
+                <h3 class="text-xl font-semibold mb-2">Multi-Tenant</h3>
+                <p class="text-gray-600">
+                    Each company gets its own secure subdomain and isolated database.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <div class="bg-blue-600 rounded-2xl p-12 text-white">
+            <h2 class="text-3xl font-bold mb-4">
+                Ready to Get Started?
+            </h2>
+            <p class="text-xl mb-8 opacity-90">
+                Create your account in less than 2 minutes. No credit card required.
+            </p>
+            <a href="{{ url_for('accounts.signup') }}" class="inline-block px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg">
+                Create Your Account Now
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

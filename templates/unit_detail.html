@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block title %}{{ unit.label }} - {{ property.name }} - KBM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ unit.label }}</h1>
+  <div class="toolbar">
+    <button id="edit-unit-btn" class="btn primary">Edit Unit</button>
+    {% if current_user.role == 'admin' %}
+      <button id="delete-unit-btn" class="btn danger">Delete Unit</button>
+    {% endif %}
+    <a href="{{ url_for('properties.property_detail', property_id=property.id) }}" class="btn ghost">Back to Property</a>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Unit Details</h3>
+  <div class="info-grid">
+    <div class="info-field">
+      <div class="label">Property</div>
+      <div class="value">
+        <a href="{{ url_for('properties.property_detail', property_id=property.id) }}">{{ property.name }}</a>
+      </div>
+    </div>
+
+    <div class="info-field">
+      <div class="label">Unit Label</div>
+      <div class="value">{{ unit.label }}</div>
+    </div>
+
+    {% if unit.floor %}
+    <div class="info-field">
+      <div class="label">Floor</div>
+      <div class="value">{{ unit.floor }}</div>
+    </div>
+    {% endif %}
+
+    {% if unit.bedrooms is not none %}
+    <div class="info-field">
+      <div class="label">Bedrooms</div>
+      <div class="value">{{ unit.bedrooms }}</div>
+    </div>
+    {% endif %}
+
+    {% if unit.bathrooms is not none %}
+    <div class="info-field">
+      <div class="label">Bathrooms</div>
+      <div class="value">{{ unit.bathrooms }}</div>
+    </div>
+    {% endif %}
+
+    {% if unit.square_feet is not none %}
+    <div class="info-field">
+      <div class="label">Square Feet</div>
+      <div class="value">{{ unit.square_feet }}</div>
+    </div>
+    {% endif %}
+
+    {% if unit.notes %}
+    <div class="info-field" style="grid-column: 1 / -1;">
+      <div class="label">Notes</div>
+      <div class="value">{{ unit.notes }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if keys %}
+<div class="card">
+  <h3>Keys Associated with This Unit ({{ keys|length }})</h3>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Label</th>
+          <th>Status</th>
+          <th>Location</th>
+          <th>Copies</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key in keys %}
+        <tr>
+          <td><code>{{ key.custom_id or key.id }}</code></td>
+          <td>{{ key.label }}</td>
+          <td>
+            <span class="tag {% if key.status == 'available' %}ok{% elif key.status == 'checked_out' %}warn{% elif key.status == 'assigned' %}info{% endif %}">
+              {{ key.status.replace('_', ' ').title() }}
+            </span>
+          </td>
+          <td>{{ key.location or '-' }}</td>
+          <td>
+            {% if key.total_copies %}
+              {{ (key.total_copies - (key.copies_checked_out or 0)) }}/{{ key.total_copies }} available
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('inventory.item_details', item_id=key.id) }}" class="btn small">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Edit Unit Modal -->
+<div id="edit-unit-modal" class="modal-root">
+  <div class="modal-backdrop" onclick="closeEditModal()"></div>
+  <div class="modal-dialog">
+    <form method="post" action="{{ url_for('properties.edit_unit', property_id=property.id, unit_id=unit.id) }}">
+      <h3>Edit Unit</h3>
+      <div class="modal-body">
+        <div class="form-field">
+          <label for="label">Unit Label *</label>
+          <input type="text" id="label" name="label" value="{{ unit.label }}" required>
+        </div>
+
+        <div class="form-grid two-column">
+          <div class="form-field">
+            <label for="floor">Floor</label>
+            <input type="text" id="floor" name="floor" value="{{ unit.floor or '' }}" placeholder="e.g., 1, 2, Ground">
+          </div>
+
+          <div class="form-field">
+            <label for="bedrooms">Bedrooms</label>
+            <input type="number" id="bedrooms" name="bedrooms" min="0" value="{{ unit.bedrooms or '' }}" placeholder="Number of bedrooms">
+          </div>
+
+          <div class="form-field">
+            <label for="bathrooms">Bathrooms</label>
+            <input type="number" id="bathrooms" name="bathrooms" min="0" step="0.5" value="{{ unit.bathrooms or '' }}" placeholder="Number of bathrooms">
+          </div>
+
+          <div class="form-field">
+            <label for="square_feet">Square Feet</label>
+            <input type="number" id="square_feet" name="square_feet" min="0" value="{{ unit.square_feet or '' }}" placeholder="Total square feet">
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="notes">Notes</label>
+          <textarea id="notes" name="notes" rows="3" placeholder="Optional notes">{{ unit.notes or '' }}</textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" onclick="closeEditModal()">Cancel</button>
+        <button type="submit" class="btn primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="delete-unit-modal" class="modal-root">
+  <div class="modal-backdrop" onclick="closeDeleteModal()"></div>
+  <div class="modal-dialog">
+    <form method="post" action="{{ url_for('properties.delete_unit', property_id=property.id, unit_id=unit.id) }}">
+      <h3>Delete Unit?</h3>
+      <div class="modal-body">
+        <p>Are you sure you want to delete unit <strong>{{ unit.label }}</strong>?</p>
+        {% if keys %}
+          <div class="alert alert-error">
+            <strong>Warning:</strong> This unit has {{ keys|length }} key(s) associated with it. You must reassign or delete the keys before deleting this unit.
+          </div>
+        {% else %}
+          <p class="muted">This action cannot be undone.</p>
+        {% endif %}
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" onclick="closeDeleteModal()">Cancel</button>
+        {% if not keys %}
+          <button type="submit" class="btn danger">Delete Unit</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const editModal = document.getElementById('edit-unit-modal');
+  const deleteModal = document.getElementById('delete-unit-modal');
+  const editBtn = document.getElementById('edit-unit-btn');
+  const deleteBtn = document.getElementById('delete-unit-btn');
+
+  editBtn.addEventListener('click', () => {
+    editModal.classList.add('show');
+    document.body.classList.add('modal-open');
+  });
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', () => {
+      deleteModal.classList.add('show');
+      document.body.classList.add('modal-open');
+    });
+  }
+
+  function closeEditModal() {
+    editModal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+  }
+
+  function closeDeleteModal() {
+    deleteModal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+  }
+
+  // Close modals on Escape key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeEditModal();
+      closeDeleteModal();
+    }
+  });
+</script>
+
+<style>
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+  }
+
+  .info-field .label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .info-field .value {
+    font-size: 15px;
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  .alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+
+  .alert-error {
+    background: rgba(248, 113, 113, 0.15);
+    color: var(--color-danger);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+  }
+</style>
+{% endblock %}

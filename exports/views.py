@@ -6,6 +6,8 @@ import csv
 from datetime import datetime
 from typing import List, Dict, Any
 
+from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, get_tenant_session
+from middleware.tenant_middleware import tenant_required
 from utilities.database import db, Item, ItemCheckout, Contact, Property, PropertyUnit, User
 
 exports_bp = Blueprint("exports", __name__, template_folder="../templates")
@@ -226,6 +228,7 @@ def generate_pdf(data: List[Dict[str, Any]], filename: str, title: str = "Report
 
 @exports_bp.route("/preview/<item_type>", methods=["GET"])
 @login_required
+@tenant_required
 def preview_export(item_type):
     """Return preview data for export (first 20 rows)"""
     valid_types = ['keys', 'lockboxes', 'signs', 'properties', 'contacts']
@@ -242,17 +245,17 @@ def preview_export(item_type):
 
     # Get preview data based on item type
     if item_type == 'keys':
-        items = Item.query.filter_by(type='Key').order_by(Item.id.desc()).limit(20).all()
-        preview_data['total_count'] = Item.query.filter_by(type='Key').count()
+        items = tenant_query(Item).filter_by(type='Key').order_by(Item.id.desc()).limit(20).all()
+        preview_data['total_count'] = tenant_query(Item).filter_by(type='Key').count()
     elif item_type == 'lockboxes':
-        items = Item.query.filter_by(type='Lockbox').order_by(Item.id.desc()).limit(20).all()
-        preview_data['total_count'] = Item.query.filter_by(type='Lockbox').count()
+        items = tenant_query(Item).filter_by(type='Lockbox').order_by(Item.id.desc()).limit(20).all()
+        preview_data['total_count'] = tenant_query(Item).filter_by(type='Lockbox').count()
     elif item_type == 'signs':
-        items = Item.query.filter_by(type='Sign').order_by(Item.id.desc()).limit(20).all()
-        preview_data['total_count'] = Item.query.filter_by(type='Sign').count()
+        items = tenant_query(Item).filter_by(type='Sign').order_by(Item.id.desc()).limit(20).all()
+        preview_data['total_count'] = tenant_query(Item).filter_by(type='Sign').count()
     elif item_type == 'properties':
-        properties = Property.query.order_by(Property.id.desc()).limit(20).all()
-        preview_data['total_count'] = Property.query.count()
+        properties = tenant_query(Property).order_by(Property.id.desc()).limit(20).all()
+        preview_data['total_count'] = tenant_query(Property).count()
         preview_data['preview_count'] = len(properties)
         if properties:
             data_dicts = [p.to_dict() for p in properties]
@@ -260,8 +263,8 @@ def preview_export(item_type):
             preview_data['rows'] = data_dicts
         return jsonify(preview_data)
     elif item_type == 'contacts':
-        contacts = Contact.query.order_by(Contact.id.desc()).limit(20).all()
-        preview_data['total_count'] = Contact.query.count()
+        contacts = tenant_query(Contact).order_by(Contact.id.desc()).limit(20).all()
+        preview_data['total_count'] = tenant_query(Contact).count()
         preview_data['preview_count'] = len(contacts)
         if contacts:
             data_dicts = [c.to_dict() for c in contacts]
@@ -282,6 +285,7 @@ def preview_export(item_type):
 
 @exports_bp.route("/items/<item_type>", methods=["GET"])
 @login_required
+@tenant_required
 def export_items(item_type: str):
     """Export items (keys, lockboxes, signs) to CSV/Excel/PDF"""
     format_type = request.args.get("format", "csv").lower()
@@ -297,7 +301,7 @@ def export_items(item_type: str):
     item_type_db = item_type_singular.capitalize()
 
     # Get items
-    items = Item.query.filter_by(type=item_type_db).order_by(Item.label.asc()).all()
+    items = tenant_query(Item).filter_by(type=item_type_db).order_by(Item.label.asc()).all()
 
     # Prepare data based on item type
     data = []
@@ -353,11 +357,12 @@ def export_items(item_type: str):
 
 @exports_bp.route("/reports/low-keys", methods=["GET"])
 @login_required
+@tenant_required
 def export_low_keys():
     """Export low key inventory report"""
     format_type = request.args.get("format", "csv").lower()
 
-    keys = Item.query.filter(
+    keys = tenant_query(Item).filter(
         Item.type == "Key",
         Item.total_copies < 4
     ).order_by(Item.total_copies.asc(), Item.label.asc()).all()
@@ -385,11 +390,12 @@ def export_low_keys():
 
 @exports_bp.route("/reports/checked-out-keys", methods=["GET"])
 @login_required
+@tenant_required
 def export_checked_out_keys():
     """Export checked out keys report"""
     format_type = request.args.get("format", "csv").lower()
 
-    keys = Item.query.filter(
+    keys = tenant_query(Item).filter(
         Item.type == "Key",
         Item.copies_checked_out > 0
     ).order_by(Item.label.asc()).all()
@@ -419,6 +425,7 @@ def export_checked_out_keys():
 
 @exports_bp.route("/reports/overdue-returns", methods=["GET"])
 @login_required
+@tenant_required
 def export_overdue_returns():
     """Export overdue returns report"""
     format_type = request.args.get("format", "csv").lower()
@@ -426,7 +433,7 @@ def export_overdue_returns():
     from datetime import date
     today = date.today()
     
-    checkouts = ItemCheckout.query.filter(
+    checkouts = tenant_query(ItemCheckout).filter(
         ItemCheckout.is_active == True,
         ItemCheckout.expected_return_date < today
     ).order_by(ItemCheckout.expected_return_date.asc()).all()
@@ -458,6 +465,7 @@ def export_overdue_returns():
 
 @exports_bp.route("/reports/upcoming-returns", methods=["GET"])
 @login_required
+@tenant_required
 def export_upcoming_returns():
     """Export upcoming returns report (next 30 days)"""
     format_type = request.args.get("format", "csv").lower()
@@ -466,7 +474,7 @@ def export_upcoming_returns():
     today = date.today()
     future = today + timedelta(days=30)
     
-    checkouts = ItemCheckout.query.filter(
+    checkouts = tenant_query(ItemCheckout).filter(
         ItemCheckout.is_active == True,
         ItemCheckout.expected_return_date.between(today, future)
     ).order_by(ItemCheckout.expected_return_date.asc()).all()
@@ -498,6 +506,7 @@ def export_upcoming_returns():
 
 @exports_bp.route("/reports/long-term-checkouts", methods=["GET"])
 @login_required
+@tenant_required
 def export_long_term_checkouts():
     """Export long-term checkouts report (> 30 days)"""
     format_type = request.args.get("format", "csv").lower()
@@ -505,7 +514,7 @@ def export_long_term_checkouts():
     from datetime import datetime, timedelta
     threshold = datetime.now() - timedelta(days=30)
     
-    checkouts = ItemCheckout.query.filter(
+    checkouts = tenant_query(ItemCheckout).filter(
         ItemCheckout.is_active == True,
         ItemCheckout.checked_out_at < threshold
     ).order_by(ItemCheckout.checked_out_at.asc()).all()

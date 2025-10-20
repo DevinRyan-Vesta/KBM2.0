@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}{{ account.company_name }} - Account Details{% endblock %}
+
+{% block content %}
+<style>
+  select {
+    appearance: none;
+    padding: 12px 44px 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.02));
+    color: var(--color-text);
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+    background: linear-gradient(135deg, rgba(229, 57, 53, 0.12), rgba(148, 163, 184, 0.05));
+  }
+  select option {
+    background: var(--color-card);
+    color: var(--color-text);
+    padding: 8px;
+  }
+</style>
+
+<div class="page-header">
+  <div>
+    <a href="{{ url_for('app_admin.list_accounts') }}" class="btn ghost" style="margin-bottom: 12px;">&larr; Back to Accounts</a>
+    <h1>{{ account.company_name }}</h1>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <h2>Account Information</h2>
+  <div class="divider"></div>
+  <div class="grid cols-2">
+    <div class="info-item">
+      <div class="info-label">Subdomain</div>
+      <div class="info-value">
+        {{ account.subdomain }}<br>
+        <a href="http://{{ account.subdomain }}.localhost:5000" target="_blank" class="btn small" style="margin-top: 6px;">
+          Visit Site &rarr;
+        </a>
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Status</div>
+      <div class="info-value">
+        {% if account.status == 'active' %}
+        <span class="tag ok">Active</span>
+        {% elif account.status == 'suspended' %}
+        <span class="tag warn">Suspended</span>
+        {% else %}
+        <span class="tag warn">{{ account.status }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Created</div>
+      <div class="info-value">{{ account.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Database Path</div>
+      <div class="info-value meta-cell">{{ account.database_path }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <h2>Status Management</h2>
+  <div class="divider"></div>
+  <form method="POST" action="{{ url_for('app_admin.update_account_status', account_id=account.id) }}" class="toolbar">
+    <div class="form-field" style="max-width: 240px;">
+      <select name="status">
+        <option value="active" {% if account.status == 'active' %}selected{% endif %}>Active</option>
+        <option value="suspended" {% if account.status == 'suspended' %}selected{% endif %}>Suspended</option>
+        <option value="deleted" {% if account.status == 'deleted' %}selected{% endif %}>Deleted</option>
+      </select>
+    </div>
+    <button type="submit" class="btn primary">Update Status</button>
+  </form>
+</div>
+
+<div class="card table-card" style="margin-bottom: 24px;">
+  <h2>Users ({{ users|length }})</h2>
+  <div class="divider"></div>
+  {% if users %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Last Login</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>{{ user.name }}</td>
+        <td>{{ user.email }}</td>
+        <td><span class="tag">{{ user.role }}</span></td>
+        <td>
+          {% if user.is_active %}
+          <span class="tag ok">Active</span>
+          {% else %}
+          <span class="tag warn">Inactive</span>
+          {% endif %}
+        </td>
+        <td class="text-small muted">
+          {{ user.last_login_at.strftime('%Y-%m-%d %H:%M') if user.last_login_at else 'Never' }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No users in this account</div>
+  {% endif %}
+</div>
+
+<div class="card" style="border-color: rgba(239, 68, 68, 0.25); background: rgba(239, 68, 68, 0.08);">
+  <h2 style="color: var(--color-danger);">Danger Zone</h2>
+  <div class="divider" style="border-color: rgba(239, 68, 68, 0.2);"></div>
+  <p class="muted" style="margin-bottom: 16px;">Permanently delete this account and all its data. This action cannot be undone!</p>
+
+  <form method="POST" action="{{ url_for('app_admin.delete_account', account_id=account.id) }}" onsubmit="return confirm('Type the subdomain \'{{ account.subdomain }}\' to confirm deletion.');">
+    <div class="form-field" style="max-width: 480px;">
+      <label>Type "{{ account.subdomain }}" to confirm:</label>
+      <input type="text" name="confirmation" required>
+    </div>
+    <button type="submit" class="btn danger" style="margin-top: 12px;">
+      Permanently Delete Account
+    </button>
+  </form>
+</div>
+{% endblock %}

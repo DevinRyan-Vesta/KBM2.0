@@ -11,6 +11,8 @@
 from flask_login import login_required
 from sqlalchemy import or_, func
 
+from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, get_tenant_session
+from middleware.tenant_middleware import tenant_required
 from utilities.database import db, Property, PropertyUnit, Item, SmartLock
 
 PROPERTY_TYPES = ["single_family", "multi_family", "commercial", "mixed"]
@@ -24,7 +26,7 @@ properties_bp = Blueprint(
 
 
 def _get_property_or_404(property_id: int) -> Property:
-    property_obj = db.session.get(Property, property_id)
+    property_obj = get_tenant_session().get(Property, property_id)
     if property_obj is None:
         abort(404)
     return property_obj
@@ -36,9 +38,10 @@ def _normalise_type(value: str) -> str:
 
 @properties_bp.route("/", methods=["GET"])
 @login_required
+@tenant_required
 def list_properties():
     q = (request.args.get("q") or "").strip()
-    query = Property.query
+    query = tenant_query(Property)
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -77,6 +80,7 @@ def list_properties():
 
 @properties_bp.route("/new", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def create_property():
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
@@ -113,8 +117,8 @@ def create_property():
             country=country or "USA",
             notes=notes,
         )
-        db.session.add(property_obj)
-        db.session.commit()
+        tenant_add(property_obj)
+        tenant_commit()
         flash("Property created.", "success")
         return redirect(url_for("properties.property_detail", property_id=property_obj.id))
 
@@ -130,10 +134,11 @@ def create_property():
 
 @properties_bp.route("/<int:property_id>", methods=["GET"])
 @login_required
+@tenant_required
 def property_detail(property_id: int):
     property_obj = _get_property_or_404(property_id)
     items = (
-        Item.query
+        tenant_query(Item)
         .filter(Item.property_id == property_obj.id)
         .order_by(Item.type.asc(), Item.label.asc())
         .all()
@@ -147,14 +152,14 @@ def property_detail(property_id: int):
     }
 
     units = (
-        PropertyUnit.query
+        tenant_query(PropertyUnit)
         .filter(PropertyUnit.property_id == property_obj.id)
         .order_by(PropertyUnit.label.asc())
         .all()
     )
 
     smart_locks = (
-        SmartLock.query
+        tenant_query(SmartLock)
         .filter(SmartLock.property_id == property_obj.id)
         .order_by(SmartLock.label.asc())
         .all()
@@ -173,6 +178,7 @@ def property_detail(property_id: int):
 
 @properties_bp.route("/<int:property_id>/edit", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def edit_property(property_id: int):
     property_obj = _get_property_or_404(property_id)
 
@@ -204,7 +210,7 @@ def edit_property(property_id: int):
         property_obj.type = property_type
         property_obj.address_line1 = address_line1
 
-        db.session.commit()
+        tenant_commit()
         flash("Property updated.", "success")
         return redirect(url_for("properties.property_detail", property_id=property_obj.id))
 
@@ -220,6 +226,7 @@ def edit_property(property_id: int):
 
 @properties_bp.route("/<int:property_id>/units", methods=["POST"])
 @login_required
+@tenant_required
 def create_unit(property_id: int):
     property_obj = _get_property_or_404(property_id)
     label = (request.form.get("label") or "").strip()
@@ -255,17 +262,129 @@ def create_unit(property_id: int):
         square_feet=square_feet_val,
         notes=notes,
     )
-    db.session.add(unit)
-    db.session.commit()
+    tenant_add(unit)
+    tenant_commit()
     flash("Unit added.", "success")
     return redirect(url_for("properties.property_detail", property_id=property_obj.id))
 
 
+@properties_bp.route("/<int:property_id>/units/<int:unit_id>", methods=["GET"])
+@login_required
+@tenant_required
+def unit_detail(property_id: int, unit_id: int):
+    """View and manage a specific property unit."""
+    property_obj = _get_property_or_404(property_id)
+    unit = get_tenant_session().get(PropertyUnit, unit_id)
+
+    if unit is None or unit.property_id != property_id:
+        flash("Unit not found.", "error")
+        return redirect(url_for("properties.property_detail", property_id=property_id))
+
+    # Get all keys associated with this unit
+    keys = tenant_query(Item).filter_by(
+        type="Key",
+        property_unit_id=unit_id
+    ).all()
+
+    return render_template(
+        "unit_detail.html",
+        property=property_obj,
+        unit=unit,
+        keys=keys
+    )
+
+
+@properties_bp.route("/<int:property_id>/units/<int:unit_id>/edit", methods=["POST"])
+@login_required
+@tenant_required
+def edit_unit(property_id: int, unit_id: int):
+    """Edit a property unit."""
+    property_obj = _get_property_or_404(property_id)
+    unit = get_tenant_session().get(PropertyUnit, unit_id)
+
+    if unit is None or unit.property_id != property_id:
+        flash("Unit not found.", "error")
+        return redirect(url_for("properties.property_detail", property_id=property_id))
+
+    label = (request.form.get("label") or "").strip()
+    if not label:
+        flash("Unit label is required.", "error")
+        return redirect(url_for("properties.unit_detail", property_id=property_id, unit_id=unit_id))
+
+    floor = (request.form.get("floor") or "").strip() or None
+    bedrooms = request.form.get("bedrooms") or None
+    bathrooms = request.form.get("bathrooms") or None
+    square_feet = request.form.get("square_feet") or None
+    notes = (request.form.get("notes") or "").strip() or None
+
+    try:
+        bedrooms_val = int(bedrooms) if bedrooms else None
+    except ValueError:
+        bedrooms_val = None
+    try:
+        bathrooms_val = float(bathrooms) if bathrooms else None
+    except ValueError:
+        bathrooms_val = None
+    try:
+        square_feet_val = int(square_feet) if square_feet else None
+    except ValueError:
+        square_feet_val = None
+
+    unit.label = label
+    unit.floor = floor
+    unit.bedrooms = bedrooms_val
+    unit.bathrooms = bathrooms_val
+    unit.square_feet = square_feet_val
+    unit.notes = notes
+
+    tenant_commit()
+    flash("Unit updated successfully.", "success")
+    return redirect(url_for("properties.unit_detail", property_id=property_id, unit_id=unit_id))
+
+
+@properties_bp.route("/<int:property_id>/units/<int:unit_id>/delete", methods=["POST"])
+@login_required
+@tenant_required
+def delete_unit(property_id: int, unit_id: int):
+    """Delete a property unit."""
+    from flask_login import current_user
+
+    # Check if user is admin
+    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+        flash("You must be an admin to delete units.", "error")
+        return redirect(url_for("properties.property_detail", property_id=property_id))
+
+    property_obj = _get_property_or_404(property_id)
+    unit = get_tenant_session().get(PropertyUnit, unit_id)
+
+    if unit is None or unit.property_id != property_id:
+        flash("Unit not found.", "error")
+        return redirect(url_for("properties.property_detail", property_id=property_id))
+
+    # Check if any keys are associated with this unit
+    keys_count = tenant_query(Item).filter_by(
+        type="Key",
+        property_unit_id=unit_id
+    ).count()
+
+    if keys_count > 0:
+        flash(f"Cannot delete unit: {keys_count} key(s) are associated with it. Please reassign or delete the keys first.", "error")
+        return redirect(url_for("properties.unit_detail", property_id=property_id, unit_id=unit_id))
+
+    unit_label = unit.label
+    get_tenant_session().delete(unit)
+    tenant_commit()
+
+    flash(f"Unit '{unit_label}' deleted successfully.", "success")
+    return redirect(url_for("properties.property_detail", property_id=property_id))
+
+
 @properties_bp.route("/api/search", methods=["GET"])
 @login_required
+@tenant_required
 def search_properties():
     q = (request.args.get("q") or "").strip()
-    query = Property.query
+    query = tenant_query(Property)
     if q:
         like = f"%{q}%"
         query = query.filter(

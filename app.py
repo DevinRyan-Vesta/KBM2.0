@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 from pathlib import Path
 from flask_login import LoginManager
 from config import get_config
+import os
 from utilities.database import db, Item, User, ItemCheckout, ActivityLog
 from auth import auth_bp
 from inventory import inventory_bp
@@ -29,7 +30,7 @@ def create_app():
     # 2) SQLite path hardening: ensure absolute, writable path BEFORE init_app
     uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
     if uri.startswith("sqlite:///"):
-        base_dir = Path.home() / "KBM2_data"  # per-user writable folder
+        base_dir = Path() / "KBM2_data"  # per-user writable folder
         base_dir.mkdir(parents=True, exist_ok=True)
         raw_path = uri.replace("sqlite:///", "", 1).strip()
         filename = Path(raw_path).name if raw_path else "app.db"
@@ -112,3 +113,12 @@ def create_app():
 # For `flask --app app run`, having create_app is enough.
 # You can optionally expose a concrete app instance too:
 # app = create_app()
+
+# Expose a concrete app instance for WSGI servers (gunicorn, etc.)
+app = create_app()
+
+if __name__ == "__main__":
+    # Local/dev fallback (not used by gunicorn in container)
+    port = int(os.environ.get("PORT", 5000))
+    debug = app.config.get("DEBUG", False)
+    app.run(host="0.0.0.0", port=port, debug=debug)

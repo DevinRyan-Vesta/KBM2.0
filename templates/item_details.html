@@ -248,6 +248,29 @@
     color: var(--color-muted);
     margin: 0 8px;
   }
+  /* Modal form elements */
+  .modal-dialog select {
+    appearance: none;
+    width: 100%;
+    padding: 12px 44px 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.02));
+    color: var(--color-text);
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  .modal-dialog select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+    background: linear-gradient(135deg, rgba(229, 57, 53, 0.12), rgba(148, 163, 184, 0.05));
+  }
+  .modal-dialog select option {
+    background: var(--color-card);
+    color: var(--color-text);
+    padding: 8px;
+  }
 </style>
 
 {% set item_type_lower = (item.type or '')|lower %}
@@ -376,6 +399,16 @@
             <div class="info-value">{{ item.keycode }}</div>
           </div>
           {% endif %}
+          {% if item.master_key %}
+          <div class="info-item">
+            <div class="info-label">Master Key</div>
+            <div class="info-value">
+              <a href="{{ url_for('inventory.item_details', item_id=item.master_key.id) }}">
+                {{ item.master_key.custom_id or item.master_key.id }} - {{ item.master_key.label }}
+              </a>
+            </div>
+          </div>
+          {% endif %}
           <div class="info-item">
             <div class="info-label">Total Copies</div>
             <div class="info-value large">{{ item.total_copies or 0 }}</div>
@@ -449,7 +482,16 @@
               <div class="piece-label">Text: "{{ piece.rider_text }}"</div>
             {% endif %}
           </div>
-          <a href="{{ url_for('inventory.item_details', item_id=piece.id) }}" class="btn small">View</a>
+          <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('inventory.item_details', item_id=piece.id) }}" class="btn small">View</a>
+            <button class="btn small primary js-swap-piece"
+              data-piece-id="{{ piece.id }}"
+              data-piece-type="{{ piece.piece_type }}"
+              data-piece-label="{{ piece.label }}"
+              data-assembled-unit-id="{{ item.id }}">
+              Swap
+            </button>
+          </div>
         </div>
       {% endfor %}
     </div>
@@ -503,6 +545,49 @@
     </div>
     {% endif %}
 
+    <!-- Child Keys (if this is a master key) -->
+    {% if item_type_lower == 'key' and child_keys %}
+    <div class="checkouts-card" style="margin-top: 20px;">
+      <h2>Keys Using This as Master ({{ child_keys|length }})</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--color-border);">ID</th>
+            <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--color-border);">Label</th>
+            <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--color-border);">Status</th>
+            <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--color-border);">Location</th>
+            <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--color-border);">Copies</th>
+            <th style="text-align: left; padding: 8px; border-bottom: 1px solid var(--color-border);">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for child in child_keys %}
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid var(--color-border);"><code>{{ child.custom_id or child.id }}</code></td>
+            <td style="padding: 8px; border-bottom: 1px solid var(--color-border);">{{ child.label }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid var(--color-border);">
+              <span class="tag {% if child.status == 'available' %}ok{% elif child.status == 'checked_out' %}warn{% elif child.status == 'assigned' %}info{% endif %}">
+                {{ child.status.replace('_', ' ').title() }}
+              </span>
+            </td>
+            <td style="padding: 8px; border-bottom: 1px solid var(--color-border);">{{ child.location or '-' }}</td>
+            <td style="padding: 8px; border-bottom: 1px solid var(--color-border);">
+              {% if child.total_copies %}
+                {{ (child.total_copies - (child.copies_checked_out or 0)) }}/{{ child.total_copies }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td style="padding: 8px; border-bottom: 1px solid var(--color-border);">
+              <a href="{{ url_for('inventory.item_details', item_id=child.id) }}" class="btn small">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
     <!-- Activity History -->
     <div class="history-card" style="margin-top: 20px;">
       <h2>Activity History</h2>
@@ -541,10 +626,10 @@
             data-address="{{ item.address|default('', true)|e }}"
             data-assigned="{{ item.assigned_to|default('', true)|e }}"
             data-available="{{ available_copies }}"
-            data-action="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.checkout_lockbox', item_id=item.id) }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.checkout_key', item_id=item.id) }}{% elif item_type_lower == 'sign' and 'inventory.checkout_sign' in current_app.view_functions %}{{ url_for('inventory.checkout_sign', item_id=item.id) }}{% else %}#{% endif %}"
+            data-action="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.checkout_lockbox', item_id=item.id) }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.checkout_key', item_id=item.id) }}{% elif item_type_lower == 'sign' and has_endpoint('inventory.checkout_sign') %}{{ url_for('inventory.checkout_sign', item_id=item.id) }}{% else %}#{% endif %}"
             data-property-id="{{ item.property_id or '' }}"
             data-property-unit-id="{{ item.property_unit_id or '' }}"
-            data-redirect="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.list_lockboxes') }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.list_keys') }}{% elif item_type_lower == 'sign' and 'inventory.list_signs' in current_app.view_functions %}{{ url_for('inventory.list_signs') }}{% else %}#{% endif %}"
+            data-redirect="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.list_lockboxes') }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.list_keys') }}{% elif item_type_lower == 'sign' and has_endpoint('inventory.list_signs') %}{{ url_for('inventory.list_signs') }}{% else %}#{% endif %}"
             data-redirect-anchor="checkout-{{ item.id }}">
             Check Out
           </button>
@@ -558,7 +643,7 @@
             data-location="{{ item.location|default('', true)|e }}"
             data-address="{{ item.address|default('', true)|e }}"
             data-action="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.checkin_lockbox', item_id=item.id) }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.checkin_key', item_id=item.id) }}{% else %}#{% endif %}"
-            data-redirect="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.list_lockboxes') }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.list_keys') }}{% elif item_type_lower == 'sign' and 'inventory.list_signs' in current_app.view_functions %}{{ url_for('inventory.list_signs') }}{% else %}#{% endif %}"
+            data-redirect="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.list_lockboxes') }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.list_keys') }}{% elif item_type_lower == 'sign' and has_endpoint('inventory.list_signs') %}{{ url_for('inventory.list_signs') }}{% else %}#{% endif %}"
             data-redirect-anchor="checkin-{{ item.id }}">
             Check In
           </button>
@@ -573,7 +658,7 @@
             data-property-id="{{ item.property_id or '' }}"
             data-property-unit-id="{{ item.property_unit_id or '' }}"
             data-available="{{ available_copies }}"
-            data-redirect="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.list_lockboxes') }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.list_keys') }}{% elif item_type_lower == 'sign' and 'inventory.list_signs' in current_app.view_functions %}{{ url_for('inventory.list_signs') }}{% else %}#{% endif %}"
+            data-redirect="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.list_lockboxes') }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.list_keys') }}{% elif item_type_lower == 'sign' and has_endpoint('inventory.list_signs') %}{{ url_for('inventory.list_signs') }}{% else %}#{% endif %}"
             data-redirect-anchor="assign-{{ item.id }}">
             Assign
           </button>
@@ -600,7 +685,7 @@
         {% if viewer_role == 'admin' %}
           <button class="btn js-edit-action" type="button"
             data-item-id="{{ item.id }}"
-            data-action="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.edit_lockbox', item_id=item.id) }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.edit_key', item_id=item.id) }}{% elif item_type_lower == 'sign' and 'inventory.edit_sign' in current_app.view_functions %}{{ url_for('inventory.edit_sign', item_id=item.id) }}{% else %}#{% endif %}"
+            data-action="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.edit_lockbox', item_id=item.id) }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.edit_key', item_id=item.id) }}{% elif item_type_lower == 'sign' and has_endpoint('inventory.edit_sign') %}{{ url_for('inventory.edit_sign', item_id=item.id) }}{% else %}#{% endif %}"
             data-label="{{ item.label|e }}"
             data-location="{{ item.location|default('', true)|e }}"
             data-address="{{ item.address|default('', true)|e }}"
@@ -616,7 +701,7 @@
             data-rider-text="{{ item.rider_text|default('', true)|e }}"
             data-material="{{ item.material|default('', true)|e }}"
             data-condition="{{ item.condition|default('', true)|e }}"
-            data-redirect="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.list_lockboxes') }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.list_keys') }}{% elif item_type_lower == 'sign' and 'inventory.list_signs' in current_app.view_functions %}{{ url_for('inventory.list_signs') }}{% else %}#{% endif %}"
+            data-redirect="{% if item_type_lower == 'lockbox' %}{{ url_for('inventory.list_lockboxes') }}{% elif item_type_lower == 'key' %}{{ url_for('inventory.list_keys') }}{% elif item_type_lower == 'sign' and has_endpoint('inventory.list_signs') %}{{ url_for('inventory.list_signs') }}{% else %}#{% endif %}"
             data-redirect-anchor="edit-{{ item.id }}">
             Edit Details
           </button>
@@ -670,6 +755,100 @@
     </form>
   </div>
 </div>
+
+<!-- Swap Piece Modal -->
+<div id="swap-piece-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" onclick="closeSwapModal()"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true">
+    <form id="swap-piece-form" method="post">
+      <h3 id="swap-modal-title">Swap Component Piece</h3>
+      <div class="modal-body">
+        <p>Current piece: <strong id="current-piece-label"></strong></p>
+        <div class="form-field">
+          <label for="new-piece-id">Replace with:</label>
+          <select id="new-piece-id" name="new_piece_id" required>
+            <option value="">Loading available pieces...</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn" onclick="closeSwapModal()">Cancel</button>
+        <button type="submit" class="btn primary">Swap Piece</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Swap piece functionality
+  const swapModal = document.getElementById('swap-piece-modal');
+  const swapForm = document.getElementById('swap-piece-form');
+  const newPieceSelect = document.getElementById('new-piece-id');
+  const currentPieceLabel = document.getElementById('current-piece-label');
+  const swapModalTitle = document.getElementById('swap-modal-title');
+
+  function closeSwapModal() {
+    swapModal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    swapForm.reset();
+  }
+
+  async function loadAvailablePieces(pieceType, currentPieceId) {
+    try {
+      const response = await fetch(`/inventory/api/available-pieces?piece_type=${encodeURIComponent(pieceType)}&exclude=${currentPieceId}`);
+      if (!response.ok) throw new Error('Failed to load pieces');
+      const pieces = await response.json();
+
+      newPieceSelect.innerHTML = '<option value="">-- Select a piece --</option>';
+      pieces.forEach(piece => {
+        const option = document.createElement('option');
+        option.value = piece.id;
+        const riderText = piece.rider_text ? ` - "${piece.rider_text}"` : '';
+        option.textContent = `${piece.custom_id} - ${piece.label}${riderText}`;
+        newPieceSelect.appendChild(option);
+      });
+
+      if (pieces.length === 0) {
+        newPieceSelect.innerHTML = '<option value="">No available pieces of this type</option>';
+      }
+    } catch (error) {
+      console.error('Error loading pieces:', error);
+      newPieceSelect.innerHTML = '<option value="">Error loading pieces</option>';
+    }
+  }
+
+  document.querySelectorAll('.js-swap-piece').forEach(button => {
+    button.addEventListener('click', function() {
+      const pieceId = this.dataset.pieceId;
+      const pieceType = this.dataset.pieceType;
+      const pieceLabel = this.dataset.pieceLabel;
+      const assembledUnitId = this.dataset.assembledUnitId;
+
+      currentPieceLabel.textContent = pieceLabel;
+      swapModalTitle.textContent = `Swap ${pieceType}`;
+      swapForm.action = `/inventory/signs/${assembledUnitId}/swap-piece/${pieceId}`;
+
+      loadAvailablePieces(pieceType, pieceId);
+
+      swapModal.classList.add('show');
+      document.body.classList.add('modal-open');
+    });
+  });
+
+  swapForm.addEventListener('submit', function(e) {
+    const selectedPiece = newPieceSelect.value;
+    if (!selectedPiece) {
+      e.preventDefault();
+      alert('Please select a piece to swap with');
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && swapModal.classList.contains('show')) {
+      closeSwapModal();
+    }
+  });
+</script>
 
 <script>
   window.kbmItemDetails = {

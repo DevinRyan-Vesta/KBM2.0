@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(python C:/Users/dryan/WorkSpaces/KBM2.0/add_report_exports.py)",
-      "Bash(python C:/Users/dryan/WorkSpaces/KBM2.0/add_all_exports_imports.py)"
+      "Bash(python C:/Users/dryan/WorkSpaces/KBM2.0/add_all_exports_imports.py)",
+      "Bash(for dir in accounts app_admin auth checkout contacts exports inventory main middleware properties smartlocks)",
+      "Bash(do echo \"=== $dir ===\")",
+      "Bash(ls -la $dir/)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

@@ -6,6 +6,7 @@ FROM python:3.11-slim AS base
 # Set working directory
 WORKDIR /app
 
+
 # Builder stage: install dependencies in a venv
 FROM base AS builder
 
@@ -35,15 +36,26 @@ RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 WORKDIR /app
 
+#Grant permissions to the non-root user
+RUN chown -R appuser:appgroup /app
+
 # Copy virtual environment from builder
 COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code from builder
 COPY --from=builder /app /app
 
+# Copy entrypoint and make executable
+COPY --from=builder /app/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && chown appuser:appgroup /app/entrypoint.sh
+
 # Set environment variables
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
+ENV FLASK_ENV=production
+
+# Make Directory for Database
+RUN mkdir -p /app/KBM2_data && chown -R appuser:appgroup /app/KBM2_data
 
 # Use non-root user
 USER appuser
@@ -51,5 +63,5 @@ USER appuser
 # Expose the port (assuming 8000, adjust if needed)
 EXPOSE 8000
 
-# Start the application (adjust if entrypoint differs)
-CMD ["python", "app.py"]
+# Run migrations then start gunicorn via the entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]

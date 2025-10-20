@@ -2,6 +2,8 @@
 from flask_login import login_required
 from sqlalchemy import or_, func
 
+from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, get_tenant_session
+from middleware.tenant_middleware import tenant_required
 from utilities.database import db, Contact, Item, ItemCheckout, User
 
 CONTACT_TYPES = ["staff", "contractor", "tenant", "agent"]
@@ -15,14 +17,14 @@ contacts_bp = Blueprint(
 
 
 def _get_contact_or_404(contact_id: int) -> Contact:
-    contact = db.session.get(Contact, contact_id)
+    contact = get_tenant_session().get(Contact, contact_id)
     if contact is None:
         abort(404)
     return contact
 
 
 def _get_available_staff_users(include_user_id: int | None = None) -> list[User]:
-    users = User.query.order_by(User.name.asc()).all()
+    users = tenant_query(User).order_by(User.name.asc()).all()
     available: list[User] = []
     for user in users:
         if user.contact_profile is None or (include_user_id is not None and user.id == include_user_id):
@@ -32,9 +34,10 @@ def _get_available_staff_users(include_user_id: int | None = None) -> list[User]
 
 @contacts_bp.route("/", methods=["GET"])
 @login_required
+@tenant_required
 def list_contacts():
     q = (request.args.get("q") or "").strip()
-    query = Contact.query
+    query = tenant_query(Contact)
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -56,6 +59,7 @@ def list_contacts():
 
 @contacts_bp.route("/new", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def create_contact():
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
@@ -77,7 +81,7 @@ def create_contact():
         if contact_type == "staff" and user_id_str:
             try:
                 user_id = int(user_id_str)
-                staff_user = db.session.get(User, user_id)
+                staff_user = get_tenant_session().get(User, user_id)
             except ValueError:
                 staff_user = None
             if staff_user is None:
@@ -97,10 +101,10 @@ def create_contact():
             email=email,
             phone=phone,
             notes=notes,
-            user=staff_user,
+            user_id=staff_user.id if staff_user else None,
         )
-        db.session.add(contact)
-        db.session.commit()
+        tenant_add(contact)
+        tenant_commit()
         flash("Contact created.", "success")
         return redirect(url_for("contacts.list_contacts"))
 
@@ -118,6 +122,7 @@ def create_contact():
 
 @contacts_bp.route("/<int:contact_id>", methods=["GET"])
 @login_required
+@tenant_required
 def contact_detail(contact_id: int):
     contact = _get_contact_or_404(contact_id)
     name_ci = contact.name.lower()
@@ -129,13 +134,13 @@ def contact_detail(contact_id: int):
         if user_name_ci != name_ci:
             names_to_match.append(user_name_ci)
 
-    assigned_items = Item.query.filter(
+    assigned_items = tenant_query(Item).filter(
         Item.assigned_to.isnot(None),
         func.lower(Item.assigned_to).in_(names_to_match),
     ).order_by(Item.label.asc()).all()
 
     active_checkouts = (
-        ItemCheckout.query
+        tenant_query(ItemCheckout)
         .filter(
             ItemCheckout.is_active.is_(True),
             func.lower(ItemCheckout.checked_out_to).in_(names_to_match),
@@ -145,7 +150,7 @@ def contact_detail(contact_id: int):
     )
 
     recent_history = (
-        ItemCheckout.query
+        tenant_query(ItemCheckout)
         .filter(
             ItemCheckout.is_active.is_(False),
             func.lower(ItemCheckout.checked_out_to).in_(names_to_match),
@@ -166,6 +171,7 @@ def contact_detail(contact_id: int):
 
 @contacts_bp.route("/<int:contact_id>/edit", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def edit_contact(contact_id: int):
     contact = _get_contact_or_404(contact_id)
 
@@ -188,7 +194,7 @@ def edit_contact(contact_id: int):
         if contact_type == "staff" and user_id_str:
             try:
                 user_id = int(user_id_str)
-                staff_user = db.session.get(User, user_id)
+                staff_user = get_tenant_session().get(User, user_id)
             except ValueError:
                 staff_user = None
             if staff_user is None:
@@ -207,9 +213,9 @@ def edit_contact(contact_id: int):
         contact.email = email
         contact.phone = phone
         contact.notes = notes
-        contact.user = staff_user
+        contact.user_id = staff_user.id if staff_user else None
 
-        db.session.commit()
+        tenant_commit()
         flash("Contact updated.", "success")
         return redirect(url_for("contacts.contact_detail", contact_id=contact.id))
 
@@ -227,16 +233,18 @@ def edit_contact(contact_id: int):
 
 @contacts_bp.route("/<int:contact_id>/delete", methods=["POST"])
 @login_required
+@tenant_required
 def delete_contact(contact_id: int):
     contact = _get_contact_or_404(contact_id)
-    db.session.delete(contact)
-    db.session.commit()
+    tenant_delete(contact)
+    tenant_commit()
     flash("Contact removed.", "success")
     return redirect(url_for("contacts.list_contacts"))
 
 
 @contacts_bp.route("/search", methods=["GET"])
 @login_required
+@tenant_required
 def search_contacts():
     """Search contacts for autocomplete - returns JSON"""
     from flask import jsonify
@@ -246,7 +254,7 @@ def search_contacts():
         return jsonify([])
 
     like = f"%{query}%"
-    contacts = Contact.query.filter(
+    contacts = tenant_query(Contact).filter(
         or_(
             Contact.name.ilike(like),
             Contact.email.ilike(like),

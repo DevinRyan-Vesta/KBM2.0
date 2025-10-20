@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Users</h1>
+  <div class="toolbar">
+    <a href="{{ url_for('auth.create_user') }}" class="btn primary">
+      + Add User
+    </a>
+  </div>
+</div>
+
+<div class="card table-card">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>{{ user.name }}</td>
+        <td>{{ user.email }}</td>
+        <td><span class="tag">{{ user.role }}</span></td>
+        <td>
+          {% if user.is_active %}
+          <span class="tag ok">Active</span>
+          {% else %}
+          <span class="tag warn">Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="toolbar compact">
+            <a href="{{ url_for('auth.edit_user', user_id=user.id) }}" class="btn small">
+              Edit
+            </a>
+            {% if user.id != current_user.id %}
+            <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" style="display: inline;"
+                  onsubmit="return confirm('Delete user {{ user.name }}?');">
+              <button type="submit" class="btn small danger">
+                Delete
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="empty-state">
+          No users yet
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

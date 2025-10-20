@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<style>
+  .form-card select {
+    appearance: none;
+    width: 100%;
+    padding: 12px 44px 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.02));
+    color: var(--color-text);
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  .form-card select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+    background: linear-gradient(135deg, rgba(229, 57, 53, 0.12), rgba(148, 163, 184, 0.05));
+  }
+  .form-card select option {
+    background: var(--color-card);
+    color: var(--color-text);
+    padding: 8px;
+  }
+</style>
+
+<div class="page-header">
+  <div>
+    <a href="{{ cancel_url }}" class="btn ghost" style="margin-bottom: 12px;">&larr; Back</a>
+    <h1>{{ page_heading }}</h1>
+  </div>
+</div>
+
+<div class="form-shell">
+  <div class="card form-card">
+    <form method="POST">
+      <div class="form-field">
+        <label for="name">Name *</label>
+        <input type="text" id="name" name="name" value="{{ form_values.name }}" required>
+        {% if errors.name %}
+        <span class="muted text-small" style="color: var(--color-danger);">{{ errors.name }}</span>
+        {% endif %}
+      </div>
+
+      <div class="form-field">
+        <label for="email">Email *</label>
+        <input type="email" id="email" name="email" value="{{ form_values.email }}" required>
+        {% if errors.email %}
+        <span class="muted text-small" style="color: var(--color-danger);">{{ errors.email }}</span>
+        {% endif %}
+      </div>
+
+      {% if show_role %}
+      <div class="form-field">
+        <label for="role">Role *</label>
+        <select id="role" name="role">
+          {% for role_option in allowed_roles %}
+          <option value="{{ role_option }}" {% if form_values.role == role_option %}selected{% endif %}>
+            {{ role_option|title }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="form-field">
+        <label for="pin">PIN (4+ characters){% if user %} - Leave blank to keep current{% else %} *{% endif %}</label>
+        <input type="password" id="pin" name="pin" {% if not user %}required{% endif %} minlength="4">
+        {% if errors.pin %}
+        <span class="muted text-small" style="color: var(--color-danger);">{{ errors.pin }}</span>
+        {% endif %}
+        {% if user %}
+        <span class="muted text-small">Leave blank to keep current PIN</span>
+        {% endif %}
+      </div>
+
+      {% if show_active_toggle %}
+      <div class="form-field">
+        <label style="display: flex; align-items: center; gap: 8px; text-transform: none; cursor: pointer;">
+          <input type="checkbox" name="is_active" value="1" {% if form_values.is_active == '1' %}checked{% endif %}>
+          <span>Active</span>
+        </label>
+      </div>
+      {% endif %}
+
+      <div class="toolbar" style="padding-top: 8px;">
+        <button type="submit" class="btn primary">
+          {{ submit_label }}
+        </button>
+        <a href="{{ cancel_url }}" class="btn ghost">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

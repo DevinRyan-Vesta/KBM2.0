@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}App Administrators{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>App Administrators</h1>
+  <div class="toolbar">
+    <a href="{{ url_for('app_admin.create_app_admin') }}" class="btn primary">
+      + Add Admin
+    </a>
+  </div>
+</div>
+
+<div class="card table-card">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Last Login</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for admin in app_admins %}
+      <tr>
+        <td>{{ admin.name }}</td>
+        <td>{{ admin.email }}</td>
+        <td>
+          {% if admin.is_active %}
+          <span class="tag ok">Active</span>
+          {% else %}
+          <span class="tag warn">Inactive</span>
+          {% endif %}
+        </td>
+        <td class="text-small">{{ admin.created_at.strftime('%Y-%m-%d') }}</td>
+        <td class="text-small muted">
+          {{ admin.last_login_at.strftime('%Y-%m-%d %H:%M') if admin.last_login_at else 'Never' }}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="empty-state">
+          No app administrators
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

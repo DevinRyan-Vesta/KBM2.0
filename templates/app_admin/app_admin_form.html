@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Create App Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="{{ url_for('app_admin.list_app_admins') }}" class="btn ghost" style="margin-bottom: 12px;">&larr; Back to App Admins</a>
+    <h1>Create App Administrator</h1>
+  </div>
+</div>
+
+<div class="form-shell">
+  <div class="card form-card">
+    <form method="POST">
+      <div class="form-field">
+        <label for="name">Name *</label>
+        <input type="text" id="name" name="name" value="{{ name or '' }}" required>
+      </div>
+
+      <div class="form-field">
+        <label for="email">Email *</label>
+        <input type="email" id="email" name="email" value="{{ email or '' }}" required>
+      </div>
+
+      <div class="form-field">
+        <label for="pin">PIN (4+ characters) *</label>
+        <input type="password" id="pin" name="pin" required minlength="4">
+      </div>
+
+      <div class="toolbar" style="padding-top: 8px;">
+        <button type="submit" class="btn primary">
+          Create App Admin
+        </button>
+        <a href="{{ url_for('app_admin.list_app_admins') }}" class="btn ghost">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

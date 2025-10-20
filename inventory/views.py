@@ -3,6 +3,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from datetime import datetime
 from typing import Optional
+from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, tenant_flush, get_tenant_session
+from middleware.tenant_middleware import tenant_required
 from utilities.database import (
     db,
     Item,
@@ -31,7 +33,7 @@ def _require_admin():
 
 
 def _get_item_or_404(item_id: int) -> Item:
-    item = db.session.get(Item, item_id)
+    item = get_tenant_session().get(Item, item_id)
     if item is None:
         abort(404)
     return item
@@ -54,9 +56,10 @@ def _get_redirect_url(default_url: str) -> str:
 # --- List + search + bulk (only search wired now) ---
 @inventory_bp.route("/lockboxes", methods=["GET"])
 @login_required
+@tenant_required
 def list_lockboxes():
     q = (request.args.get("q") or "").strip()
-    query = Item.query.filter(Item.type == "Lockbox")
+    query = tenant_query(Item).filter(Item.type == "Lockbox")
 
     if q:
         like = f"%{q}%"
@@ -76,7 +79,7 @@ def list_lockboxes():
     dynamic_statuses = {(lb.status or "").lower() for lb in lockboxes if lb.status}
     status_choices = sorted(set(LOCKBOX_STATUS_OPTIONS).union(dynamic_statuses))
 
-    properties = Property.query.order_by(Property.name.asc()).all()
+    properties = tenant_query(Property).order_by(Property.name.asc()).all()
 
     def _property_display(prop: Property) -> str:
         address_bits = [prop.address_line1, prop.city, prop.state]
@@ -112,8 +115,9 @@ def list_lockboxes():
 # --- Add (separate screen) ---
 @inventory_bp.route("/lockboxes/new", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def add_lockbox():
-    properties = Property.query.order_by(Property.name.asc()).all()
+    properties = tenant_query(Property).order_by(Property.name.asc()).all()
 
     def _property_display(prop: Property) -> str:
         address_bits = [prop.address_line1, prop.city, prop.state]
@@ -157,7 +161,7 @@ def add_lockbox():
         property_obj = None
         if property_id_str:
             try:
-                property_obj = db.session.get(Property, int(property_id_str))
+                property_obj = get_tenant_session().get(Property, int(property_id_str))
             except ValueError:
                 property_obj = None
             if property_obj is None:
@@ -187,13 +191,10 @@ def add_lockbox():
             last_action="created",
             last_action_at=utc_now(),
             last_action_by_id=getattr(current_user, "id", None),
+            property_id=property_obj.id if property_obj else None,
         )
-        db.session.add(item)
-
-        if property_obj:
-            item.property = property_obj
-
-        db.session.flush()
+        tenant_add(item)
+        tenant_flush()
         log_activity(
             "lockbox_created",
             user=current_user,
@@ -208,7 +209,7 @@ def add_lockbox():
             },
             commit=False,
         )
-        db.session.commit()
+        tenant_commit()
         flash("Lockbox added.", "success")
         return redirect(url_for("inventory.list_lockboxes"))
 
@@ -221,6 +222,7 @@ def add_lockbox():
 # --- Quick check out (requires entering current code) ---
 @inventory_bp.route("/lockboxes/<int:item_id>/checkout", methods=["POST"])
 @login_required
+@tenant_required
 def checkout_lockbox(item_id):
     default_redirect = url_for("inventory.list_lockboxes")
     item = _get_item_or_404(item_id)
@@ -272,13 +274,14 @@ def checkout_lockbox(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash("Lockbox checked out.", "success")
     return redirect(_get_redirect_url(default_redirect))
 
 # --- Quick check in (requires entering current code) ---
 @inventory_bp.route("/lockboxes/<int:item_id>/checkin", methods=["POST"])
 @login_required
+@tenant_required
 def checkin_lockbox(item_id):
     default_redirect = url_for("inventory.list_lockboxes")
     item = _get_item_or_404(item_id)
@@ -324,7 +327,7 @@ def checkin_lockbox(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash("Lockbox checked in.", "success")
     return redirect(_get_redirect_url(default_redirect))
 
@@ -344,7 +347,7 @@ def bulk_lockboxes():
         return redirect(url_for("inventory.list_lockboxes"))
 
     # Fetch selected lockboxes
-    boxes = Item.query.filter(
+    boxes = tenant_query(Item).filter(
         Item.type == "Lockbox",
         Item.id.in_(ids)
     ).all()
@@ -369,7 +372,7 @@ def bulk_lockboxes():
 @login_required
 def assign_lockbox(item_id):
     default_redirect = url_for("inventory.list_lockboxes")
-    lb = Item.query.filter_by(id=item_id, type="Lockbox").first()
+    lb = tenant_query(Item).filter_by(id=item_id, type="Lockbox").first()
     if not lb:
         flash("Lockbox not found.", "error")
         return redirect(_get_redirect_url(default_redirect))
@@ -385,7 +388,7 @@ def assign_lockbox(item_id):
     property_obj = None
     if property_id_str:
         try:
-            property_obj = db.session.get(Property, int(property_id_str))
+            property_obj = get_tenant_session().get(Property, int(property_id_str))
         except ValueError:
             property_obj = None
         if property_obj is None:
@@ -455,7 +458,7 @@ def assign_lockbox(item_id):
         },
         commit=False,
     )
-    db.session.commit()
+    tenant_commit()
     flash(f"Lockbox {lb.label} assigned to {assignee_clean}.", "success")
     return redirect(_get_redirect_url(default_redirect))
 
@@ -463,7 +466,7 @@ def assign_lockbox(item_id):
 @login_required
 def edit_lockbox(item_id: int):
     _require_admin()
-    lb = Item.query.filter_by(id=item_id, type="Lockbox").first()
+    lb = tenant_query(Item).filter_by(id=item_id, type="Lockbox").first()
     if not lb:
         flash("Lockbox not found.", "error")
         return redirect(url_for("inventory.list_lockboxes"))
@@ -503,7 +506,7 @@ def edit_lockbox(item_id: int):
     property_obj = None
     if property_id_str:
         try:
-            property_obj = db.session.get(Property, int(property_id_str))
+            property_obj = get_tenant_session().get(Property, int(property_id_str))
         except ValueError:
             property_obj = None
         if property_obj is None:
@@ -530,14 +533,14 @@ def edit_lockbox(item_id: int):
             commit=False,
         )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Lockbox {lb.label} updated.", "success")
     return redirect(url_for("inventory.list_lockboxes"))
 
 @inventory_bp.post("/lockboxes/<int:item_id>/code")
 @login_required
 def update_lockbox_code(item_id: int):
-    lb = Item.query.filter_by(id=item_id, type="Lockbox").first()
+    lb = tenant_query(Item).filter_by(id=item_id, type="Lockbox").first()
     if not lb:
         flash("Lockbox not found.", "error")
         return redirect(url_for("inventory.list_lockboxes"))
@@ -571,7 +574,7 @@ def update_lockbox_code(item_id: int):
         },
         commit=False,
     )
-    db.session.commit()
+    tenant_commit()
     flash(f"Lockbox {lb.label} code updated.", "success")
     return redirect(url_for("inventory.list_lockboxes"))
 
@@ -583,7 +586,7 @@ def delete_lockbox(item_id: int):
     if role == "agent":
         abort(403)
 
-    lb = Item.query.filter_by(id=item_id, type="Lockbox").first()
+    lb = tenant_query(Item).filter_by(id=item_id, type="Lockbox").first()
     if not lb:
         flash("Lockbox not found.", "error")
         return redirect(url_for("inventory.list_lockboxes"))
@@ -595,7 +598,7 @@ def delete_lockbox(item_id: int):
         "status": lb.status,
     }
 
-    db.session.delete(lb)
+    tenant_delete(lb)
     log_activity(
         "lockbox_deleted",
         user=current_user,
@@ -605,7 +608,7 @@ def delete_lockbox(item_id: int):
         meta=info,
         commit=False,
     )
-    db.session.commit()
+    tenant_commit()
     flash(f"Lockbox {info['label']} removed.", "success")
     return redirect(url_for("inventory.list_lockboxes"))
 
@@ -614,9 +617,10 @@ def delete_lockbox(item_id: int):
 
 @inventory_bp.route("/keys", methods=["GET"])
 @login_required
+@tenant_required
 def list_keys():
     q = (request.args.get("q") or "").strip()
-    query = Item.query.filter(Item.type == "Key")
+    query = tenant_query(Item).filter(Item.type == "Key")
 
     if q:
         like = f"%{q}%"
@@ -635,7 +639,7 @@ def list_keys():
     dynamic_statuses = {(k.status or "").lower() for k in keys if k.status}
     status_choices = sorted(set(KEY_STATUS_OPTIONS).union(dynamic_statuses))
 
-    properties = Property.query.order_by(Property.name.asc()).all()
+    properties = tenant_query(Property).order_by(Property.name.asc()).all()
     property_units_map: dict[str, list[dict[str, str]]] = {}
 
     def _property_display(prop: Property) -> str:
@@ -666,7 +670,7 @@ def list_keys():
 
     # Include orphan units (in case of FK mismatch) - defensive
     extra_units = (
-        PropertyUnit.query.filter(PropertyUnit.property_id.is_(None))
+        tenant_query(PropertyUnit).filter(PropertyUnit.property_id.is_(None))
         .order_by(PropertyUnit.label.asc())
         .all()
     )
@@ -687,8 +691,12 @@ def list_keys():
 
 @inventory_bp.route("/keys/new", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def add_key():
-    properties = Property.query.order_by(Property.name.asc()).all()
+    properties = tenant_query(Property).order_by(Property.name.asc()).all()
+
+    # Get all keys that could be master keys
+    potential_master_keys = tenant_query(Item).filter_by(type="Key").order_by(Item.label.asc()).all()
 
     def _property_display(prop: Property) -> str:
         address_bits = [prop.address_line1, prop.city, prop.state]
@@ -725,6 +733,7 @@ def add_key():
         total_copies_str = (request.form.get("total_copies") or "0").strip()
         property_id_str = (request.form.get("property_id") or "").strip()
         property_unit_id_str = (request.form.get("property_unit_id") or "").strip()
+        master_key_id_str = (request.form.get("master_key_id") or "").strip()
 
         if not label:
             flash("Label is required.", "error")
@@ -741,7 +750,7 @@ def add_key():
         property_obj = None
         if property_id_str:
             try:
-                property_obj = db.session.get(Property, int(property_id_str))
+                property_obj = get_tenant_session().get(Property, int(property_id_str))
             except ValueError:
                 property_obj = None
             if property_obj is None:
@@ -754,7 +763,7 @@ def add_key():
         property_unit_obj = None
         if property_unit_id_str:
             try:
-                property_unit_obj = db.session.get(PropertyUnit, int(property_unit_id_str))
+                property_unit_obj = get_tenant_session().get(PropertyUnit, int(property_unit_id_str))
             except ValueError:
                 property_unit_obj = None
             if property_unit_obj is None:
@@ -765,6 +774,16 @@ def add_key():
                 return redirect(url_for("inventory.add_key"))
             if property_obj is None:
                 property_obj = property_unit_obj.property
+
+        master_key_obj = None
+        if master_key_id_str:
+            try:
+                master_key_obj = get_tenant_session().get(Item, int(master_key_id_str))
+            except ValueError:
+                master_key_obj = None
+            if master_key_obj is None or master_key_obj.type != "Key":
+                flash("Selected master key could not be found.", "error")
+                return redirect(url_for("inventory.add_key"))
 
         item = Item(
             type="Key",
@@ -780,11 +799,12 @@ def add_key():
             last_action="created",
             last_action_at=utc_now(),
             last_action_by_id=getattr(current_user, "id", None),
-            property=property_obj,
-            property_unit=property_unit_obj,
+            property_id=property_obj.id if property_obj else None,
+            property_unit_id=property_unit_obj.id if property_unit_obj else None,
+            master_key_id=master_key_obj.id if master_key_obj else None,
         )
-        db.session.add(item)
-        db.session.flush()
+        tenant_add(item)
+        tenant_flush()
         log_activity(
             "key_created",
             user=current_user,
@@ -800,7 +820,7 @@ def add_key():
             },
             commit=False,
         )
-        db.session.commit()
+        tenant_commit()
         flash("Key added.", "success")
         return redirect(url_for("inventory.list_keys"))
 
@@ -809,14 +829,16 @@ def add_key():
         properties=property_choices,
         property_lookup=property_lookup,
         property_units_map=property_units_map,
+        master_keys=potential_master_keys,
     )
 
 
 @inventory_bp.route("/keys/<int:item_id>/checkout", methods=["POST"])
 @login_required
+@tenant_required
 def checkout_key(item_id):
     default_redirect = url_for("inventory.list_keys")
-    key = Item.query.filter_by(id=item_id, type="Key").first()
+    key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
     if not key:
         flash("Key not found.", "error")
         return redirect(_get_redirect_url(default_redirect))
@@ -865,7 +887,7 @@ def checkout_key(item_id):
         checked_out_at=utc_now(),
         is_active=True
     )
-    db.session.add(checkout_record)
+    tenant_add(checkout_record)
 
     log_activity(
         "key_checked_out",
@@ -881,18 +903,19 @@ def checkout_key(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Checked out {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label}.", "success")
-    
-    # Redirect to receipt page with option to print
-    return redirect(url_for('inventory.checkout_receipt', checkout_id=checkout_record.id))
+
+    # Redirect back to keys page with receipt_id to trigger modal
+    return redirect(url_for('inventory.list_keys', receipt_id=checkout_record.id))
 
 
 @inventory_bp.route("/keys/<int:item_id>/assign", methods=["POST"])
 @login_required
+@tenant_required
 def assign_key(item_id):
     default_redirect = url_for("inventory.list_keys")
-    key = Item.query.filter_by(id=item_id, type="Key").first()
+    key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
     if not key:
         flash("Key not found.", "error")
         return redirect(_get_redirect_url(default_redirect))
@@ -917,7 +940,7 @@ def assign_key(item_id):
     property_obj = None
     if property_id_str:
         try:
-            property_obj = db.session.get(Property, int(property_id_str))
+            property_obj = get_tenant_session().get(Property, int(property_id_str))
         except ValueError:
             property_obj = None
         if property_obj is None:
@@ -926,7 +949,7 @@ def assign_key(item_id):
     property_unit_obj = None
     if property_unit_id_str:
         try:
-            property_unit_obj = db.session.get(PropertyUnit, int(property_unit_id_str))
+            property_unit_obj = get_tenant_session().get(PropertyUnit, int(property_unit_id_str))
         except ValueError:
             property_unit_obj = None
         if property_unit_obj is None:
@@ -999,7 +1022,7 @@ def assign_key(item_id):
         checked_out_at=utc_now(),
         is_active=True
     )
-    db.session.add(assignment_record)
+    tenant_add(assignment_record)
 
     log_activity(
         "key_assigned",
@@ -1017,18 +1040,19 @@ def assign_key(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Assigned {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label} to {assigned_to}.", "success")
-    
-    # Redirect to receipt page with option to print
-    return redirect(url_for('inventory.checkout_receipt', checkout_id=assignment_record.id))
+
+    # Redirect back to keys page with receipt_id to trigger modal
+    return redirect(url_for('inventory.list_keys', receipt_id=assignment_record.id))
 
 
 @inventory_bp.route("/keys/<int:item_id>/checkin", methods=["POST"])
 @login_required
+@tenant_required
 def checkin_key(item_id):
     default_redirect = url_for("inventory.list_keys")
-    key = Item.query.filter_by(id=item_id, type="Key").first()
+    key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
     if not key:
         flash("Key not found.", "error")
         return redirect(_get_redirect_url(default_redirect))
@@ -1040,7 +1064,7 @@ def checkin_key(item_id):
         # Return a specific checkout
         try:
             checkout_id = int(checkout_id_str)
-            checkout = ItemCheckout.query.filter_by(
+            checkout = tenant_query(ItemCheckout).filter_by(
                 id=checkout_id,
                 item_id=item_id,
                 is_active=True
@@ -1113,20 +1137,21 @@ def checkin_key(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Checked in {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label}.", "success")
     return redirect(_get_redirect_url(default_redirect))
 
 
 @inventory_bp.route("/keys/<int:item_id>/active-checkouts", methods=["GET"])
 @login_required
+@tenant_required
 def get_key_active_checkouts(item_id):
     """Return active checkouts for a key as JSON"""
-    key = Item.query.filter_by(id=item_id, type="Key").first()
+    key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
     if not key:
         return jsonify({"error": "Key not found"}), 404
 
-    active_checkouts = ItemCheckout.query.filter_by(
+    active_checkouts = tenant_query(ItemCheckout).filter_by(
         item_id=item_id,
         is_active=True
     ).order_by(ItemCheckout.checked_out_at.desc()).all()
@@ -1147,8 +1172,9 @@ def get_key_active_checkouts(item_id):
 
 @inventory_bp.route("/keys/<int:item_id>/adjust-quantity", methods=["POST"])
 @login_required
+@tenant_required
 def adjust_key_quantity(item_id):
-    key = Item.query.filter_by(id=item_id, type="Key").first()
+    key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
     if not key:
         flash("Key not found.", "error")
         return redirect(url_for("inventory.list_keys"))
@@ -1186,7 +1212,7 @@ def adjust_key_quantity(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Updated quantity for key {key.label} to {new_total} copies.", "success")
     return redirect(url_for("inventory.list_keys"))
 
@@ -1195,7 +1221,7 @@ def adjust_key_quantity(item_id):
 @login_required
 def edit_key(item_id: int):
     _require_admin()
-    key = Item.query.filter_by(id=item_id, type="Key").first()
+    key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
     if not key:
         flash("Key not found.", "error")
         return redirect(url_for("inventory.list_keys"))
@@ -1243,7 +1269,7 @@ def edit_key(item_id: int):
     property_obj = None
     if property_id_str:
         try:
-            property_obj = db.session.get(Property, int(property_id_str))
+            property_obj = get_tenant_session().get(Property, int(property_id_str))
         except ValueError:
             property_obj = None
         if property_obj is None:
@@ -1253,7 +1279,7 @@ def edit_key(item_id: int):
     property_unit_obj = None
     if property_unit_id_str:
         try:
-            property_unit_obj = db.session.get(PropertyUnit, int(property_unit_id_str))
+            property_unit_obj = get_tenant_session().get(PropertyUnit, int(property_unit_id_str))
         except ValueError:
             property_unit_obj = None
         if property_unit_obj is None:
@@ -1288,7 +1314,7 @@ def edit_key(item_id: int):
             commit=False,
         )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Key {key.label} updated.", "success")
     return redirect(url_for("inventory.list_keys"))
 
@@ -1300,7 +1326,7 @@ def delete_key(item_id: int):
     if role == "agent":
         abort(403)
 
-    key = Item.query.filter_by(id=item_id, type="Key").first()
+    key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
     if not key:
         flash("Key not found.", "error")
         return redirect(url_for("inventory.list_keys"))
@@ -1313,7 +1339,7 @@ def delete_key(item_id: int):
         "status": key.status,
     }
 
-    db.session.delete(key)
+    tenant_delete(key)
     log_activity(
         "key_deleted",
         user=current_user,
@@ -1323,7 +1349,7 @@ def delete_key(item_id: int):
         meta=info,
         commit=False,
     )
-    db.session.commit()
+    tenant_commit()
     flash(f"Key {info['label']} removed.", "success")
     return redirect(url_for("inventory.list_keys"))
 
@@ -1332,9 +1358,10 @@ def delete_key(item_id: int):
 
 @inventory_bp.route("/signs", methods=["GET"])
 @login_required
+@tenant_required
 def list_signs():
     q = (request.args.get("q") or "").strip()
-    query = Item.query.filter(Item.type == "Sign")
+    query = tenant_query(Item).filter(Item.type == "Sign")
 
     if q:
         like = f"%{q}%"
@@ -1357,7 +1384,7 @@ def list_signs():
     status_choices = sorted(set(SIGN_STATUS_OPTIONS).union(dynamic_statuses))
 
     # Get available pieces for building assembled units
-    available_pieces = Item.query.filter(
+    available_pieces = tenant_query(Item).filter(
         Item.type == "Sign",
         Item.sign_subtype == "Piece",
         Item.parent_sign_id.is_(None),
@@ -1377,6 +1404,7 @@ def list_signs():
 
 @inventory_bp.route("/signs/new", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def add_sign():
     if request.method == "POST":
         label = (request.form.get("label") or "").strip()
@@ -1415,8 +1443,8 @@ def add_sign():
             last_action_at=utc_now(),
             last_action_by_id=getattr(current_user, "id", None),
         )
-        db.session.add(item)
-        db.session.flush()
+        tenant_add(item)
+        tenant_flush()
         log_activity(
             "sign_created",
             user=current_user,
@@ -1433,7 +1461,7 @@ def add_sign():
             },
             commit=False,
         )
-        db.session.commit()
+        tenant_commit()
         flash(f"Sign '{label}' added successfully.", "success")
         return redirect(url_for("inventory.list_signs"))
 
@@ -1446,9 +1474,10 @@ def add_sign():
 
 @inventory_bp.route("/signs/<int:item_id>/checkout", methods=["POST"])
 @login_required
+@tenant_required
 def checkout_sign(item_id):
     default_redirect = url_for("inventory.list_signs")
-    sign = Item.query.filter_by(id=item_id, type="Sign").first()
+    sign = tenant_query(Item).filter_by(id=item_id, type="Sign").first()
     if not sign:
         flash("Sign not found.", "error")
         return redirect(_get_redirect_url(default_redirect))
@@ -1487,16 +1516,17 @@ def checkout_sign(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Sign '{sign.label}' checked out successfully.", "success")
     return redirect(_get_redirect_url(default_redirect))
 
 
 @inventory_bp.route("/signs/<int:item_id>/checkin", methods=["POST"])
 @login_required
+@tenant_required
 def checkin_sign(item_id):
     default_redirect = url_for("inventory.list_signs")
-    sign = Item.query.filter_by(id=item_id, type="Sign").first()
+    sign = tenant_query(Item).filter_by(id=item_id, type="Sign").first()
     if not sign:
         flash("Sign not found.", "error")
         return redirect(_get_redirect_url(default_redirect))
@@ -1524,16 +1554,17 @@ def checkin_sign(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Sign '{sign.label}' checked in successfully.", "success")
     return redirect(_get_redirect_url(default_redirect))
 
 
 @inventory_bp.route("/signs/<int:item_id>/assign", methods=["POST"])
 @login_required
+@tenant_required
 def assign_sign(item_id):
     default_redirect = url_for("inventory.list_signs")
-    sign = Item.query.filter_by(id=item_id, type="Sign").first()
+    sign = tenant_query(Item).filter_by(id=item_id, type="Sign").first()
     if not sign:
         flash("Sign not found.", "error")
         return redirect(_get_redirect_url(default_redirect))
@@ -1583,7 +1614,7 @@ def assign_sign(item_id):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Sign '{sign.label}' assigned to {assigned_to}.", "success")
     return redirect(_get_redirect_url(default_redirect))
 
@@ -1592,7 +1623,7 @@ def assign_sign(item_id):
 @login_required
 def edit_sign(item_id: int):
     _require_admin()
-    sign = Item.query.filter_by(id=item_id, type="Sign").first()
+    sign = tenant_query(Item).filter_by(id=item_id, type="Sign").first()
     if not sign:
         flash("Sign not found.", "error")
         return redirect(url_for("inventory.list_signs"))
@@ -1650,7 +1681,7 @@ def edit_sign(item_id: int):
             commit=False,
         )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Sign '{sign.label}' updated successfully.", "success")
     return redirect(url_for("inventory.list_signs"))
 
@@ -1662,14 +1693,14 @@ def delete_sign(item_id: int):
     if role == "agent":
         abort(403)
 
-    sign = Item.query.filter_by(id=item_id, type="Sign").first()
+    sign = tenant_query(Item).filter_by(id=item_id, type="Sign").first()
     if not sign:
         flash("Sign not found.", "error")
         return redirect(url_for("inventory.list_signs"))
 
     # Check if this is an assembled unit with pieces
     if sign.sign_subtype == "Assembled Unit":
-        pieces = Item.query.filter_by(parent_sign_id=item_id).all()
+        pieces = tenant_query(Item).filter_by(parent_sign_id=item_id).all()
         if pieces:
             flash("Cannot delete assembled unit with pieces. Disassemble first.", "error")
             return redirect(url_for("inventory.list_signs"))
@@ -1683,7 +1714,7 @@ def delete_sign(item_id: int):
         "status": sign.status,
     }
 
-    db.session.delete(sign)
+    tenant_delete(sign)
     log_activity(
         "sign_deleted",
         user=current_user,
@@ -1693,13 +1724,14 @@ def delete_sign(item_id: int):
         meta=info,
         commit=False,
     )
-    db.session.commit()
+    tenant_commit()
     flash(f"Sign '{info['label']}' removed successfully.", "success")
     return redirect(url_for("inventory.list_signs"))
 
 
 @inventory_bp.route("/signs/builder", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def build_sign():
     """Build an assembled unit from individual pieces"""
     if request.method == "POST":
@@ -1723,7 +1755,7 @@ def build_sign():
             return redirect(url_for("inventory.build_sign"))
 
         # Verify all pieces exist and are available
-        pieces = Item.query.filter(
+        pieces = tenant_query(Item).filter(
             Item.id.in_(piece_ids),
             Item.type == "Sign",
             Item.sign_subtype == "Piece",
@@ -1751,8 +1783,8 @@ def build_sign():
             last_action_at=utc_now(),
             last_action_by_id=getattr(current_user, "id", None),
         )
-        db.session.add(assembled_unit)
-        db.session.flush()
+        tenant_add(assembled_unit)
+        tenant_flush()
 
         # Link pieces to assembled unit
         piece_labels = []
@@ -1774,12 +1806,12 @@ def build_sign():
             commit=False,
         )
 
-        db.session.commit()
+        tenant_commit()
         flash(f"Assembled unit '{label}' built successfully from {len(pieces)} pieces.", "success")
         return redirect(url_for("inventory.list_signs"))
 
     # GET request - show builder form
-    available_pieces = Item.query.filter(
+    available_pieces = tenant_query(Item).filter(
         Item.type == "Sign",
         Item.sign_subtype == "Piece",
         Item.parent_sign_id.is_(None),
@@ -1805,13 +1837,13 @@ def build_sign():
 @login_required
 def disassemble_sign(item_id: int):
     """Disassemble an assembled unit back into individual pieces"""
-    sign = Item.query.filter_by(id=item_id, type="Sign", sign_subtype="Assembled Unit").first()
+    sign = tenant_query(Item).filter_by(id=item_id, type="Sign", sign_subtype="Assembled Unit").first()
     if not sign:
         flash("Assembled unit not found.", "error")
         return redirect(url_for("inventory.list_signs"))
 
     # Get all pieces belonging to this assembled unit
-    pieces = Item.query.filter_by(parent_sign_id=item_id).all()
+    pieces = tenant_query(Item).filter_by(parent_sign_id=item_id).all()
 
     if not pieces:
         flash("No pieces found for this assembled unit.", "error")
@@ -1826,7 +1858,7 @@ def disassemble_sign(item_id: int):
 
     # Delete the assembled unit
     unit_label = sign.label
-    db.session.delete(sign)
+    tenant_delete(sign)
 
     log_activity(
         "sign_disassembled",
@@ -1841,9 +1873,145 @@ def disassemble_sign(item_id: int):
         commit=False,
     )
 
-    db.session.commit()
+    tenant_commit()
     flash(f"Assembled unit '{unit_label}' disassembled. {len(pieces)} pieces are now available.", "success")
     return redirect(url_for("inventory.list_signs"))
+
+
+@inventory_bp.get("/api/available-pieces")
+@login_required
+@tenant_required
+def api_available_pieces():
+    """API endpoint to get available sign pieces by type for swapping"""
+    piece_type = request.args.get('piece_type', '').strip()
+    exclude_id = request.args.get('exclude', '').strip()
+
+    if not piece_type:
+        return jsonify([])
+
+    # Query available pieces of the specified type
+    query = tenant_query(Item).filter(
+        Item.type == "Sign",
+        Item.sign_subtype == "Piece",
+        Item.piece_type == piece_type,
+        Item.status == "available",
+        Item.parent_sign_id.is_(None)
+    )
+
+    # Exclude the current piece
+    if exclude_id and exclude_id.isdigit():
+        query = query.filter(Item.id != int(exclude_id))
+
+    pieces = query.order_by(Item.label.asc()).all()
+
+    return jsonify([{
+        'id': piece.id,
+        'custom_id': piece.custom_id,
+        'label': piece.label,
+        'rider_text': piece.rider_text,
+        'material': piece.material,
+        'condition': piece.condition
+    } for piece in pieces])
+
+
+@inventory_bp.post("/signs/<int:assembled_unit_id>/swap-piece/<int:old_piece_id>")
+@login_required
+@tenant_required
+def swap_sign_piece(assembled_unit_id: int, old_piece_id: int):
+    """Swap a piece in an assembled unit with another available piece"""
+    new_piece_id_str = request.form.get('new_piece_id', '').strip()
+
+    if not new_piece_id_str:
+        flash("Please select a replacement piece.", "error")
+        return redirect(url_for("inventory.item_details", item_id=assembled_unit_id))
+
+    try:
+        new_piece_id = int(new_piece_id_str)
+    except ValueError:
+        flash("Invalid piece selected.", "error")
+        return redirect(url_for("inventory.item_details", item_id=assembled_unit_id))
+
+    # Verify assembled unit exists
+    assembled_unit = tenant_query(Item).filter_by(
+        id=assembled_unit_id,
+        type="Sign",
+        sign_subtype="Assembled Unit"
+    ).first()
+
+    if not assembled_unit:
+        flash("Assembled unit not found.", "error")
+        return redirect(url_for("inventory.list_signs"))
+
+    # Verify old piece exists and belongs to this assembled unit
+    old_piece = tenant_query(Item).filter_by(
+        id=old_piece_id,
+        type="Sign",
+        sign_subtype="Piece",
+        parent_sign_id=assembled_unit_id
+    ).first()
+
+    if not old_piece:
+        flash("Original piece not found or doesn't belong to this assembled unit.", "error")
+        return redirect(url_for("inventory.item_details", item_id=assembled_unit_id))
+
+    # Verify new piece exists and is available
+    new_piece = tenant_query(Item).filter_by(
+        id=new_piece_id,
+        type="Sign",
+        sign_subtype="Piece",
+        status="available"
+    ).first()
+
+    if not new_piece or new_piece.parent_sign_id is not None:
+        flash("Replacement piece is not available.", "error")
+        return redirect(url_for("inventory.item_details", item_id=assembled_unit_id))
+
+    # Verify both pieces are the same type
+    if old_piece.piece_type != new_piece.piece_type:
+        flash("Replacement piece must be the same type as the original.", "error")
+        return redirect(url_for("inventory.item_details", item_id=assembled_unit_id))
+
+    # Perform the swap
+    old_piece_info = {
+        'custom_id': old_piece.custom_id,
+        'label': old_piece.label,
+        'piece_type': old_piece.piece_type
+    }
+    new_piece_info = {
+        'custom_id': new_piece.custom_id,
+        'label': new_piece.label,
+        'piece_type': new_piece.piece_type
+    }
+
+    # Release old piece
+    old_piece.parent_sign_id = None
+    old_piece.status = "available"
+
+    # Assign new piece
+    new_piece.parent_sign_id = assembled_unit_id
+    new_piece.status = "assigned"
+
+    # Update assembled unit's last action
+    assembled_unit.last_action = "piece_swapped"
+    assembled_unit.last_action_at = utc_now()
+    assembled_unit.last_action_by_id = getattr(current_user, "id", None)
+
+    log_activity(
+        "sign_piece_swapped",
+        user=current_user,
+        target=assembled_unit,
+        summary=f"Swapped {old_piece_info['piece_type']} on '{assembled_unit.label}' from {old_piece_info['custom_id']} to {new_piece_info['custom_id']}",
+        meta={
+            "assembled_unit": assembled_unit.label,
+            "old_piece": old_piece_info,
+            "new_piece": new_piece_info
+        },
+        commit=False,
+    )
+
+    tenant_commit()
+    flash(f"Successfully swapped {old_piece_info['piece_type']}: {old_piece_info['custom_id']} → {new_piece_info['custom_id']}", "success")
+    return redirect(url_for("inventory.item_details", item_id=assembled_unit_id))
 
 
 # ==================== ITEM DETAILS PAGE ====================
@@ -1852,9 +2020,10 @@ def disassemble_sign(item_id: int):
 
 @inventory_bp.route("/checkout/<int:checkout_id>/receipt", methods=["GET"])
 @login_required
+@tenant_required
 def checkout_receipt(checkout_id):
     """Display checkout receipt for printing"""
-    checkout = ItemCheckout.query.filter_by(id=checkout_id).first()
+    checkout = tenant_query(ItemCheckout).filter_by(id=checkout_id).first()
     if not checkout:
         flash("Checkout record not found.", "error")
         return redirect(url_for("main.home"))
@@ -1889,6 +2058,7 @@ def checkout_receipt(checkout_id):
 
 @inventory_bp.route("/receipts", methods=["GET"])
 @login_required
+@tenant_required
 def receipt_lookup():
     """Receipt lookup page with barcode scanner support"""
     query = (request.args.get("q") or "").strip()
@@ -1921,7 +2091,7 @@ def receipt_lookup():
         
         if filters:
             from sqlalchemy import or_
-            results = ItemCheckout.query.filter(or_(*filters)).order_by(
+            results = tenant_query(ItemCheckout).filter(or_(*filters)).order_by(
                 ItemCheckout.checked_out_at.desc()
             ).limit(50).all()
     
@@ -1929,24 +2099,25 @@ def receipt_lookup():
 
 @inventory_bp.route("/items/<int:item_id>", methods=["GET"])
 @login_required
+@tenant_required
 def item_details(item_id):
     """Comprehensive details page for any item (Lockbox, Key, or Sign)"""
     item = _get_item_or_404(item_id)
 
     # Get active checkouts for this item
-    active_checkouts = ItemCheckout.query.filter_by(
+    active_checkouts = tenant_query(ItemCheckout).filter_by(
         item_id=item_id,
         is_active=True
     ).order_by(ItemCheckout.checked_out_at.desc()).all()
 
     # Get checkout history (returned items)
-    checkout_history = ItemCheckout.query.filter_by(
+    checkout_history = tenant_query(ItemCheckout).filter_by(
         item_id=item_id,
         is_active=False
     ).order_by(ItemCheckout.checked_in_at.desc()).limit(20).all()
 
     # Get full activity history
-    activity_logs = ActivityLog.query.filter_by(
+    activity_logs = tenant_query(ActivityLog).filter_by(
         target_id=item_id,
         target_type="Item"
     ).order_by(ActivityLog.created_at.desc()).limit(50).all()
@@ -1954,12 +2125,17 @@ def item_details(item_id):
     # For assembled signs, get component pieces
     component_pieces = []
     if item.type == "Sign" and item.sign_subtype == "Assembled Unit":
-        component_pieces = Item.query.filter_by(parent_sign_id=item_id).all()
+        component_pieces = tenant_query(Item).filter_by(parent_sign_id=item_id).all()
 
     # For sign pieces, get parent assembled unit
     parent_unit = None
     if item.type == "Sign" and item.parent_sign_id:
-        parent_unit = db.session.get(Item, item.parent_sign_id)
+        parent_unit = get_tenant_session().get(Item, item.parent_sign_id)
+
+    # For master keys, get child keys
+    child_keys = []
+    if item.type == "Key":
+        child_keys = tenant_query(Item).filter_by(master_key_id=item_id).order_by(Item.label.asc()).all()
 
     # Determine available actions based on item type and status
     status_lower = (item.status or "").lower()
@@ -2003,7 +2179,7 @@ def item_details(item_id):
     property_map = {}
     property_units_map: dict[str, list[dict[str, str]]] = {}
     if item_type_lower in {"lockbox", "key"}:
-        properties = Property.query.order_by(Property.name.asc()).all()
+        properties = tenant_query(Property).order_by(Property.name.asc()).all()
 
         def _property_display(prop: Property) -> str:
             address_bits = [prop.address_line1, prop.city, prop.state]
@@ -2031,7 +2207,7 @@ def item_details(item_id):
             ]
 
         extra_units = (
-            PropertyUnit.query.filter(PropertyUnit.property_id.is_(None))
+            tenant_query(PropertyUnit).filter(PropertyUnit.property_id.is_(None))
             .order_by(PropertyUnit.label.asc())
             .all()
         )
@@ -2049,6 +2225,7 @@ def item_details(item_id):
         activity_logs=activity_logs,
         component_pieces=component_pieces,
         parent_unit=parent_unit,
+        child_keys=child_keys,
         available_copies=available_copies,
         can_checkout=can_checkout,
         can_checkin=can_checkin,

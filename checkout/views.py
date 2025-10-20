@@ -1,6 +1,8 @@
 # checkout/views.py
 from flask import Blueprint, render_template, jsonify, abort, request
 from flask_login import login_required
+from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, get_tenant_session
+from middleware.tenant_middleware import tenant_required
 from utilities.database import db, Item, ItemCheckout
 
 checkout_bp = Blueprint(
@@ -28,11 +30,11 @@ def checkout_ping():
 def api_get_item(item_id):
     """API endpoint to get item details by ID (numeric or custom_id) for the checkout page"""
     # Try to find by custom_id first
-    item = Item.query.filter_by(custom_id=item_id).first()
+    item = tenant_query(Item).filter_by(custom_id=item_id).first()
 
     # If not found, try numeric ID
     if not item and item_id.isdigit():
-        item = db.session.get(Item, int(item_id))
+        item = get_tenant_session().get(Item, int(item_id))
 
     if not item:
         abort(404)
@@ -52,7 +54,7 @@ def api_search_items():
     # Search by custom_id, label, address
     like_pattern = f"%{query}%"
 
-    items = Item.query.filter(
+    items = tenant_query(Item).filter(
         db.or_(
             Item.custom_id.ilike(like_pattern),
             Item.label.ilike(like_pattern),
@@ -84,7 +86,7 @@ def api_search_by_person():
     like_pattern = f"%{name}%"
 
     # Find active checkouts for this person
-    active_checkouts = ItemCheckout.query.filter(
+    active_checkouts = tenant_query(ItemCheckout).filter(
         ItemCheckout.is_active == True,
         ItemCheckout.checked_out_to.ilike(like_pattern)
     ).all()
@@ -108,7 +110,7 @@ def api_search_by_person():
             })
 
     # Also find items assigned to this person (but not in active checkouts)
-    assigned_items = Item.query.filter(
+    assigned_items = tenant_query(Item).filter(
         Item.assigned_to.ilike(like_pattern),
         Item.status == 'assigned'
     ).all()

@@ -7,6 +7,8 @@ import io
 from typing import List, Dict, Any, Optional
 from werkzeug.utils import secure_filename
 
+from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, get_tenant_session
+from middleware.tenant_middleware import tenant_required
 from utilities.database import db, Item, Property, PropertyUnit, utc_now
 from . import inventory_bp
 
@@ -80,6 +82,7 @@ KEY_FIELDS = {
 
 @inventory_bp.route("/keys/import", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def import_keys():
     """Import keys from CSV/Excel file"""
     if request.method == "POST":
@@ -132,6 +135,7 @@ def import_keys():
 
 @inventory_bp.route("/keys/import/map", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def import_keys_map():
     """Map columns from uploaded file to database fields"""
     import_data = session.get('import_data')
@@ -166,6 +170,7 @@ def import_keys_map():
 
 @inventory_bp.route("/keys/import/process", methods=["GET", "POST"])
 @login_required
+@tenant_required
 def import_keys_process():
     """Process the import with mapped columns"""
     import_data = session.get('import_data')
@@ -227,12 +232,12 @@ def import_keys_process():
                 property_unit_label = item_data.pop('property_unit_label', None)
 
                 if property_name:
-                    property_obj = Property.query.filter(
+                    property_obj = tenant_query(Property).filter(
                         Property.name.ilike(property_name)
                     ).first()
 
                 if property_unit_label and property_obj:
-                    property_unit_obj = PropertyUnit.query.filter(
+                    property_unit_obj = tenant_query(PropertyUnit).filter(
                         PropertyUnit.property_id == property_obj.id,
                         PropertyUnit.label.ilike(property_unit_label)
                     ).first()
@@ -249,7 +254,7 @@ def import_keys_process():
                     **item_data
                 )
 
-                db.session.add(key)
+                tenant_add(key)
                 created_count += 1
 
             except Exception as e:
@@ -257,7 +262,7 @@ def import_keys_process():
                 errors.append(f"Row {idx}: {str(e)}")
 
         try:
-            db.session.commit()
+            tenant_commit()
             flash(f"Successfully imported {created_count} keys", "success")
             if error_count > 0:
                 flash(f"{error_count} rows had errors", "warning")
@@ -269,7 +274,7 @@ def import_keys_process():
             return redirect(url_for('inventory.list_keys'))
 
         except Exception as e:
-            db.session.rollback()
+            tenant_rollback()
             flash(f"Database error: {str(e)}", "error")
             return redirect(url_for('inventory.import_keys'))
 

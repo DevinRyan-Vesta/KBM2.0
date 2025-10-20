@@ -50,10 +50,10 @@
   <div class="card">
     <h2>Inventory Summary</h2>
     <ul class="stat-list">
-      <li><strong>{{ item_totals.total }}</strong> total items linked</li>
-      <li><strong>{{ item_totals.keys }}</strong> key(s)</li>
-      <li><strong>{{ item_totals.lockboxes }}</strong> lockbox(es)</li>
-      <li><strong>{{ item_totals.signs }}</strong> sign(s)</li>
+      <li><strong>{{ item_totals['total'] }}</strong> total items linked</li>
+      <li><strong>{{ item_totals['keys'] }}</strong> key(s)</li>
+      <li><strong>{{ item_totals['lockboxes'] }}</strong> lockbox(es)</li>
+      <li><strong>{{ item_totals['signs'] }}</strong> sign(s)</li>
     </ul>
   </div>
 </div>
@@ -97,15 +97,19 @@
             <th>Bedrooms</th>
             <th>Bathrooms</th>
             <th>Sq Ft</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for unit in units %}
             <tr>
-              <td>{{ unit.label }}</td>
+              <td><a href="{{ url_for('properties.unit_detail', property_id=property.id, unit_id=unit.id) }}">{{ unit.label }}</a></td>
               <td>{{ unit.bedrooms if unit.bedrooms is not none else '-' }}</td>
               <td>{{ unit.bathrooms if unit.bathrooms is not none else '-' }}</td>
               <td>{{ unit.square_feet if unit.square_feet is not none else '-' }}</td>
+              <td>
+                <a href="{{ url_for('properties.unit_detail', property_id=property.id, unit_id=unit.id) }}" class="btn small">View</a>
+              </td>
             </tr>
           {% endfor %}
         </tbody>
