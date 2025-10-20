@@ -16,6 +16,8 @@ environment.env
 data/
 KBM2_data/
 instance/
+master_db/
+tenant_dbs/
 
 # Python
 __pycache__/

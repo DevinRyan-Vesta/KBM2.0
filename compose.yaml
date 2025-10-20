@@ -7,6 +7,9 @@ services:
     init: true
     expose:
       - "8000"  # Internal port only, not exposed to host
+    volumes:
+      - ./master_db:/app/master_db      # Persist master database
+      - ./tenant_dbs:/app/tenant_dbs    # Persist tenant databases
     networks:
       - appnet
 
