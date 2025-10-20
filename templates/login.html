@@ -130,6 +130,8 @@
       {% endwith %}
 
       <form action="{{ url_for('auth.login_post') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <input name="pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="1234" required>
         <label class="remember-row">
           <input type="checkbox" name="remember" value="1"> Remember me (30 days)

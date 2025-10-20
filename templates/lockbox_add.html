@@ -43,6 +43,7 @@
 <div class="form-shell">
   <h2>Add Lockbox</h2>
   <form method="post" action="{{ url_for('inventory.add_lockbox') }}" class="card form-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="form-field">
       <label for="label">Label *</label>
       <input id="label" type="text" name="label" required placeholder="LB-001">

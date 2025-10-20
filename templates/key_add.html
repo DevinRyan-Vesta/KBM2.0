@@ -47,6 +47,7 @@
 
   <div class="card form-card">
     <form method="post" action="{{ url_for('inventory.add_key') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <div class="form-grid two-column">
         <div class="form-field">
           <label for="label">Label *</label>

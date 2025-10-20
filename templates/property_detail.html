@@ -119,6 +119,7 @@
     {% endif %}
 
     <form method="post" action="{{ url_for('properties.create_unit', property_id=property.id) }}" style="margin-top: 16px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <h3 style="margin-bottom: 12px;">Add Unit</h3>
       <div class="form-grid two-column">
         <div class="form-field">

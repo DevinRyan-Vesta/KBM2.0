@@ -9,6 +9,7 @@
 
   <div class="card form-card">
     <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <div class="info-box" style="margin-bottom: 20px; padding: 15px; background: rgba(229, 57, 53, 0.08); border-radius: 8px;">
         <h3 style="margin-top: 0;">Import Instructions</h3>
         <ul style="margin: 10px 0;">

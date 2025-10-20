@@ -9,6 +9,7 @@
         <p class="text-gray-600 mb-6">Start managing your keys, lockboxes, and signs today</p>
 
         <form method="POST" id="signup-form" class="space-y-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <!-- Company Information -->
             <div class="border-b pb-4">
                 <h2 class="text-xl font-semibold mb-4 text-gray-700">Company Information</h2>

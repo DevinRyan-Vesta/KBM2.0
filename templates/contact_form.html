@@ -46,6 +46,7 @@
 
   <div class="card form-card">
     <form method="post" action="{{ form_action }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <div class="form-grid two-column">
         <div class="form-field">
           <label for="name">Name *</label>

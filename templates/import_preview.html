@@ -60,6 +60,7 @@
     {% endif %}
 
     <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <div class="toolbar spaced">
         <button type="submit" class="btn primary">Import Now ({{ total_rows }} rows)</button>
         <a class="btn ghost" href="{{ url_for('inventory.import_keys_map') }}">Back to Mapping</a>

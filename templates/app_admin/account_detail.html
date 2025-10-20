@@ -74,6 +74,7 @@
   <h2>Status Management</h2>
   <div class="divider"></div>
   <form method="POST" action="{{ url_for('app_admin.update_account_status', account_id=account.id) }}" class="toolbar">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="form-field" style="max-width: 240px;">
       <select name="status">
         <option value="active" {% if account.status == 'active' %}selected{% endif %}>Active</option>
@@ -130,6 +131,7 @@
   <p class="muted" style="margin-bottom: 16px;">Permanently delete this account and all its data. This action cannot be undone!</p>
 
   <form method="POST" action="{{ url_for('app_admin.delete_account', account_id=account.id) }}" onsubmit="return confirm('Type the subdomain \'{{ account.subdomain }}\' to confirm deletion.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="form-field" style="max-width: 480px;">
       <label>Type "{{ account.subdomain }}" to confirm:</label>
       <input type="text" name="confirmation" required>

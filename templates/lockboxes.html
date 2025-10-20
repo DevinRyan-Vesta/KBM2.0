@@ -142,6 +142,7 @@
 </div>
 
 <form id="bulkForm" method="post" action="{{ url_for('inventory.bulk_lockboxes') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
   <input type="hidden" name="action" id="bulkAction">
   <div id="bulkbar" class="bulkbar">
     <strong id="selCount">0 selected</strong>
@@ -262,6 +263,7 @@
 
                   {% if viewer_role != 'agent' %}
                     <form method="post" action="{{ url_for('inventory.delete_lockbox', item_id=lb.id) }}" onsubmit="return confirm('Remove lockbox {{ lb.label }}? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                       <button class="btn small danger" type="submit">Delete</button>
                     </form>
                   {% endif %}

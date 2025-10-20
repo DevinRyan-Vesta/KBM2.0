@@ -252,12 +252,14 @@
 
                 {% if is_assembled %}
                   <form method="post" action="{{ url_for('inventory.disassemble_sign', item_id=sign.id) }}" onsubmit="return confirm('Disassemble {{ sign.label }}? Individual pieces will become available.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button class="btn small" type="submit">Disassemble</button>
                   </form>
                 {% endif %}
 
                 {% if viewer_role != 'agent' and not has_parent %}
                   <form method="post" action="{{ url_for('inventory.delete_sign', item_id=sign.id) }}" onsubmit="return confirm('Remove sign {{ sign.label }}? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button class="btn small danger" type="submit">Delete</button>
                   </form>
                 {% endif %}
@@ -296,6 +298,7 @@
   <div class="modal-backdrop" data-modal-cancel="checkout"></div>
   <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
     <form id="checkout-modal-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <h3 id="checkout-modal-title">Check Out Sign</h3>
       <div id="checkout-modal-body" class="modal-body"></div>
       <div class="modal-actions">
@@ -311,6 +314,7 @@
   <div class="modal-backdrop" data-modal-cancel="assign"></div>
   <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="assign-modal-title">
     <form id="assign-modal-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <h3 id="assign-modal-title">Assign Sign</h3>
       <div id="assign-modal-body" class="modal-body"></div>
       <div class="modal-actions">
@@ -326,6 +330,7 @@
   <div class="modal-backdrop" data-modal-cancel="checkin"></div>
   <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="checkin-modal-title">
     <form id="checkin-modal-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <h3 id="checkin-modal-title">Check In Sign</h3>
       <div id="checkin-modal-body" class="modal-body"></div>
       <div class="modal-actions">
@@ -341,6 +346,7 @@
   <div class="modal-backdrop" data-modal-cancel="edit"></div>
   <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
     <form id="edit-modal-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <h3 id="edit-modal-title">Edit Sign</h3>
       <div id="edit-modal-body" class="modal-body"></div>
       <div class="modal-actions">

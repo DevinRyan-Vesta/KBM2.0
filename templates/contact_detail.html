@@ -10,6 +10,7 @@
   <div class="toolbar">
     <a class="btn" href="{{ url_for('contacts.edit_contact', contact_id=contact.id) }}">Edit</a>
     <form method="post" action="{{ url_for('contacts.delete_contact', contact_id=contact.id) }}" onsubmit="return confirm('Delete this contact? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <button class="btn danger" type="submit">Delete</button>
     </form>
   </div>

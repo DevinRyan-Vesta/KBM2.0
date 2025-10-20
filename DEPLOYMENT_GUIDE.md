@@ -174,50 +174,20 @@ docker-compose --version
 # Log out and back in for group changes to take effect
 ```
 
-### Step 2: Create Missing entrypoint.sh File
+### Step 2: Verify Project Files
+
+The repository includes all necessary Docker files. Verify they exist:
 
 ```bash
-# Create entrypoint.sh in project root
-cat > entrypoint.sh << 'EOF'
-#!/bin/bash
-set -e
+# Verify required files are present
+ls -la Dockerfile compose.yaml entrypoint.sh .dockerignore .gitattributes
 
-echo "Starting KBM 2.0 Application..."
-
-# Wait for database to be ready (if using external DB)
-# sleep 5
-
-# Run database migrations for master database
-echo "Running master database migrations..."
-python -m flask db upgrade -d migrations_master || echo "No master migrations to run"
-
-# Create master database tables if needed
-echo "Ensuring master database schema exists..."
-python << PYTHON
-from app_multitenant import create_app
-app = create_app()
-with app.app_context():
-    from utilities.master_database import master_db
-    master_db.create_all()
-    print("Master database schema verified")
-PYTHON
-
-# Start gunicorn
-echo "Starting Gunicorn..."
-exec gunicorn \
-    --bind 0.0.0.0:8000 \
-    --workers 4 \
-    --worker-class sync \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile - \
-    --log-level info \
-    app_multitenant:app
-EOF
-
-# Make it executable
-chmod +x entrypoint.sh
+# Expected output should show all these files
+# The .gitattributes file ensures shell scripts maintain Unix line endings (LF)
+# even when working on Windows
 ```
+
+**Note**: The `entrypoint.sh` file is included in the repository and should have Unix (LF) line endings. If you're on Windows and encounter "No such file or directory" errors, the `.gitattributes` file will automatically ensure correct line endings.
 
 ### Step 3: Configure Environment Variables
 
@@ -244,10 +214,12 @@ chmod 600 .env
 nano .env
 ```
 
-### Step 4: Update Docker Compose Configuration
+### Step 4: Configure Docker Compose (Optional)
+
+**Note**: The repository includes a working `compose.yaml` file. You only need to modify it if you want to customize ports, volumes, or other settings.
 
 ```bash
-# Update compose.yaml
+# Optional: Customize compose.yaml if needed
 cat > compose.yaml << 'EOF'
 services:
   kbm-app:

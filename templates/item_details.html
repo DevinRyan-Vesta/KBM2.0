@@ -678,6 +678,7 @@
 
         {% if item_type_lower == 'sign' and item.sign_subtype == 'Assembled Unit' %}
           <form method="post" action="{{ url_for('inventory.disassemble_sign', item_id=item.id) }}" onsubmit="return confirm('Disassemble this sign? Pieces will become available individually.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <button class="btn" type="submit">Disassemble</button>
           </form>
         {% endif %}
@@ -708,6 +709,7 @@
 
           {% if not (item.sign_subtype == 'Assembled Unit' and component_pieces) %}
             <form method="post" action="{{ url_for('inventory.delete_' + item_type_lower, item_id=item.id) }}" onsubmit="return confirm('Delete {{ item.label }}? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
               <button class="btn danger" type="submit">Delete</button>
             </form>
           {% endif %}
@@ -761,6 +763,7 @@
   <div class="modal-backdrop" onclick="closeSwapModal()"></div>
   <div class="modal-dialog" role="dialog" aria-modal="true">
     <form id="swap-piece-form" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <h3 id="swap-modal-title">Swap Component Piece</h3>
       <div class="modal-body">
         <p>Current piece: <strong id="current-piece-label"></strong></p>

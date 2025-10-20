@@ -35,6 +35,7 @@
 
   <div class="card form-card">
     <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <div class="info-box" style="margin-bottom: 20px; padding: 15px; background: rgba(74, 222, 128, 0.08); border-radius: 8px;">
         <p style="margin: 0;"><strong>File uploaded successfully!</strong> Found {{ import_data.total_rows }} rows.</p>
         <p style="margin: 5px 0 0 0;">Map your file columns to the corresponding database fields below.</p>

@@ -114,6 +114,7 @@
   <div class="modal-backdrop" onclick="closeEditModal()"></div>
   <div class="modal-dialog">
     <form method="post" action="{{ url_for('properties.edit_unit', property_id=property.id, unit_id=unit.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <h3>Edit Unit</h3>
       <div class="modal-body">
         <div class="form-field">
@@ -161,6 +162,7 @@
   <div class="modal-backdrop" onclick="closeDeleteModal()"></div>
   <div class="modal-dialog">
     <form method="post" action="{{ url_for('properties.delete_unit', property_id=property.id, unit_id=unit.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <h3>Delete Unit?</h3>
       <div class="modal-body">
         <p>Are you sure you want to delete unit <strong>{{ unit.label }}</strong>?</p>

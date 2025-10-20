@@ -5,6 +5,7 @@
 <div class="form-shell">
   <h2>Quick Create</h2>
   <form action="{{ url_for('inventory.list_lockboxes') }}" method="post" class="card form-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="form-field">
       <label for="label">Label</label>
       <input id="label" name="label" placeholder="e.g., LB-A12" required>

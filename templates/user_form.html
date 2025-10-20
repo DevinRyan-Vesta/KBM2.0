@@ -33,6 +33,7 @@
 <div class="form-shell">
   <h2>{{ page_heading or "User" }}</h2>
   <form method="post" class="card form-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="form-field">
       <label for="name">Name</label>
       <input id="name" name="name" type="text" required value="{{ values.get('name','') }}">

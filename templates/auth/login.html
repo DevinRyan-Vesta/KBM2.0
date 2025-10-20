@@ -12,6 +12,7 @@
         {% endif %}
 
         <form method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div>
                 <label for="pin" class="block text-sm font-medium text-gray-700 mb-2">
                     Enter your PIN
