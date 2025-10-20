@@ -83,9 +83,17 @@ def view_account(account_id):
     account = Account.query.get_or_404(account_id)
     users = MasterUser.query.filter_by(account_id=account.id).all()
 
+    # Get base domain for building subdomain URLs
+    base_domain = current_app.config.get('BASE_DOMAIN', 'localhost:5000')
+
+    # Determine protocol based on domain
+    protocol = 'http' if 'localhost' in base_domain else 'https'
+
     return render_template('app_admin/account_detail.html',
                          account=account,
-                         users=users)
+                         users=users,
+                         base_domain=base_domain,
+                         protocol=protocol)
 
 
 @app_admin_bp.route('/admin/accounts/<int:account_id>/update-status', methods=['POST'])

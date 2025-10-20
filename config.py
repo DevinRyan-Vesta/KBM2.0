@@ -24,6 +24,10 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     AUTO_CREATE_SCHEMA = _env_flag("AUTO_CREATE_SCHEMA", False)
 
+    # Multi-tenant domain configuration
+    BASE_DOMAIN = os.getenv("BASE_DOMAIN", "localhost:5000")
+    SERVER_NAME = os.getenv("SERVER_NAME", os.getenv("BASE_DOMAIN", "localhost:5000"))
+
 class ProductionConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URI", "mysql://user@localhost/foo")
 

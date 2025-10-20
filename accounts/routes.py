@@ -102,17 +102,9 @@ def signup():
         flash(f'Account created successfully! Welcome to {company_name}!', 'success')
 
         # Redirect to tenant subdomain
-        # Build the subdomain URL
-        server_name = current_app.config.get('SERVER_NAME', 'localhost:5000')
-        if 'localhost' in server_name:
-            redirect_url = f"http://{subdomain}.localhost:5000/"
-        else:
-            # Extract base domain
-            if ':' in server_name:
-                base_domain, port = server_name.split(':')
-                redirect_url = f"https://{subdomain}.{base_domain}:{port}/"
-            else:
-                redirect_url = f"https://{subdomain}.{server_name}/"
+        base_domain = current_app.config.get('BASE_DOMAIN', 'localhost:5000')
+        protocol = 'http' if 'localhost' in base_domain else 'https'
+        redirect_url = f"{protocol}://{subdomain}.{base_domain}/"
 
         return redirect(redirect_url)
 

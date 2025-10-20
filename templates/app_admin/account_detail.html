@@ -42,7 +42,7 @@
       <div class="info-label">Subdomain</div>
       <div class="info-value">
         {{ account.subdomain }}<br>
-        <a href="http://{{ account.subdomain }}.localhost:5000" target="_blank" class="btn small" style="margin-top: 6px;">
+        <a href="{{ protocol }}://{{ account.subdomain }}.{{ base_domain }}" target="_blank" class="btn small" style="margin-top: 6px;">
           Visit Site &rarr;
         </a>
       </div>
