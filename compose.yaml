@@ -5,14 +5,24 @@ services:
     container_name: python-app
     restart: unless-stopped
     init: true
+    expose:
+      - "8000"  # Internal port only, not exposed to host
+    networks:
+      - appnet
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    restart: unless-stopped
     ports:
-      - "8000:8000"  # Exposed by Dockerfile, adjust if needed
-    # env_file: ./.env  # Uncomment if .env file exists
-    # If your app requires a database or other external services, add them below and configure depends_on
-    # depends_on:
-    #   - postgres
-    # networks:
-    #   - appnet
+      - "80:80"     # HTTP
+      - "443:443"   # HTTPS (for future SSL setup)
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - python-app
+    networks:
+      - appnet
 
 # If you add external services (e.g., PostgreSQL), uncomment and configure below:
 #  postgres:
@@ -32,9 +42,9 @@ services:
 #    networks:
 #      - appnet
 
-# networks:
-#   appnet:
-#     driver: bridge
+networks:
+  appnet:
+    driver: bridge
 
 # volumes:
 #   postgres_data:
