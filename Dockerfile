@@ -54,8 +54,10 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_ENV=production
 
-# Make Directory for Database
+# Make Directories for Databases (both old and new paths)
 RUN mkdir -p /app/KBM2_data && chown -R appuser:appgroup /app/KBM2_data
+RUN mkdir -p /app/master_db && chown -R appuser:appgroup /app/master_db
+RUN mkdir -p /app/tenant_dbs && chown -R appuser:appgroup /app/tenant_dbs
 
 # Use non-root user
 USER appuser
