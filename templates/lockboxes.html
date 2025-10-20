@@ -1,81 +1,145 @@
 {% extends "base.html" %}
-{% block title %}Lockboxes - KBM{% endblock %}
+{% block title %}Lockboxes - KBM
+<!-- Export Menu -->
+<div id="export-menu" class="dropdown-menu" style="display: none;">
+  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
+  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
+  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
+</div>
+
+
+<script>
+  // Export menu functionality
+  let exportMenuData = null;
+
+  function showExportMenu(event, itemType) {
+    event.preventDefault();
+    const menu = document.getElementById('export-menu');
+    const button = event.target;
+    const rect = button.getBoundingClientRect();
+
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.display = 'block';
+    exportMenuData = itemType;
+
+    // Close menu on outside click
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenu);
+    }, 0);
+  }
+
+  function closeExportMenu(event) {
+    const menu = document.getElementById('export-menu');
+    if (event && menu.contains(event.target)) return;
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+
+  function exportData(event, format) {
+    event.preventDefault();
+    if (!exportMenuData) return;
+
+    showExportPreview(exportMenuData, format);
+    closeExportMenu();
+  }
+</script>
+
+
+<!-- Export Preview Modal -->
+<div id="export-preview-modal" class="modal-root">
+  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
+  <div class="modal-dialog" style="max-width: 900px;">
+    <h3>Export Preview</h3>
+    <div id="preview-content" class="modal-body">
+      <p class="muted">Loading preview...</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
+      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
+      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
+      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
 
 {% block content %}
-
 <style>
-  .page-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
-  .searchbar { display:flex; gap:8px; align-items:center; }
-  .searchbar input[type="text"] { min-width:260px; padding:8px 10px; border:1px solid #ddd; border-radius:8px; }
-  .toolbar { display:flex; gap:8px; align-items:center; }
-  .muted { color:#666; font-size:0.9em; }
-  .tag { display:inline-block; padding:2px 8px; border-radius:999px; background:#eef; }
-  .tag.warn { background:#ffe; }
-  .tag.ok { background:#e6f7e6; }
-  .code { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
-  .table-wrap { overflow:auto; border:1px solid #eee; border-radius:12px; }
-  table.lockboxes { width:100%; border-collapse:collapse; }
-  table.lockboxes th, table.lockboxes td { padding:10px 12px; border-bottom:1px solid #f1f1f1; vertical-align:middle; }
-  table.lockboxes th { text-align:left; background:#fafafa; position:sticky; top:0; z-index:1; }
-  .row-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start; }
-  .row-buttons { display:flex; gap:6px; flex-wrap:wrap; }
-  .btn.small { padding:6px 10px; font-size:0.9em; }
-  .btn.danger { border-color:#d63031; color:#d63031; }
-  .btn.danger:hover { background:#fdecea; }
-  .select-col { width:36px; }
-  .codes { display:flex; gap:10px; align-items:flex-start; }
-  .codes div { line-height:1.2; min-width:120px; }
-  .soft { color:#999; }
-  .bulkbar { display:none; align-items:center; gap:8px; padding:8px 10px; background:#f7fbff; border:1px solid #dceeff; border-radius:10px; margin-bottom:10px; }
-  .bulkbar.show { display:flex; }
-  .edit-form { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:10px; }
-  .edit-form label { display:block; font-size:0.75rem; font-weight:600; color:#4a4a4a; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em; }
-  .edit-form input, .edit-form select { width:100%; padding:6px 8px; border:1px solid #ccd6f6; border-radius:8px; font-size:0.9rem; }
-  .edit-form input:focus, .edit-form select:focus { outline:none; border-color:#0d6efd; box-shadow:0 0 0 2px rgba(13,110,253,0.15); }
-  .edit-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
-  .row-actions button { cursor:pointer; }
-  body.modal-open { overflow:hidden; }
-  .modal-root { position:fixed; inset:0; z-index:2000; display:none; align-items:center; justify-content:center; padding:16px; }
-  .modal-root.show { display:flex; }
-  .modal-backdrop { position:absolute; inset:0; background:rgba(22,28,45,0.45); backdrop-filter:blur(2px); }
-  .modal-dialog { position:relative; max-width:420px; width:100%; background:#fff; border-radius:12px; border:1px solid #dbe4ff; box-shadow:0 18px 48px rgba(15,32,72,0.18); padding:20px; z-index:1; display:flex; flex-direction:column; gap:16px; }
-  .modal-dialog h3 { margin:0; font-size:1.2rem; }
-  .modal-body { display:flex; flex-direction:column; gap:12px; }
-  .modal-field label { display:block; font-size:0.75rem; font-weight:600; color:#4a4a4a; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em; }
-  .modal-field input, .modal-field textarea, .modal-field select { width:100%; padding:10px; border:1px solid #ccd6f6; border-radius:8px; font-size:0.95rem; }
-  .modal-field input:focus, .modal-field textarea:focus, .modal-field select:focus { outline:none; border-color:#0d6efd; box-shadow:0 0 0 2px rgba(13,110,253,0.15); }
-  .modal-actions { display:flex; justify-content:flex-end; gap:8px; }
-  .modal-field textarea { min-height:72px; resize:vertical; }
-  .code-current { background:#e6f0ff; color:#0d47a1; padding:6px 10px; border-radius:8px; font-weight:600; display:inline-flex; align-items:center; gap:6px; }
-  .code-current::before { content:"•"; color:#1a73e8; font-size:1.2em; }
-  .code-previous { background:#f5f5f7; color:#999; padding:4px 8px; border-radius:8px; display:inline-flex; align-items:center; }
+  .bulkbar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: rgba(229, 57, 53, 0.08);
+    color: var(--color-text);
+    margin-bottom: 18px;
+  }
+  .bulkbar.show { display: flex; }
+  .select-col { width: 40px; }
+  .codes { display: flex; gap: 12px; align-items: flex-start; }
+  .code-chip { display: inline-flex; flex-direction: column; gap: 4px; }
+  .code-chip span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+  }
+  .code-chip span.current { background: rgba(229, 57, 53, 0.18); color: #ffb4b4; }
+  .code-chip span.previous { background: rgba(148, 163, 184, 0.12); color: var(--color-muted); }
+  .row-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions-col { width: 320px; }
+
+  /* Export dropdown menu */
+  .dropdown-menu {
+    position: absolute;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 150px;
+  }
+  .dropdown-menu a {
+    display: block;
+    padding: 10px 14px;
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .dropdown-menu a:last-child {
+    border-bottom: none;
+  }
+  .dropdown-menu a:hover {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
 </style>
+
 {% set status_options = status_options or ['available', 'assigned', 'checked_out'] %}
 {% set status_options_lower = status_options | map('lower') | list %}
 
-<div class="page-head">
-  <h2 style="margin:0;">Lockboxes</h2>
+<div class="page-header">
+  <h1>Lockboxes</h1>
   <div class="toolbar">
     <form method="get" class="searchbar" action="{{ url_for('inventory.list_lockboxes') }}">
-      <input type="text" name="q" placeholder="Search label, address, code..." value="{{ q or '' }}" />
+      <input type="text" name="q" placeholder="Search ID, label, address, code..." value="{{ q or '' }}">
       <button class="btn small" type="submit">Search</button>
       {% if q %}
         <a class="btn small" href="{{ url_for('inventory.list_lockboxes') }}">Clear</a>
       {% endif %}
     </form>
+    <button type="button" class="btn small" onclick="showExportMenu(event, 'lockboxes')">Export ▾</button>
     <a class="btn primary" href="{{ url_for('inventory.add_lockbox') }}">Add Lockbox</a>
   </div>
 </div>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <div style="margin:6px 0 12px 0;">
-      {% for category, message in messages %}
-        <div class="flash {{ category }}">{{ message }}</div>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
 
 <form id="bulkForm" method="post" action="{{ url_for('inventory.bulk_lockboxes') }}">
   <input type="hidden" name="action" id="bulkAction">
@@ -84,134 +148,148 @@
     <button class="btn small" type="button" onclick="submitBulk('assign')">Assign</button>
     <button class="btn small" type="button" onclick="submitBulk('checkout')">Check Out</button>
     <button class="btn small" type="button" onclick="submitBulk('checkin')">Check In</button>
-    <span class="soft">|</span>
+    <span class="muted">|</span>
     <button class="btn small" type="button" onclick="clearSelections()">Clear</button>
   </div>
 
-  <div class="table-wrap">
-    <table class="lockboxes">
-      <thead>
-        <tr>
-          <th class="select-col">
-            <input type="checkbox" id="selectAll" />
-          </th>
-          <th>Label</th>
-          <th>Location</th>
-          <th>Address</th>
-          <th>Codes</th>
-          <th>Status</th>
-          <th>Assigned To</th>
-          <th>Last Action</th>
-          <th style="width:320px;">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% set viewer_role = (current_user.role or '').lower() if current_user.is_authenticated else '' %}
-        {% for lb in lockboxes %}
-          {% set status_lower = (lb.status or '')|lower %}
+  <div class="card table-card">
+    {% set viewer_role = (current_user.role or '').lower() if current_user.is_authenticated else '' %}
+    {% if lockboxes %}
+      <table>
+        <thead>
           <tr>
-            <td class="select-col">
-              <input type="checkbox" name="ids" value="{{ lb.id }}" class="rowcb" />
-            </td>
+            <th class="select-col"><input type="checkbox" id="selectAll"></th>
+            <th>Label</th>
+            <th>Location</th>
+            <th>Address</th>
+            <th>Codes</th>
+            <th>Status</th>
+            <th>Assigned To</th>
+            <th>Last Action</th>
+            <th class="actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lb in lockboxes %}
+            {% set status_lower = (lb.status or '')|lower %}
+            <tr>
+              <td class="select-col">
+                <input type="checkbox" name="ids" value="{{ lb.id }}" class="rowcb">
+              </td>
+              <td>
+                <div><strong><a href="{{ url_for('inventory.item_details', item_id=lb.id) }}" style="color: inherit; text-decoration: none;">{{ lb.label }}</a></strong></div>
+                <div class="muted">{{ lb.custom_id or '-' }}</div>
+              </td>
             <td>
-              <div><strong>{{ lb.label }}</strong></div>
-              <div class="muted">#{{ lb.id }}</div>
-            </td>
-            <td>{{ lb.location or "-" }}</td>
-            <td>{{ lb.address or "-" }}</td>
-            <td>
-              <div class="codes">
-                <div>
-                  <div class="soft">Current</div>
-                  <div class="code code-current">{{ lb.code_current or "-" }}</div>
-                </div>
-                <div>
-                  <div class="soft">Previous</div>
-                  <div class="code code-previous">{{ lb.code_previous or "-" }}</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              {% set st = (lb.status or 'Unknown') %}
-              {% set st_lower = st|lower %}
-              <span class="tag {{ 'ok' if st_lower in ['available', 'assigned'] else 'warn' }}">{{ st.replace('_', ' ')|title }}</span>
-            </td>
-            <td>{{ lb.assigned_to or "-" }}</td>
-            <td>
-              {% if lb.last_action %}
-                <div class="muted">
-                  {{ lb.last_action.replace('_', ' ')|title }}
-                  {% if lb.last_action_at %} on {{ lb.last_action_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}
-                </div>
-              {% else %}
-                <span class="muted">-</span>
+              {% if lb.property %}
+                <strong>{{ lb.property.name }}</strong><br>
+                <span class="muted text-small">
+                  {{ lb.property.address_line1 or '' }}
+                  {% if lb.property.city %}, {{ lb.property.city }}{% endif %}
+                  {% if lb.property.state %}, {{ lb.property.state }}{% endif %}
+                </span><br>
               {% endif %}
+              {{ lb.location or '-' }}
             </td>
-            <td>
-              <div class="row-actions">
+              <td>{{ lb.address or '-' }}</td>
+              <td>
+                <div class="codes">
+                  <div class="code-chip">
+                    <span class="muted text-small">Current</span>
+                    <span class="current">{{ lb.code_current or '-' }}</span>
+                  </div>
+                  <div class="code-chip">
+                    <span class="muted text-small">Previous</span>
+                    <span class="previous">{{ lb.code_previous or '-' }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% set st_lower = (lb.status or 'Unknown')|lower %}
+                <span class="tag {{ 'ok' if st_lower in ['available', 'assigned'] else 'warn' }}">{{ (lb.status or 'Unknown').replace('_',' ')|title }}</span>
+              </td>
+              <td>{{ lb.assigned_to or '-' }}</td>
+              <td>
+                {% if lb.last_action %}
+                  <div class="muted">
+                    {{ lb.last_action.replace('_', ' ')|title }}
+                    {% if lb.last_action_at %}<br><span class="text-small">{{ lb.last_action_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
+                  </div>
+                {% else %}
+                  <span class="muted">-</span>
+                {% endif %}
+              </td>
+              <td>
                 <div class="row-buttons">
+                  {% if status_lower in ['available'] %}
+                    <button class="btn small js-assign" type="button"
+                      data-action="{{ url_for('inventory.assign_lockbox', item_id=lb.id) }}"
+                      data-label="{{ lb.label|e }}"
+                      data-property-id="{{ lb.property_id or '' }}">
+                      Assign
+                    </button>
+                  {% endif %}
+
                   {% if status_lower in ['available', 'assigned'] %}
-                      <button class="btn small js-checkout" type="button"
-                        data-action="{{ url_for('inventory.checkout_lockbox', item_id=lb.id) }}"
-                        data-label="{{ lb.label|e }}"
-                        data-location="{{ lb.location|default('', true)|e }}"
-                        data-address="{{ lb.address|default('', true)|e }}"
-                        data-assigned="{{ lb.assigned_to|default('', true)|e }}">
-                        Check Out
-                      </button>
-                  {% endif %}
-
-                  {% if status_lower == 'checked_out' %}
-                      <button class="btn small js-checkin" type="button"
-                        data-action="{{ url_for('inventory.checkin_lockbox', item_id=lb.id) }}"
-                        data-label="{{ lb.label|e }}"
-                        data-location="{{ lb.location|default('', true)|e }}"
-                        data-address="{{ lb.address|default('', true)|e }}">
-                        Check In
-                      </button>
-                  {% endif %}
-
-                    <button class="btn small js-code-update" type="button"
-                      data-action="{{ url_for('inventory.update_lockbox_code', item_id=lb.id) }}"
+                    <button class="btn small js-checkout" type="button"
+                      data-action="{{ url_for('inventory.checkout_lockbox', item_id=lb.id) }}"
                       data-label="{{ lb.label|e }}"
                       data-location="{{ lb.location|default('', true)|e }}"
                       data-address="{{ lb.address|default('', true)|e }}"
-                      data-current-code="{{ lb.code_current|default('', true)|e }}">
-                      Update
+                      data-assigned="{{ lb.assigned_to|default('', true)|e }}">
+                      Check Out
                     </button>
-                    {% if viewer_role != 'agent' %}
-                      <form method="post" action="{{ url_for('inventory.delete_lockbox', item_id=lb.id) }}" onsubmit="return confirm('Remove lockbox {{ lb.label }}? This cannot be undone.');">
-                        <button class="btn small danger" type="submit">Delete</button>
-                      </form>
-                    {% endif %}
-                </div>
+                  {% endif %}
 
-                {% if current_user.is_authenticated and (current_user.role or '')|lower == 'admin' %}
-                  <button
-                    class="btn small js-edit"
-                    type="button"
-                    data-action="{{ url_for('inventory.edit_lockbox', item_id=lb.id) }}"
+                  {% if status_lower == 'checked_out' %}
+                    <button class="btn small js-checkin" type="button"
+                      data-action="{{ url_for('inventory.checkin_lockbox', item_id=lb.id) }}"
+                      data-label="{{ lb.label|e }}"
+                      data-location="{{ lb.location|default('', true)|e }}"
+                      data-address="{{ lb.address|default('', true)|e }}">
+                      Check In
+                    </button>
+                  {% endif %}
+
+                  <button class="btn small js-code-update" type="button"
+                    data-action="{{ url_for('inventory.update_lockbox_code', item_id=lb.id) }}"
                     data-label="{{ lb.label|e }}"
                     data-location="{{ lb.location|default('', true)|e }}"
                     data-address="{{ lb.address|default('', true)|e }}"
-                    data-code-current="{{ lb.code_current|default('', true)|e }}"
-                    data-code-previous="{{ lb.code_previous|default('', true)|e }}"
-                    data-status="{{ (lb.status or '')|lower }}"
-                    data-assigned-to="{{ lb.assigned_to|default('', true)|e }}"
-                  >
-                    Edit Details
+                    data-current-code="{{ lb.code_current|default('', true)|e }}">
+                    Update
                   </button>
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-        {% else %}
-          <tr>
-            <td colspan="9" class="muted">No lockboxes found.</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+                  {% if viewer_role != 'agent' %}
+                    <form method="post" action="{{ url_for('inventory.delete_lockbox', item_id=lb.id) }}" onsubmit="return confirm('Remove lockbox {{ lb.label }}? This cannot be undone.');">
+                      <button class="btn small danger" type="submit">Delete</button>
+                    </form>
+                  {% endif %}
+                  {% if current_user.is_authenticated and (current_user.role or '')|lower == 'admin' %}
+                    <button
+                      class="btn small js-edit"
+                      type="button"
+                      data-action="{{ url_for('inventory.edit_lockbox', item_id=lb.id) }}"
+                      data-label="{{ lb.label|e }}"
+                      data-location="{{ lb.location|default('', true)|e }}"
+                      data-address="{{ lb.address|default('', true)|e }}"
+                      data-code-current="{{ lb.code_current|default('', true)|e }}"
+                      data-code-previous="{{ lb.code_previous|default('', true)|e }}"
+                      data-status="{{ (lb.status or '')|lower }}"
+                      data-assigned-to="{{ lb.assigned_to|default('', true)|e }}"
+                      data-property-id="{{ lb.property_id or '' }}">
+                      Edit Details
+                    </button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">No lockboxes found.</div>
+    {% endif %}
   </div>
 </form>
 
@@ -230,12 +308,21 @@
 </div>
 
 <script>
+  const statusOptions = {{ status_options_lower | tojson }};
+  const propertyOptions = {{ property_select_options|default([])|tojson }};
+  const propertyMap = {{ property_map|default({})|tojson }};
   const selectAll = document.getElementById('selectAll');
   const checkboxes = () => Array.from(document.querySelectorAll('.rowcb'));
   const bulkbar = document.getElementById('bulkbar');
   const selCount = document.getElementById('selCount');
   const bulkForm = document.getElementById('bulkForm');
   const bulkAction = document.getElementById('bulkAction');
+  const modalRoot = document.getElementById('action-modal');
+  const modalForm = document.getElementById('action-modal-form');
+  const modalTitle = document.getElementById('action-modal-title');
+  const modalBody = document.getElementById('action-modal-body');
+  const modalSubmitBtn = document.getElementById('action-modal-submit');
+  let modalSubmitHandler = null;
 
   function updateBulkbar() {
     const count = checkboxes().filter(cb => cb.checked).length;
@@ -269,6 +356,8 @@
     const form = document.createElement('form');
     form.method = 'post';
     form.action = url;
+
+    // Add all payload fields
     Object.entries(payload || {}).forEach(([key, value]) => {
       const input = document.createElement('input');
       input.type = 'hidden';
@@ -276,9 +365,119 @@
       input.value = value ?? '';
       form.appendChild(input);
     });
+
+    // Add 'next' parameter from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const nextUrl = urlParams.get('next');
+    if (nextUrl) {
+      const nextInput = document.createElement('input');
+      nextInput.type = 'hidden';
+      nextInput.name = 'next';
+      nextInput.value = nextUrl;
+      form.appendChild(nextInput);
+    }
+
     document.body.appendChild(form);
     form.submit();
   }
+
+  function closeModal() {
+    modalRoot.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    modalSubmitHandler = null;
+    modalBody.innerHTML = '';
+    modalTitle.textContent = 'Action';
+    modalSubmitBtn.textContent = 'Submit';
+    modalForm.reset();
+  }
+
+  function openModal({ title, submitLabel, fields, onSubmit }) {
+    modalTitle.textContent = title || 'Action';
+    modalSubmitBtn.textContent = submitLabel || 'Submit';
+    modalBody.innerHTML = '';
+
+    fields.forEach((field) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'modal-field';
+
+      const label = document.createElement('label');
+      const fieldId = `modal-${field.name}`;
+      label.setAttribute('for', fieldId);
+      label.textContent = field.label + (field.required ? ' *' : '');
+
+      let input;
+      if (field.widget === 'select') {
+        input = document.createElement('select');
+        input.id = fieldId;
+        input.name = field.name;
+        const options = field.options || [];
+        const currentValue = (field.defaultValue || '').toString().toLowerCase();
+        options.forEach((opt) => {
+          const option = document.createElement('option');
+          const value = Array.isArray(opt) ? opt[0] : opt;
+          const labelText = Array.isArray(opt) ? opt[1] : opt;
+          option.value = value;
+          option.textContent = labelText.toString().replace(/_/g, ' ');
+          if (value.toString().toLowerCase() === currentValue) {
+            option.selected = true;
+          }
+          input.appendChild(option);
+        });
+      } else {
+        const elementType = field.type === 'textarea' ? 'textarea' : 'input';
+        input = document.createElement(elementType);
+        if (elementType === 'input') {
+          input.type = field.type || 'text';
+        }
+        input.placeholder = field.placeholder || '';
+        input.value = field.defaultValue || '';
+      }
+
+      input.id = fieldId;
+      input.name = field.name;
+      input.required = Boolean(field.required);
+
+      wrapper.appendChild(label);
+      wrapper.appendChild(input);
+      if (field.help) {
+        const help = document.createElement('small');
+        help.className = 'muted';
+        help.textContent = field.help;
+        wrapper.appendChild(help);
+      }
+      modalBody.appendChild(wrapper);
+    });
+
+    modalSubmitHandler = onSubmit;
+    modalRoot.classList.add('show');
+    document.body.classList.add('modal-open');
+    const firstInput = modalBody.querySelector('input, textarea, select');
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 50);
+    }
+  }
+
+  modalForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (typeof modalSubmitHandler === 'function') {
+      const formData = new FormData(modalForm);
+      const result = modalSubmitHandler(formData);
+      if (result === false) {
+        return;
+      }
+    }
+    closeModal();
+  });
+
+  modalRoot.querySelectorAll('[data-modal-cancel]').forEach((el) => {
+    el.addEventListener('click', () => closeModal());
+  });
+
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && modalRoot.classList.contains('show')) {
+      closeModal();
+    }
+  });
 
   document.querySelectorAll('.js-checkout').forEach((button) => {
     button.addEventListener('click', () => {
@@ -372,6 +571,7 @@
           { name: 'label', label: 'Label', required: true, defaultValue: button.dataset.label || '' },
           { name: 'location', label: 'Location', defaultValue: button.dataset.location || '', placeholder: 'Optional' },
           { name: 'address', label: 'Address', defaultValue: button.dataset.address || '', placeholder: 'Optional' },
+          { name: 'property_id', label: 'Property', widget: 'select', options: propertyOptions, defaultValue: button.dataset.propertyId || '' },
           { name: 'code_current', label: 'Current Code', defaultValue: button.dataset.codeCurrent || '' },
           { name: 'code_previous', label: 'Previous Code', defaultValue: button.dataset.codePrevious || '' },
           { name: 'status', label: 'Status', widget: 'select', options: statusOptions, defaultValue: (button.dataset.status || '').toLowerCase() },
@@ -381,12 +581,13 @@
           const payload = {
             label: (formValues.get('label') || '').trim(),
             location: (formValues.get('location') || '').trim(),
-            address: (formValues.get('address') || '').trim(),
-            code_current: (formValues.get('code_current') || '').trim(),
-            code_previous: (formValues.get('code_previous') || '').trim(),
-            status: (formValues.get('status') || '').trim(),
-            assigned_to: (formValues.get('assigned_to') || '').trim(),
-          };
+          address: (formValues.get('address') || '').trim(),
+          property_id: (formValues.get('property_id') || '').trim(),
+          code_current: (formValues.get('code_current') || '').trim(),
+          code_previous: (formValues.get('code_previous') || '').trim(),
+          status: (formValues.get('status') || '').trim(),
+          assigned_to: (formValues.get('assigned_to') || '').trim(),
+        };
 
           if (!payload.label) {
             return false;
@@ -398,112 +599,129 @@
     });
   });
 
-  const statusOptions = {{ status_options_lower | tojson }};
-  const modalRoot = document.getElementById('action-modal');
-  const modalForm = document.getElementById('action-modal-form');
-  const modalTitle = document.getElementById('action-modal-title');
-  const modalBody = document.getElementById('action-modal-body');
-  const modalSubmitBtn = document.getElementById('action-modal-submit');
-  let modalSubmitHandler = null;
+  document.querySelectorAll('.js-assign').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      if (!actionUrl) return;
+      const label = button.dataset.label || 'lockbox';
+      openModal({
+        title: `Assign ${label}`,
+        submitLabel: "Assign",
+        fields: [
+          { name: 'assignee', label: 'Assigned To', placeholder: 'Name or company (optional when assigning to property)' },
+          { name: 'assignment_type', label: 'Assignment Type', widget: 'select', required: true, options: ['agent', 'property', 'contractor'] },
+          { name: 'expected_return_date', label: 'Expected Return Date', type: 'date', placeholder: 'Required for contractors' },
+          { name: 'property_id', label: 'Property', widget: 'select', options: propertyOptions, defaultValue: button.dataset.propertyId || '' },
+          { name: 'address', label: 'Property Address', placeholder: 'Optional' },
+          { name: 'location', label: 'Location', placeholder: 'Optional' },
+        ],
+        onSubmit(formValues) {
+          const assignmentType = formValues.get('assignment_type');
+          const expectedReturn = formValues.get('expected_return_date');
+          const propertyId = (formValues.get('property_id') || '').trim();
+          let assigneeValue = (formValues.get('assignee') || '').trim();
+          let addressValue = (formValues.get('address') || '').trim();
+          const locationValue = (formValues.get('location') || '').trim();
 
-  function closeModal() {
-    modalRoot.classList.remove('show');
-    document.body.classList.remove('modal-open');
-    modalSubmitHandler = null;
-    modalBody.innerHTML = '';
-    modalTitle.textContent = 'Action';
-    modalSubmitBtn.textContent = 'Submit';
-    modalForm.reset();
-  }
-
-  function openModal({ title, submitLabel, fields, onSubmit }) {
-    modalTitle.textContent = title || 'Action';
-    modalSubmitBtn.textContent = submitLabel || 'Submit';
-    modalBody.innerHTML = '';
-
-    fields.forEach((field) => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'modal-field';
-
-      const label = document.createElement('label');
-      const fieldId = `modal-${field.name}`;
-      label.setAttribute('for', fieldId);
-      label.textContent = field.label + (field.required ? ' *' : '');
-
-      let input;
-      if (field.widget === 'select') {
-        input = document.createElement('select');
-        input.id = fieldId;
-        input.name = field.name;
-        const options = field.options || [];
-        const currentValue = (field.defaultValue || '').toString().toLowerCase();
-        options.forEach((opt) => {
-          const option = document.createElement('option');
-          const value = Array.isArray(opt) ? opt[0] : opt;
-          const labelText = Array.isArray(opt) ? opt[1] : opt;
-          option.value = value;
-          option.textContent = labelText.toString().replace(/_/g, ' ');
-          if (value.toString().toLowerCase() === currentValue) {
-            option.selected = true;
+          if (assignmentType === 'contractor' && !expectedReturn) {
+            alert('Expected return date is required for contractor assignments');
+            return false;
           }
-          input.appendChild(option);
-        });
-      } else {
-        const elementType = field.type === 'textarea' ? 'textarea' : 'input';
-        input = document.createElement(elementType);
-        if (elementType === 'input') {
-          input.type = field.type || 'text';
+
+          if (assignmentType === 'property') {
+            if (!propertyId) {
+              alert('Select a property for this assignment.');
+              return false;
+            }
+            const propertyInfo = propertyMap[propertyId] || null;
+            if (!assigneeValue && propertyInfo) {
+              assigneeValue = propertyInfo.name || '';
+            }
+            if (!addressValue && propertyInfo) {
+              const parts = [propertyInfo.address?.line1, propertyInfo.address?.city, propertyInfo.address?.state, propertyInfo.address?.postal_code];
+              addressValue = parts.filter(Boolean).join(', ');
+            }
+          } else if (!assigneeValue) {
+            alert('Please specify who the lockbox is assigned to.');
+            return false;
+          }
+
+          submitAction(actionUrl, {
+            assignee: assigneeValue,
+            assignment_type: assignmentType,
+            expected_return_date: expectedReturn,
+            property_id: propertyId,
+            address: addressValue,
+            location: locationValue,
+          });
         }
-        input.placeholder = field.placeholder || '';
-        input.value = field.defaultValue || '';
-      }
-
-      input.id = fieldId;
-      input.name = field.name;
-      input.required = Boolean(field.required);
-
-      wrapper.appendChild(label);
-      wrapper.appendChild(input);
-      if (field.help) {
-        const help = document.createElement('small');
-        help.className = 'muted';
-        help.textContent = field.help;
-        wrapper.appendChild(help);
-      }
-      modalBody.appendChild(wrapper);
+      });
     });
-
-    modalSubmitHandler = onSubmit;
-    modalRoot.classList.add('show');
-    document.body.classList.add('modal-open');
-    // focus first input
-    const firstInput = modalBody.querySelector('input, textarea');
-    if (firstInput) {
-      setTimeout(() => firstInput.focus(), 50);
-    }
-  }
-
-  modalForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (typeof modalSubmitHandler === 'function') {
-      const formData = new FormData(modalForm);
-      const result = modalSubmitHandler(formData);
-      if (result === false) {
-        return;
-      }
-    }
-    closeModal();
-  });
-
-  modalRoot.querySelectorAll('[data-modal-cancel]').forEach((el) => {
-    el.addEventListener('click', () => closeModal());
-  });
-
-  window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && modalRoot.classList.contains('show')) {
-      closeModal();
-    }
   });
 </script>
+
+
+<!-- Export Menu -->
+<div id="export-menu" class="dropdown-menu" style="display: none;">
+  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
+  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
+  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
+</div>
+
+
+<script>
+  // Export menu functionality
+  let exportMenuData = null;
+
+  function showExportMenu(event, itemType) {
+    event.preventDefault();
+    const menu = document.getElementById('export-menu');
+    const button = event.target;
+    const rect = button.getBoundingClientRect();
+
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.display = 'block';
+    exportMenuData = itemType;
+
+    // Close menu on outside click
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenu);
+    }, 0);
+  }
+
+  function closeExportMenu(event) {
+    const menu = document.getElementById('export-menu');
+    if (event && menu.contains(event.target)) return;
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+
+  function exportData(event, format) {
+    event.preventDefault();
+    if (!exportMenuData) return;
+
+    showExportPreview(exportMenuData, format);
+    closeExportMenu();
+  }
+</script>
+
+
+<!-- Export Preview Modal -->
+<div id="export-preview-modal" class="modal-root">
+  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
+  <div class="modal-dialog" style="max-width: 900px;">
+    <h3>Export Preview</h3>
+    <div id="preview-content" class="modal-body">
+      <p class="muted">Loading preview...</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
+      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
+      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
+      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

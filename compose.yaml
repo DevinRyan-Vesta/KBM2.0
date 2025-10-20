@@ -1,0 +1,41 @@
+services:
+  python-app:
+    build:
+      context: .
+    container_name: python-app
+    restart: unless-stopped
+    init: true
+    ports:
+      - "8000:8000"  # Exposed by Dockerfile, adjust if needed
+    # env_file: ./.env  # Uncomment if .env file exists
+    # If your app requires a database or other external services, add them below and configure depends_on
+    # depends_on:
+    #   - postgres
+    # networks:
+    #   - appnet
+
+# If you add external services (e.g., PostgreSQL), uncomment and configure below:
+#  postgres:
+#    image: postgres:latest
+#    restart: unless-stopped
+#    environment:
+#      POSTGRES_USER: exampleuser
+#      POSTGRES_PASSWORD: examplepass
+#      POSTGRES_DB: exampledb
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U exampleuser"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#    networks:
+#      - appnet
+
+# networks:
+#   appnet:
+#     driver: bridge
+
+# volumes:
+#   postgres_data:
+#     driver: local

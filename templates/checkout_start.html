@@ -1,7 +1,951 @@
 {% extends "base.html" %}
-{% block title %}Checkout - KBM{% endblock %}
+{% block title %}Check In/Out - KBM{% endblock %}
 
 {% block content %}
-  <h2>Checkout</h2>
-  <p>This section is under construction. Stay tuned for the self-service checkout flow.</p>
+<style>
+  .lookup-card {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .id-input-wrapper {
+    position: relative;
+  }
+  .id-input {
+    width: 100%;
+    padding: 20px;
+    font-size: 32px;
+    font-weight: 600;
+    text-align: center;
+    border: 2px solid var(--color-border);
+    border-radius: 16px;
+    background: rgba(148, 163, 184, 0.06);
+    color: var(--color-text);
+    letter-spacing: 0.1em;
+  }
+  .id-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 4px var(--color-accent-soft);
+  }
+  .id-input::placeholder {
+    color: var(--color-muted);
+    font-weight: 400;
+    letter-spacing: normal;
+  }
+  .lookup-hint {
+    text-align: center;
+    margin-top: 12px;
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+  .item-preview {
+    display: none;
+    margin-top: 24px;
+    padding: 20px;
+    border-radius: 12px;
+    background: rgba(148, 163, 184, 0.06);
+    border: 1px solid var(--color-border);
+  }
+  .item-preview.show {
+    display: block;
+  }
+  .item-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .item-info-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .item-info-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+    font-weight: 600;
+  }
+  .item-info-value {
+    font-size: 14px;
+    color: var(--color-text);
+    font-weight: 500;
+  }
+  .action-buttons {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .error-message {
+    display: none;
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(248, 113, 113, 0.15);
+    color: var(--color-danger);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    text-align: center;
+  }
+  .error-message.show {
+    display: block;
+  }
+  .autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 8px;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+  }
+  .autocomplete-dropdown.show {
+    display: block;
+  }
+  .autocomplete-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border);
+    transition: background 0.2s ease;
+  }
+  .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+  .autocomplete-item:hover,
+  .autocomplete-item.selected {
+    background: var(--color-accent-soft);
+  }
+  .autocomplete-item-id {
+    font-weight: 600;
+    font-family: ui-monospace, monospace;
+    color: var(--color-accent);
+    font-size: 14px;
+  }
+  .autocomplete-item-label {
+    font-size: 14px;
+    color: var(--color-text);
+    margin-top: 2px;
+  }
+  .autocomplete-item-meta {
+    font-size: 12px;
+    color: var(--color-muted);
+    margin-top: 2px;
+  }
+</style>
+
+<div class="page-header">
+  <h1>Check In/Out</h1>
+  <div class="toolbar">
+    <button id="toggle-search-mode" class="btn ghost">Search by Person</button>
+    <a class="btn ghost" href="{{ url_for('main.home') }}">Back to Dashboard</a>
+  </div>
+</div>
+
+<div class="lookup-card card" id="item-lookup-mode">
+  <h3 style="text-align: center; margin-bottom: 24px;">Enter Item ID</h3>
+
+  <div class="id-input-wrapper">
+    <input
+      type="text"
+      id="item-id-input"
+      class="id-input"
+      placeholder="Type ID or scan barcode..."
+      autocomplete="off"
+      autofocus>
+    <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+  </div>
+
+  <div class="lookup-hint">
+    Type an item ID (e.g., LBA001, KA042) or scan barcode - autocomplete suggestions will appear
+  </div>
+
+  <div id="error-message" class="error-message"></div>
+
+  <div id="item-preview" class="item-preview">
+    <div style="text-align: center;">
+      <h2 id="preview-label" style="margin: 0 0 8px;">-</h2>
+      <span id="preview-type" class="tag" style="font-size: 13px;">-</span>
+      <span id="preview-status" class="tag" style="font-size: 13px; margin-left: 8px;">-</span>
+    </div>
+
+    <div class="item-info-grid">
+      <div class="item-info-field">
+        <div class="item-info-label">Item ID</div>
+        <div id="preview-id" class="item-info-value">-</div>
+      </div>
+      <div class="item-info-field">
+        <div class="item-info-label">Location</div>
+        <div id="preview-location" class="item-info-value">-</div>
+      </div>
+      <div class="item-info-field" id="preview-address-field">
+        <div class="item-info-label">Address</div>
+        <div id="preview-address" class="item-info-value">-</div>
+      </div>
+      <div class="item-info-field" id="preview-assigned-field">
+        <div class="item-info-label">Assigned To</div>
+        <div id="preview-assigned" class="item-info-value">-</div>
+      </div>
+      <div class="item-info-field" id="preview-copies-field" style="display: none;">
+        <div class="item-info-label">Copies</div>
+        <div id="preview-copies" class="item-info-value">-</div>
+      </div>
+      <div class="item-info-field" id="preview-unit-field" style="display: none;">
+        <div class="item-info-label">Unit #</div>
+        <div id="preview-unit" class="item-info-value">-</div>
+      </div>
+      <div class="item-info-field" id="preview-hook-field" style="display: none;">
+        <div class="item-info-label">Key Hook #</div>
+        <div id="preview-hook" class="item-info-value">-</div>
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <button id="checkout-btn" class="btn primary" style="display: none;">Check Out</button>
+      <button id="checkin-btn" class="btn primary" style="display: none;">Check In</button>
+      <button id="assign-btn" class="btn ghost" style="display: none;">Assign</button>
+      <button id="clear-btn" class="btn ghost">Clear</button>
+    </div>
+  </div>
+</div>
+
+<div class="lookup-card card" id="person-lookup-mode" style="display: none;">
+  <h3 style="text-align: center; margin-bottom: 24px;">Search by Person</h3>
+
+  <div class="id-input-wrapper">
+    <input
+      type="text"
+      id="person-search-input"
+      class="id-input"
+      placeholder="Enter person's name..."
+      autocomplete="off"
+      style="font-size: 20px;">
+  </div>
+
+  <div class="lookup-hint">
+    Search for a person to see all items they have checked out or assigned
+  </div>
+
+  <div id="person-error-message" class="error-message"></div>
+
+  <div id="person-results" style="display: none; margin-top: 24px;">
+    <div style="text-align: center; margin-bottom: 16px;">
+      <h3 id="results-title" style="margin: 0;">Items for <span id="results-person-name"></span></h3>
+      <p class="muted" id="results-count" style="margin: 8px 0 0;"></p>
+    </div>
+
+    <div id="results-list" style="display: flex; flex-direction: column; gap: 12px;"></div>
+
+    <div style="margin-top: 24px; text-align: center;">
+      <button id="clear-person-search" class="btn ghost">Clear Search</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dynamic Modals for different item types -->
+<div id="action-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="action-modal-title">
+    <form id="action-modal-form">
+      <h3 id="action-modal-title">Action</h3>
+      <div id="action-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel>Cancel</button>
+        <button type="submit" class="btn small primary" id="action-modal-submit">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let currentItem = null;
+  const itemInput = document.getElementById('item-id-input');
+  const itemPreview = document.getElementById('item-preview');
+  const errorMessage = document.getElementById('error-message');
+  const checkoutBtn = document.getElementById('checkout-btn');
+  const checkinBtn = document.getElementById('checkin-btn');
+  const assignBtn = document.getElementById('assign-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+
+  const actionModal = document.getElementById('action-modal');
+  const actionForm = document.getElementById('action-modal-form');
+  const actionTitle = document.getElementById('action-modal-title');
+  const actionBody = document.getElementById('action-modal-body');
+  const actionSubmit = document.getElementById('action-modal-submit');
+
+  let modalSubmitHandler = null;
+  let autocompleteResults = [];
+  let selectedAutocompleteIndex = -1;
+  let autocompleteDebounceTimer = null;
+
+  // Lookup item by ID
+  async function lookupItem(itemId) {
+    try {
+      const response = await fetch(`/checkout/api/items/${itemId}`);
+      if (!response.ok) {
+        throw new Error('Item not found');
+      }
+      return await response.json();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Display item preview
+  function displayItem(item) {
+    currentItem = item;
+
+    document.getElementById('preview-label').textContent = item.label || '-';
+    document.getElementById('preview-type').textContent = item.type || '-';
+    document.getElementById('preview-id').textContent = item.custom_id || `#${item.id}`;
+    document.getElementById('preview-location').textContent = item.location || '-';
+    document.getElementById('preview-address').textContent = item.address || '-';
+    document.getElementById('preview-assigned').textContent = item.assigned_to || '-';
+
+    // Status tag styling
+    const statusTag = document.getElementById('preview-status');
+    statusTag.textContent = (item.status || 'Unknown').replace('_', ' ');
+    statusTag.className = 'tag';
+    if (item.status === 'available' || item.status === 'assigned') {
+      statusTag.classList.add('ok');
+    } else if (item.status === 'checked_out') {
+      statusTag.classList.add('warn');
+    }
+
+    // Show/hide key-specific fields
+    const copiesField = document.getElementById('preview-copies-field');
+    const hookField = document.getElementById('preview-hook-field');
+
+    if (item.type === 'Key') {
+      copiesField.style.display = 'flex';
+      unitField.style.display = 'flex';
+      hookField.style.display = 'flex';
+      const total = item.total_copies || 0;
+      const checkedOut = item.copies_checked_out || 0;
+      const available = total - checkedOut;
+      document.getElementById('preview-copies').textContent = `${available}/${total} available`;
+      document.getElementById('preview-hook').textContent = item.key_hook_number || '-';
+    } else {
+      copiesField.style.display = 'none';
+      
+      hookField.style.display = 'none';
+    }
+
+    // Show appropriate action buttons
+    checkoutBtn.style.display = 'none';
+    checkinBtn.style.display = 'none';
+    assignBtn.style.display = 'none';
+
+    if (item.type === 'Key') {
+      const available = (item.total_copies || 0) - (item.copies_checked_out || 0);
+      if (available > 0) {
+        checkoutBtn.style.display = 'inline-flex';
+        assignBtn.style.display = 'inline-flex';
+      }
+      // Show check-in for keys with copies checked out OR assigned status
+      if (item.copies_checked_out > 0 || item.status === 'assigned') {
+        checkinBtn.style.display = 'inline-flex';
+      }
+    } else if (item.type === 'Lockbox') {
+      if (item.status === 'available' || item.status === 'assigned') {
+        checkoutBtn.style.display = 'inline-flex';
+      }
+      if (item.status === 'checked_out' || item.status === 'assigned') {
+        checkinBtn.style.display = 'inline-flex';
+      }
+    } else {
+      // Signs or other items
+      if (item.status === 'available' || item.status === 'assigned') {
+        checkoutBtn.style.display = 'inline-flex';
+      }
+      if (item.status === 'checked_out' || item.status === 'assigned') {
+        checkinBtn.style.display = 'inline-flex';
+      }
+    }
+
+    itemPreview.classList.add('show');
+    errorMessage.classList.remove('show');
+  }
+
+  // Show error
+  function showError(message) {
+    errorMessage.textContent = message;
+    errorMessage.classList.add('show');
+    itemPreview.classList.remove('show');
+    currentItem = null;
+  }
+
+  // Clear preview
+  function clearPreview() {
+    itemPreview.classList.remove('show');
+    errorMessage.classList.remove('show');
+    itemInput.value = '';
+    currentItem = null;
+    hideAutocomplete();
+    itemInput.focus();
+  }
+
+  // Autocomplete functions
+  async function searchItems(query) {
+    if (!query || query.length < 1) {
+      hideAutocomplete();
+      return;
+    }
+
+    try {
+      const response = await fetch(`/checkout/api/items/search?q=${encodeURIComponent(query)}`);
+      if (!response.ok) return;
+      const results = await response.json();
+      showAutocomplete(results);
+    } catch (error) {
+      console.error('Autocomplete error:', error);
+    }
+  }
+
+  function showAutocomplete(results) {
+    autocompleteResults = results;
+    selectedAutocompleteIndex = -1;
+
+    if (results.length === 0) {
+      hideAutocomplete();
+      return;
+    }
+
+    autocompleteDropdown.innerHTML = results.map((item, index) => {
+      const unitInfo = '';
+      return `
+        <div class="autocomplete-item" data-index="${index}" data-custom-id="${item.custom_id}">
+          <div class="autocomplete-item-id">${item.custom_id || 'N/A'}</div>
+          <div class="autocomplete-item-label">${item.label}${unitInfo}</div>
+          <div class="autocomplete-item-meta">${item.type}${item.address ? ' - ' + item.address : ''} - ${item.status}</div>
+        </div>
+      `;
+    }).join('');
+
+    autocompleteDropdown.classList.add('show');
+
+    // Add click listeners
+    autocompleteDropdown.querySelectorAll('.autocomplete-item').forEach(el => {
+      el.addEventListener('click', () => {
+        selectAutocompleteItem(el.dataset.customId);
+      });
+    });
+  }
+
+  function hideAutocomplete() {
+    autocompleteDropdown.classList.remove('show');
+    autocompleteDropdown.innerHTML = '';
+    autocompleteResults = [];
+    selectedAutocompleteIndex = -1;
+  }
+
+  async function selectAutocompleteItem(customId) {
+    hideAutocomplete();
+    itemInput.value = customId;
+    try {
+      const item = await lookupItem(customId);
+      displayItem(item);
+    } catch (error) {
+      showError(`Item ${customId} not found`);
+    }
+  }
+
+  function navigateAutocomplete(direction) {
+    if (autocompleteResults.length === 0) return;
+
+    selectedAutocompleteIndex += direction;
+
+    if (selectedAutocompleteIndex < 0) {
+      selectedAutocompleteIndex = autocompleteResults.length - 1;
+    } else if (selectedAutocompleteIndex >= autocompleteResults.length) {
+      selectedAutocompleteIndex = 0;
+    }
+
+    // Update visual selection
+    const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+    items.forEach((item, index) => {
+      item.classList.toggle('selected', index === selectedAutocompleteIndex);
+    });
+
+    // Scroll into view
+    if (items[selectedAutocompleteIndex]) {
+      items[selectedAutocompleteIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  // Handle ID input with autocomplete
+  itemInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+
+    // Clear debounce timer
+    if (autocompleteDebounceTimer) {
+      clearTimeout(autocompleteDebounceTimer);
+    }
+
+    // Debounce the search
+    autocompleteDebounceTimer = setTimeout(() => {
+      searchItems(query);
+    }, 200);
+  });
+
+  itemInput.addEventListener('keydown', async (e) => {
+    // Handle arrow keys for autocomplete
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      navigateAutocomplete(1);
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      navigateAutocomplete(-1);
+      return;
+    }
+
+    // Handle Enter
+    if (e.key === 'Enter') {
+      e.preventDefault();
+
+      // If an autocomplete item is selected, use it
+      if (selectedAutocompleteIndex >= 0 && autocompleteResults[selectedAutocompleteIndex]) {
+        selectAutocompleteItem(autocompleteResults[selectedAutocompleteIndex].custom_id);
+        return;
+      }
+
+      // Otherwise do normal lookup
+      const itemId = itemInput.value.trim();
+      if (!itemId) return;
+
+      hideAutocomplete();
+
+      try {
+        const item = await lookupItem(itemId);
+        displayItem(item);
+      } catch (error) {
+        showError(`Item ${itemId} not found`);
+      }
+    }
+
+    // Hide autocomplete on Escape
+    if (e.key === 'Escape') {
+      hideAutocomplete();
+    }
+  });
+
+  // Hide autocomplete when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!itemInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
+      hideAutocomplete();
+    }
+  });
+
+  clearBtn.addEventListener('click', clearPreview);
+
+  // Modal helpers
+  function createModalField(field) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'modal-field';
+
+    const label = document.createElement('label');
+    label.textContent = field.label + (field.required ? ' *' : '');
+
+    let input;
+    if (field.widget === 'select') {
+      input = document.createElement('select');
+      field.options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = Array.isArray(opt) ? opt[0] : opt;
+        option.textContent = Array.isArray(opt) ? opt[1] : opt;
+        if (field.defaultValue && option.value === field.defaultValue) {
+          option.selected = true;
+        }
+        input.appendChild(option);
+      });
+    } else {
+      input = document.createElement(field.type === 'textarea' ? 'textarea' : 'input');
+      if (field.type && field.type !== 'textarea') input.type = field.type;
+      if (field.placeholder) input.placeholder = field.placeholder;
+      if (field.defaultValue) input.value = field.defaultValue;
+    }
+
+    input.name = field.name;
+    input.required = field.required || false;
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(input);
+
+    if (field.help) {
+      const help = document.createElement('small');
+      help.className = 'muted';
+      help.textContent = field.help;
+      wrapper.appendChild(help);
+    }
+
+    return wrapper;
+  }
+
+  function openModal(title, submitLabel, fields, onSubmit) {
+    actionTitle.textContent = title;
+    actionSubmit.textContent = submitLabel;
+    actionBody.innerHTML = '';
+
+    fields.forEach(field => {
+      actionBody.appendChild(createModalField(field));
+    });
+
+    modalSubmitHandler = onSubmit;
+    actionModal.classList.add('show');
+    document.body.classList.add('modal-open');
+
+    const firstInput = actionBody.querySelector('input, select, textarea');
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 50);
+    }
+  }
+
+  function closeModal() {
+    actionModal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    actionForm.reset();
+    modalSubmitHandler = null;
+  }
+
+  actionForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (modalSubmitHandler) {
+      const formData = new FormData(actionForm);
+      modalSubmitHandler(formData);
+    }
+    closeModal();
+  });
+
+  document.querySelectorAll('[data-modal-cancel]').forEach(el => {
+    el.addEventListener('click', closeModal);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && actionModal.classList.contains('show')) {
+      closeModal();
+    }
+  });
+
+  // Checkout button
+  checkoutBtn.addEventListener('click', () => {
+    if (!currentItem) return;
+
+    if (currentItem.type === 'Lockbox') {
+      openModal(
+        `Check Out ${currentItem.label}`,
+        'Check Out',
+        [
+          { name: 'code', label: 'Current Code', required: true, placeholder: 'Enter lockbox code' },
+          { name: 'assigned_to', label: 'Assign To', placeholder: 'Optional' },
+          { name: 'location', label: 'Location', defaultValue: currentItem.location || '', placeholder: 'Optional' },
+          { name: 'address', label: 'Address', defaultValue: currentItem.address || '', placeholder: 'Optional' },
+        ],
+        (formData) => {
+          submitCheckout(currentItem.id, currentItem.type, formData);
+        }
+      );
+    } else if (currentItem.type === 'Key') {
+      const available = (currentItem.total_copies || 0) - (currentItem.copies_checked_out || 0);
+      openModal(
+        `Check Out ${currentItem.label}`,
+        'Check Out',
+        [
+          { name: 'copies', label: 'Number of Copies', type: 'number', required: true, defaultValue: '1', help: `${available} copies available` },
+          { name: 'purpose', label: 'Purpose', placeholder: 'Optional' },
+          { name: 'expected_return_date', label: 'Expected Return Date', type: 'date', placeholder: 'Optional' },
+        ],
+        (formData) => {
+          submitCheckout(currentItem.id, currentItem.type, formData);
+        }
+      );
+    }
+  });
+
+  // Checkin button
+  checkinBtn.addEventListener('click', () => {
+    if (!currentItem) return;
+
+    if (currentItem.type === 'Lockbox') {
+      openModal(
+        `Check In ${currentItem.label}`,
+        'Check In',
+        [
+          { name: 'code', label: 'Confirm Code', required: true, placeholder: 'Enter lockbox code' },
+          { name: 'location', label: 'Return Location', defaultValue: currentItem.location || '', placeholder: 'Optional' },
+          { name: 'address', label: 'Address', defaultValue: currentItem.address || '', placeholder: 'Optional' },
+        ],
+        (formData) => {
+          submitCheckin(currentItem.id, currentItem.type, formData);
+        }
+      );
+    } else if (currentItem.type === 'Key') {
+      const checkedOut = currentItem.copies_checked_out || 0;
+      openModal(
+        `Check In ${currentItem.label}`,
+        'Check In',
+        [
+          { name: 'copies', label: 'Number of Copies', type: 'number', required: true, defaultValue: '1', help: `${checkedOut} copies checked out` },
+        ],
+        (formData) => {
+          submitCheckin(currentItem.id, currentItem.type, formData);
+        }
+      );
+    }
+  });
+
+  // Assign button
+  assignBtn.addEventListener('click', () => {
+    if (!currentItem || currentItem.type !== 'Key') return;
+
+    const available = (currentItem.total_copies || 0) - (currentItem.copies_checked_out || 0);
+    openModal(
+      `Assign ${currentItem.label}`,
+      'Assign',
+      [
+        { name: 'copies', label: 'Number of Copies', type: 'number', required: true, defaultValue: '1', help: `${available} copies available` },
+        { name: 'assigned_to', label: 'Assigned To', required: true, placeholder: 'Name or company' },
+        { name: 'assignment_type', label: 'Assignment Type', widget: 'select', required: true, options: ['tenant', 'contractor', 'property'] },
+        { name: 'expected_return_date', label: 'Expected Return Date (Contractors)', type: 'date', placeholder: 'Required for contractors' },
+      ],
+      (formData) => {
+        submitAssignment(currentItem.id, formData);
+      }
+    );
+  });
+
+  // Submit functions
+  function submitCheckout(itemId, itemType, formData) {
+    const form = document.createElement('form');
+    form.method = 'post';
+
+    if (itemType === 'Lockbox') {
+      form.action = `/inventory/lockboxes/${itemId}/checkout`;
+    } else if (itemType === 'Key') {
+      form.action = `/inventory/keys/${itemId}/checkout`;
+    }
+
+    for (let [key, value] of formData.entries()) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function submitCheckin(itemId, itemType, formData) {
+    const form = document.createElement('form');
+    form.method = 'post';
+
+    if (itemType === 'Lockbox') {
+      form.action = `/inventory/lockboxes/${itemId}/checkin`;
+    } else if (itemType === 'Key') {
+      form.action = `/inventory/keys/${itemId}/checkin`;
+    }
+
+    for (let [key, value] of formData.entries()) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function submitAssignment(itemId, formData) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = `/inventory/keys/${itemId}/assign`;
+
+    for (let [key, value] of formData.entries()) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  // Person search functionality
+  const toggleSearchModeBtn = document.getElementById('toggle-search-mode');
+  const itemLookupMode = document.getElementById('item-lookup-mode');
+  const personLookupMode = document.getElementById('person-lookup-mode');
+  const personSearchInput = document.getElementById('person-search-input');
+  const personResults = document.getElementById('person-results');
+  const personErrorMessage = document.getElementById('person-error-message');
+  const resultsList = document.getElementById('results-list');
+  const resultsPersonName = document.getElementById('results-person-name');
+  const resultsCount = document.getElementById('results-count');
+  const clearPersonSearchBtn = document.getElementById('clear-person-search');
+
+  let searchMode = 'item'; // 'item' or 'person'
+
+  toggleSearchModeBtn.addEventListener('click', () => {
+    if (searchMode === 'item') {
+      searchMode = 'person';
+      itemLookupMode.style.display = 'none';
+      personLookupMode.style.display = 'block';
+      toggleSearchModeBtn.textContent = 'Search by Item ID';
+      personSearchInput.focus();
+    } else {
+      searchMode = 'item';
+      itemLookupMode.style.display = 'block';
+      personLookupMode.style.display = 'none';
+      toggleSearchModeBtn.textContent = 'Search by Person';
+      itemInput.focus();
+      clearPersonSearch();
+    }
+  });
+
+  async function searchByPerson(personName) {
+    if (!personName || personName.trim().length < 2) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/checkout/api/items/by-person?name=${encodeURIComponent(personName.trim())}`);
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+
+      const data = await response.json();
+      displayPersonResults(personName, data.items || []);
+    } catch (error) {
+      personErrorMessage.textContent = 'Failed to search for items. Please try again.';
+      personErrorMessage.classList.add('show');
+      personResults.style.display = 'none';
+    }
+  }
+
+  function displayPersonResults(personName, items) {
+    personErrorMessage.classList.remove('show');
+
+    if (items.length === 0) {
+      personErrorMessage.textContent = `No items found checked out to or assigned to "${personName}"`;
+      personErrorMessage.classList.add('show');
+      personResults.style.display = 'none';
+      return;
+    }
+
+    resultsPersonName.textContent = personName;
+    resultsCount.textContent = `${items.length} item${items.length > 1 ? 's' : ''} found`;
+
+    resultsList.innerHTML = items.map(item => {
+      const isKey = item.type === 'Key';
+      const copiesInfo = isKey && item.checkout_quantity ? ` (${item.checkout_quantity} cop${item.checkout_quantity > 1 ? 'ies' : 'y'})` : '';
+      const statusBadge = item.status === 'checked_out' ? '<span class="tag warn">Checked Out</span>' : '<span class="tag ok">Assigned</span>';
+
+      return `
+        <div class="card" style="padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <strong style="font-size: 16px;">${item.label}</strong>
+                <span class="tag" style="font-size: 12px;">${item.type}</span>
+                ${statusBadge}
+              </div>
+              <div class="muted" style="font-size: 13px;">
+                ID: ${item.custom_id || 'N/A'}${copiesInfo}
+                ${item.purpose ? ` - ${item.purpose}` : ''}
+              </div>
+              ${item.address ? `<div class="muted" style="font-size: 13px; margin-top: 4px;">${item.address}</div>` : ''}
+              ${item.checked_out_at ? `<div class="muted text-small" style="margin-top: 4px;">Since: ${item.checked_out_at}</div>` : ''}
+            </div>
+            <div>
+              <button class="btn small primary person-checkin-btn"
+                data-item-id="${item.id}"
+                data-item-type="${item.type}"
+                data-item-label="${item.label}"
+                data-checkout-id="${item.checkout_id || ''}">
+                Check In
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Add click listeners to check-in buttons
+    resultsList.querySelectorAll('.person-checkin-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const itemId = btn.dataset.itemId;
+        const itemType = btn.dataset.itemType;
+        const itemLabel = btn.dataset.itemLabel;
+        const checkoutId = btn.dataset.checkoutId;
+
+        if (itemType === 'Key' && checkoutId) {
+          // For keys with checkout_id, submit directly
+          submitCheckinDirect(itemId, itemType, { checkout_id: checkoutId });
+        } else {
+          // For all other cases (assigned items, lockboxes, signs), submit without specific checkout
+          submitCheckinDirect(itemId, itemType, {});
+        }
+      });
+    });
+
+    personResults.style.display = 'block';
+  }
+
+  function clearPersonSearch() {
+    personSearchInput.value = '';
+    personResults.style.display = 'none';
+    personErrorMessage.classList.remove('show');
+    resultsList.innerHTML = '';
+  }
+
+  personSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const query = personSearchInput.value.trim();
+      if (query) {
+        searchByPerson(query);
+      }
+    }
+  });
+
+  clearPersonSearchBtn.addEventListener('click', clearPersonSearch);
+
+  function submitCheckinDirect(itemId, itemType, formData) {
+    const form = document.createElement('form');
+    form.method = 'post';
+
+    if (itemType === 'Lockbox') {
+      form.action = `/inventory/lockboxes/${itemId}/checkin`;
+    } else if (itemType === 'Key') {
+      form.action = `/inventory/keys/${itemId}/checkin`;
+    } else if (itemType === 'Sign') {
+      form.action = `/inventory/signs/${itemId}/checkin`;
+    }
+
+    for (let [key, value] of Object.entries(formData)) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+</script>
 {% endblock %}

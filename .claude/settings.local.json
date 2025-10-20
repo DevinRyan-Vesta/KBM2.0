@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python C:/Users/dryan/WorkSpaces/KBM2.0/add_report_exports.py)",
+      "Bash(python C:/Users/dryan/WorkSpaces/KBM2.0/add_all_exports_imports.py)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

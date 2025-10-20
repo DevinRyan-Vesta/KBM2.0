@@ -1,29 +1,55 @@
 # syntax=docker/dockerfile:1
 
-# 1) Start from a lightweight Python image
-FROM python:3.12-slim AS base
+# Use a slim Python base image for both builder and final stages
+FROM python:3.11-slim AS base
 
-# 2) Prevent Python from writing .pyc files and keep output unbuffered
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-# 3) Set the working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# 4) Copy the dependency list first and install packages
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Builder stage: install dependencies in a venv
+FROM base AS builder
 
-# 5) Copy the rest of the application code
-COPY . .
+# Install system dependencies required for building Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# 6) Default environment settings (override in docker-compose or env file)
-ENV FLASK_APP=app.py \
-    ENV=production \
-    AUTO_CREATE_SCHEMA=0
+# Copy only requirements.txt first for better caching
+COPY --link requirements.txt ./
 
-# 7) Expose the port Gunicorn will listen on
+# Create virtual environment and install dependencies
+RUN python -m venv .venv \
+    && .venv/bin/pip install --upgrade pip \
+    && --mount=type=cache,target=/root/.cache/pip \
+       .venv/bin/pip install -r requirements.txt
+
+# Copy the rest of the application code (excluding secrets and unnecessary files)
+COPY --link . .
+
+# Final stage: minimal runtime image
+FROM base AS final
+
+# Create a non-root user
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application code from builder
+COPY --from=builder /app /app
+
+# Set environment variables
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+
+# Use non-root user
+USER appuser
+
+# Expose the port (assuming 8000, adjust if needed)
 EXPOSE 8000
 
-# 8) Run the app with Gunicorn in production mode
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:create_app()"]
+# Start the application (adjust if entrypoint differs)
+CMD ["python", "app.py"]

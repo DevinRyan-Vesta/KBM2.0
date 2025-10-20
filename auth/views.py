@@ -18,6 +18,13 @@ def _require_admin():
         abort(403)
 
 
+def _get_user_or_404(user_id: int) -> User:
+    user = db.session.get(User, user_id)
+    if user is None:
+        abort(404)
+    return user
+
+
 def _clean_pin(pin: Optional[str]) -> Optional[str]:
     if pin is None:
         return None
@@ -218,7 +225,7 @@ def create_user():
 @login_required
 def edit_user(user_id: int):
     _require_admin()
-    user = User.query.get_or_404(user_id)
+    user = _get_user_or_404(user_id)
     errors = {}
     form_values = {
         "name": user.name or "",
@@ -315,7 +322,7 @@ def edit_user(user_id: int):
 @login_required
 def delete_user(user_id: int):
     _require_admin()
-    user = User.query.get_or_404(user_id)
+    user = _get_user_or_404(user_id)
 
     if user.id == current_user.id:
         flash("You cannot remove your own account.", "error")

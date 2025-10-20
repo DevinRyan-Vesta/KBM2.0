@@ -5,36 +5,36 @@
 {% set values = form_values or {} %}
 {% set errors = errors or {} %}
 
-<div style="max-width:560px;">
-  <h2 style="margin-bottom:16px;">{{ page_heading or "User" }}</h2>
-  <form method="post" class="card" style="display:flex; flex-direction:column; gap:12px;">
-    <div>
-      <label for="name" style="display:block; font-weight:600; margin-bottom:4px;">Name</label>
-      <input id="name" name="name" type="text" required value="{{ values.get('name','') }}" style="width:100%; padding:10px; border:1px solid #ccd6f6; border-radius:8px;">
+<div class="form-shell">
+  <h2>{{ page_heading or "User" }}</h2>
+  <form method="post" class="card form-card">
+    <div class="form-field">
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" required value="{{ values.get('name','') }}">
       {% if errors.get('name') %}
-        <div style="color:#c0392b; font-size:0.85rem; margin-top:4px;">{{ errors.get('name') }}</div>
+        <div class="flash">{{ errors.get('name') }}</div>
       {% endif %}
     </div>
-    <div>
-      <label for="email" style="display:block; font-weight:600; margin-bottom:4px;">Email</label>
-      <input id="email" name="email" type="email" required value="{{ values.get('email','') }}" style="width:100%; padding:10px; border:1px solid #ccd6f6; border-radius:8px;">
+    <div class="form-field">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required value="{{ values.get('email','') }}">
       {% if errors.get('email') %}
-        <div style="color:#c0392b; font-size:0.85rem; margin-top:4px;">{{ errors.get('email') }}</div>
+        <div class="flash">{{ errors.get('email') }}</div>
       {% endif %}
     </div>
-    <div>
-      <label for="pin" style="display:block; font-weight:600; margin-bottom:4px;">PIN</label>
-      <input id="pin" name="pin" type="password" placeholder="Leave blank to keep current PIN" style="width:100%; padding:10px; border:1px solid #ccd6f6; border-radius:8px;">
+    <div class="form-field">
+      <label for="pin">PIN</label>
+      <input id="pin" name="pin" type="password" placeholder="Leave blank to keep current PIN">
       <small class="muted">Numeric, at least 4 digits. Leave empty to keep current PIN.</small>
       {% if errors.get('pin') %}
-        <div style="color:#c0392b; font-size:0.85rem; margin-top:4px;">{{ errors.get('pin') }}</div>
+        <div class="flash">{{ errors.get('pin') }}</div>
       {% endif %}
     </div>
 
     {% if show_role %}
-    <div>
-      <label for="role" style="display:block; font-weight:600; margin-bottom:4px;">Role</label>
-      <select id="role" name="role" style="width:100%; padding:10px; border:1px solid #ccd6f6; border-radius:8px;">
+    <div class="form-field">
+      <label for="role">Role</label>
+      <select id="role" name="role">
         {% for role in allowed_roles %}
           {% set role_value = role.lower() %}
           {% set current_role = (values.get('role','user') or 'user')|lower %}
@@ -42,23 +42,23 @@
         {% endfor %}
       </select>
       {% if errors.get('role') %}
-        <div style="color:#c0392b; font-size:0.85rem; margin-top:4px;">{{ errors.get('role') }}</div>
+        <div class="flash">{{ errors.get('role') }}</div>
       {% endif %}
     </div>
     {% endif %}
 
     {% if show_active_toggle %}
-    <div>
-      <label for="is_active" style="display:block; font-weight:600; margin-bottom:4px;">Status</label>
+    <div class="form-field">
+      <label for="is_active">Status</label>
       {% set active_value = values.get('is_active','1') %}
-      <select id="is_active" name="is_active" style="width:100%; padding:10px; border:1px solid #ccd6f6; border-radius:8px;">
+      <select id="is_active" name="is_active">
         <option value="1" {% if active_value != '0' %}selected{% endif %}>Active</option>
         <option value="0" {% if active_value == '0' %}selected{% endif %}>Inactive</option>
       </select>
     </div>
     {% endif %}
 
-    <div style="display:flex; gap:8px; justify-content:flex-end;">
+    <div class="toolbar align-end">
       <a class="btn" href="{{ cancel_url }}">Cancel</a>
       <button class="btn primary" type="submit">{{ submit_label or "Save" }}</button>
     </div>

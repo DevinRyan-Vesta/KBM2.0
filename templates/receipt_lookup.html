@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Receipt Lookup - KBM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Receipt Lookup</h1>
+  <div class="toolbar">
+    <a href="{{ url_for('main.home') }}" class="btn ghost">Back to Home</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <h3>Search Receipts</h3>
+  <p class="muted" style="margin-bottom: 16px;">
+    Search by receipt number, barcode (RCP######), or person's name.
+    Barcode scanners are automatically detected.
+  </p>
+
+  <form method="GET" action="{{ url_for('inventory.receipt_lookup') }}" id="search-form">
+    <div class="form-field">
+      <label for="search-input">Receipt Search</label>
+      <input
+        type="text"
+        id="search-input"
+        name="q"
+        value="{{ query }}"
+        placeholder="Scan barcode or type receipt number, name..."
+        autofocus
+        autocomplete="off"
+      >
+      <p class="muted text-small" style="margin-top: 4px;">
+        <span id="scanner-status">Ready for barcode scanner input</span>
+      </p>
+    </div>
+    <button type="submit" class="btn primary">Search</button>
+  </form>
+</div>
+
+{% if query %}
+<div class="card">
+  <h3>Search Results</h3>
+
+  {% if results %}
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Receipt #</th>
+          <th>Barcode</th>
+          <th>Item</th>
+          <th>Checked Out To</th>
+          <th>Checkout Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for checkout in results %}
+        <tr>
+          <td><strong>#{{ checkout.id }}</strong></td>
+          <td style="font-family: monospace;">RCP{{ '%06d' % checkout.id }}</td>
+          <td>
+            {% if checkout.item %}
+            <div>
+              <strong>{{ checkout.item.label }}</strong>
+              <div class="muted text-small">{{ checkout.item.type }} - {{ checkout.item.custom_id or 'N/A' }}</div>
+            </div>
+            {% else %}
+            <span class="muted">Item not found</span>
+            {% endif %}
+          </td>
+          <td>{{ checkout.checked_out_to }}</td>
+          <td class="nowrap">
+            {% if checkout.checked_out_at %}
+            {{ checkout.checked_out_at.strftime('%b %d, %Y %I:%M %p') }}
+            {% else %}
+            <span class="muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if checkout.is_active %}
+            <span class="tag warn">Checked Out</span>
+            {% else %}
+            <span class="tag ok">Returned</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('inventory.checkout_receipt', checkout_id=checkout.id) }}" class="btn small">
+              View Receipt
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No receipts found for "{{ query }}"</p>
+    <p class="muted text-small">Try searching by receipt number, barcode (RCP######), or person's name</p>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+// Barcode scanner detection
+(function() {
+  const input = document.getElementById('search-input');
+  const status = document.getElementById('scanner-status');
+  const form = document.getElementById('search-form');
+
+  let buffer = '';
+  let timeout = null;
+  let lastKeyTime = 0;
+
+  // Listen for rapid keyboard input (barcode scanner characteristic)
+  document.addEventListener('keypress', function(e) {
+    const now = Date.now();
+    const timeDiff = now - lastKeyTime;
+
+    // If keypresses are very rapid (< 50ms apart), it's likely a scanner
+    if (timeDiff < 50 && buffer.length < 20) {
+      e.preventDefault();
+      buffer += e.key;
+
+      // Clear existing timeout
+      if (timeout) clearTimeout(timeout);
+
+      // Set new timeout to process buffer
+      timeout = setTimeout(function() {
+        if (buffer.length >= 6) {
+          input.value = buffer;
+          status.textContent = 'Barcode detected! Searching...';
+          status.style.color = 'var(--color-success)';
+          form.submit();
+        }
+        buffer = '';
+      }, 100);
+    } else {
+      // Normal typing speed - reset buffer
+      buffer = e.key;
+    }
+
+    lastKeyTime = now;
+  });
+
+  // Also detect when scanner finishes with Enter key
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      status.textContent = 'Searching...';
+      status.style.color = 'var(--color-muted)';
+    }
+  });
+
+  // Reset status when typing manually
+  input.addEventListener('input', function() {
+    if (status.textContent.includes('detected')) {
+      setTimeout(function() {
+        status.textContent = 'Ready for barcode scanner input';
+        status.style.color = 'var(--color-muted)';
+      }, 2000);
+    }
+  });
+})();
+</script>
+
+{% endblock %}

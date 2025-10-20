@@ -1,0 +1,92 @@
+﻿{% extends "base.html" %}
+{% block title %}{{ page_title }} - Smart Locks{% endblock %}
+
+{% block content %}
+<div class="form-shell">
+  <div class="page-header">
+    <h1>{{ page_title }}</h1>
+  </div>
+
+  <div class="card form-card">
+    <form method="post" action="{{ form_action }}">
+      <div class="form-grid two-column">
+        <div class="form-field">
+          <label for="label">Label *</label>
+          <input type="text" id="label" name="label" value="{{ smartlock.label if smartlock else '' }}" required>
+        </div>
+        <div class="form-field">
+          <label for="provider">Provider</label>
+          <input type="text" id="provider" name="provider" value="{{ smartlock.provider if smartlock else '' }}">
+        </div>
+        <div class="form-field">
+          <label for="code">Primary Code *</label>
+          <input type="text" id="code" name="code" value="{{ smartlock.code if smartlock else '' }}" required>
+        </div>
+        <div class="form-field">
+          <label for="backup_code">Backup Code</label>
+          <input type="text" id="backup_code" name="backup_code" value="{{ smartlock.backup_code if smartlock else '' }}">
+        </div>
+        <div class="form-field">
+          <label for="property_id">Property</label>
+          <select id="property_id" name="property_id">
+            <option value="">-- None --</option>
+            {% for prop in properties %}
+              <option value="{{ prop.id }}" {% if smartlock and smartlock.property_id == prop.id %}selected{% endif %}>{{ prop.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="property_unit_id">Unit</label>
+          <select id="property_unit_id" name="property_unit_id">
+            <option value="">-- None --</option>
+            {% for unit in property_units %}
+              <option value="{{ unit.id }}" data-property-id="{{ unit.property_id }}" {% if smartlock and smartlock.property_unit_id == unit.id %}selected{% endif %}>{{ unit.property.name if unit.property else 'Property #' ~ unit.property_id }} &raquo; {{ unit.label }}</option>
+            {% endfor %}
+          </select>
+          <small class="muted">Filtered automatically when a property is selected.</small>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="instructions">Instructions</label>
+        <textarea id="instructions" name="instructions" rows="3">{{ smartlock.instructions if smartlock else '' }}</textarea>
+      </div>
+      <div class="form-field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="3">{{ smartlock.notes if smartlock else '' }}</textarea>
+      </div>
+
+      <div class="toolbar spaced">
+        <button type="submit" class="btn primary">{{ submit_label }}</button>
+        <a class="btn ghost" href="{{ url_for('smartlocks.list_smartlocks') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const propertySelect = document.getElementById('property_id');
+    const unitSelect = document.getElementById('property_unit_id');
+
+    function filterUnits() {
+      const propertyId = propertySelect.value;
+      Array.from(unitSelect.options).forEach((opt) => {
+        if (!opt.value) {
+          opt.hidden = false;
+          return;
+        }
+        const match = !propertyId || opt.dataset.propertyId === propertyId;
+        opt.hidden = !match;
+        if (!match && opt.selected) {
+          opt.selected = false;
+        }
+      });
+    }
+
+    filterUnits();
+    propertySelect.addEventListener('change', filterUnits);
+  })();
+</script>
+{% endblock %}
+

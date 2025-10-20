@@ -1,0 +1,191 @@
+﻿{% extends "base.html" %}
+{% block title %}Contacts - KBM
+<!-- Export Menu -->
+<div id="export-menu" class="dropdown-menu" style="display: none;">
+  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
+  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
+  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
+</div>
+
+
+<script>
+  // Export menu functionality
+  let exportMenuData = null;
+
+  function showExportMenu(event, itemType) {
+    event.preventDefault();
+    const menu = document.getElementById('export-menu');
+    const button = event.target;
+    const rect = button.getBoundingClientRect();
+
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.display = 'block';
+    exportMenuData = itemType;
+
+    // Close menu on outside click
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenu);
+    }, 0);
+  }
+
+  function closeExportMenu(event) {
+    const menu = document.getElementById('export-menu');
+    if (event && menu.contains(event.target)) return;
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+
+  function exportData(event, format) {
+    event.preventDefault();
+    if (!exportMenuData) return;
+
+    showExportPreview(exportMenuData, format);
+    closeExportMenu();
+  }
+</script>
+
+
+<!-- Export Preview Modal -->
+<div id="export-preview-modal" class="modal-root">
+  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
+  <div class="modal-dialog" style="max-width: 900px;">
+    <h3>Export Preview</h3>
+    <div id="preview-content" class="modal-body">
+      <p class="muted">Loading preview...</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
+      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
+      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
+      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Contacts</h1>
+  <div class="toolbar">
+    <form method="get" class="searchbar" action="{{ url_for('contacts.list_contacts') }}">
+      <input type="text" name="q" placeholder="Search by name, company, email" value="{{ q or '' }}">
+      <button class="btn small" type="submit">Search</button>
+      {% if q %}
+        <a class="btn small" href="{{ url_for('contacts.list_contacts') }}">Clear</a>
+      {% endif %}
+    </form>
+    <a class="btn primary" href="{{ url_for('contacts.create_contact') }}">Add Contact</a>
+  </div>
+</div>
+
+<div class="card table-card">
+  {% if contacts %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Company</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for contact in contacts %}
+          <tr>
+            <td>
+              <strong><a href="{{ url_for('contacts.contact_detail', contact_id=contact.id) }}">{{ contact.name }}</a></strong><br>
+              {% if contact.user %}
+                <span class="muted text-small">Linked account: {{ contact.user.email }}</span>
+              {% endif %}
+            </td>
+            <td><span class="tag">{{ (contact.contact_type or 'Unknown').replace('_', ' ')|title }}</span></td>
+            <td>{{ contact.company or '-' }}</td>
+            <td>
+              {% if contact.email %}
+                <a href="mailto:{{ contact.email }}">{{ contact.email }}</a>
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+            <td>{{ contact.phone or '-' }}</td>
+            <td style="width: 120px; text-align: right;">
+              <a class="btn small" href="{{ url_for('contacts.contact_detail', contact_id=contact.id) }}">View</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">No contacts found.</div>
+  {% endif %}
+</div>
+
+<!-- Export Menu -->
+<div id="export-menu" class="dropdown-menu" style="display: none;">
+  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
+  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
+  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
+</div>
+
+
+<script>
+  // Export menu functionality
+  let exportMenuData = null;
+
+  function showExportMenu(event, itemType) {
+    event.preventDefault();
+    const menu = document.getElementById('export-menu');
+    const button = event.target;
+    const rect = button.getBoundingClientRect();
+
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.display = 'block';
+    exportMenuData = itemType;
+
+    // Close menu on outside click
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenu);
+    }, 0);
+  }
+
+  function closeExportMenu(event) {
+    const menu = document.getElementById('export-menu');
+    if (event && menu.contains(event.target)) return;
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+
+  function exportData(event, format) {
+    event.preventDefault();
+    if (!exportMenuData) return;
+
+    showExportPreview(exportMenuData, format);
+    closeExportMenu();
+  }
+</script>
+
+
+<!-- Export Preview Modal -->
+<div id="export-preview-modal" class="modal-root">
+  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
+  <div class="modal-dialog" style="max-width: 900px;">
+    <h3>Export Preview</h3>
+    <div id="preview-content" class="modal-body">
+      <p class="muted">Loading preview...</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
+      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
+      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
+      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+

@@ -4,11 +4,15 @@ from flask_migrate import Migrate
 from pathlib import Path
 from flask_login import LoginManager
 from config import get_config
-from utilities.database import db, Item, User
+from utilities.database import db, Item, User, ItemCheckout, ActivityLog
 from auth import auth_bp
 from inventory import inventory_bp
 from checkout import checkout_bp
 from main import main_bp
+from contacts import contacts_bp
+from properties import properties_bp
+from smartlocks import smartlocks_bp
+from exports import exports_bp
 
 migrate = Migrate()
 
@@ -47,23 +51,28 @@ def create_app():
     app.register_blueprint(inventory_bp, url_prefix="/inventory")
     app.register_blueprint(checkout_bp, url_prefix="/checkout")
     app.register_blueprint(main_bp)  # '/' home
+    app.register_blueprint(contacts_bp, url_prefix="/contacts")
+    app.register_blueprint(properties_bp, url_prefix="/properties")
+    app.register_blueprint(smartlocks_bp, url_prefix="/smart-locks")
+    app.register_blueprint(exports_bp, url_prefix="/exports")
 
     # 6) Debug helpers (development convenience)
-    @app.get("/debug/create_admin")
-    def debug_create_admin():
-        existing = User.query.filter_by(role="admin").first()
-        if existing:
-            return {"status": "exists", "user": existing.name}
-        u = User(name="admin", email="devin@vestasells.com", role="admin")
-        u.set_pin("1234")
-        db.session.add(u)
-        db.session.commit()
-        return {"status": "created", "user": u.name}
+    if app.config.get("DEBUG"):
+        @app.get("/debug/create_admin")
+        def debug_create_admin():
+            existing = User.query.filter_by(role="admin").first()
+            if existing:
+                return {"status": "exists", "user": existing.name}
+            u = User(name="admin", email="devin@vestasells.com", role="admin")
+            u.set_pin("1234")
+            db.session.add(u)
+            db.session.commit()
+            return {"status": "created", "user": u.name}
 
-    @app.get("/debug/items")
-    def debug_items():
-        items = Item.query.all()
-        return {"count": len(items), "items": [item.to_dict() for item in items]}
+        @app.get("/debug/items")
+        def debug_items():
+            items = Item.query.all()
+            return {"count": len(items), "items": [item.to_dict() for item in items]}
 
     # 7) Health check
     @app.get("/health")
@@ -76,7 +85,7 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id: str):
         try:
-            return User.query.get(int(user_id))
+            return db.session.get(User, int(user_id))
         except Exception:
             return None
 

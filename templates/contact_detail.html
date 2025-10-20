@@ -1,0 +1,152 @@
+﻿{% extends "base.html" %}
+{% block title %}{{ contact.name }} - Contact{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ contact.name }}</h1>
+    <div class="muted">{{ (contact.contact_type or 'Unknown').replace('_', ' ')|title }}</div>
+  </div>
+  <div class="toolbar">
+    <a class="btn" href="{{ url_for('contacts.edit_contact', contact_id=contact.id) }}">Edit</a>
+    <form method="post" action="{{ url_for('contacts.delete_contact', contact_id=contact.id) }}" onsubmit="return confirm('Delete this contact? This cannot be undone.');">
+      <button class="btn danger" type="submit">Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid cols-2" style="gap: 20px;">
+  <div class="card">
+    <h2>Contact Details</h2>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-label">Company</div>
+        <div class="info-value">{{ contact.company or '-' }}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Email</div>
+        <div class="info-value">
+          {% if contact.email %}
+            <a href="mailto:{{ contact.email }}">{{ contact.email }}</a>
+          {% else %}
+            <span class="muted">-</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Phone</div>
+        <div class="info-value">{{ contact.phone or '-' }}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Linked User</div>
+        <div class="info-value">{{ contact.user.email if contact.user else '-' }}</div>
+      </div>
+    </div>
+    {% if contact.notes %}
+      <div class="divider"></div>
+      <div class="info-item">
+        <div class="info-label">Notes</div>
+        <div class="info-value">{{ contact.notes }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Summary</h2>
+    <ul class="stat-list">
+      <li><strong>{{ assigned_items|length }}</strong> item(s) assigned</li>
+      <li><strong>{{ active_checkouts|length }}</strong> active checkout(s)</li>
+      <li><strong>{{ recent_history|length }}</strong> recent return(s)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="grid cols-2" style="gap: 20px; margin-top: 20px;">
+  <div class="card">
+    <h2>Assigned Items</h2>
+    {% if assigned_items %}
+      <table>
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th>Type</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in assigned_items %}
+            <tr>
+              <td><a href="{{ url_for('inventory.item_details', item_id=item.id) }}">{{ item.label }}</a></td>
+              <td>{{ item.type }}</td>
+              <td>{{ item.status|replace('_',' ')|title }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">No items currently assigned.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Active Checkouts</h2>
+    {% if active_checkouts %}
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Quantity</th>
+            <th>Checked Out</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for checkout in active_checkouts %}
+            <tr>
+              <td><a href="{{ url_for('inventory.item_details', item_id=checkout.item_id) }}">{{ checkout.item.label if checkout.item else 'Item #' ~ checkout.item_id }}</a></td>
+              <td>{{ checkout.quantity }}</td>
+              <td>{{ checkout.checked_out_at.strftime('%Y-%m-%d %H:%M') if checkout.checked_out_at else '-' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">No items currently checked out.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+  <h2>Recent Activity</h2>
+  {% if recent_history %}
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Quantity</th>
+          <th>Returned</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for checkout in recent_history %}
+          <tr>
+            <td><a href="{{ url_for('inventory.item_details', item_id=checkout.item_id) }}">{{ checkout.item.label if checkout.item else 'Item #' ~ checkout.item_id }}</a></td>
+            <td>{{ checkout.quantity }}</td>
+            <td>{{ checkout.checked_in_at.strftime('%Y-%m-%d %H:%M') if checkout.checked_in_at else '-' }}</td>
+            <td>
+              {% if checkout.checked_out_at and checkout.checked_in_at %}
+                {{ ((checkout.checked_in_at - checkout.checked_out_at).days) }} days
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">No recent checkout history.</div>
+  {% endif %}
+</div>
+{% endblock %}
+

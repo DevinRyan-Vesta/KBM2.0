@@ -2,54 +2,43 @@
 {% block title %}Users - KBM{% endblock %}
 
 {% block content %}
-<style>
-  .tag { display:inline-block; padding:4px 8px; border-radius:999px; font-size:0.8rem; background:#eef; }
-  .tag.ok { background:#e6f7e6; color:#0f5132; }
-  .tag.warn { background:#ffe8e6; color:#842029; }
-  .btn.danger { border-color:#d63031; color:#d63031; }
-  .btn.danger:hover { background:#fdecea; }
-  .action-row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-  .action-row form { margin:0; }
-</style>
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-  <h2 style="margin:0;">Users</h2>
+<div class="page-header">
+  <h1>Team Directory</h1>
   <a class="btn primary" href="{{ url_for('auth.create_user') }}">Add User</a>
 </div>
 
 <div class="card">
   {% if users %}
-    <table style="width:100%; border-collapse:collapse;">
+    <table>
       <thead>
         <tr>
-          <th style="text-align:left; padding:10px 12px;">Name</th>
-          <th style="text-align:left; padding:10px 12px;">Email</th>
-          <th style="text-align:left; padding:10px 12px;">Role</th>
-          <th style="text-align:left; padding:10px 12px;">Active</th>
-          <th style="text-align:left; padding:10px 12px;">Created</th>
-          <th style="text-align:left; padding:10px 12px;">Actions</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for user in users %}
-          <tr style="border-bottom:1px solid #f0f0f0;">
-            <td style="padding:10px 12px;">
+          <tr>
+            <td>
               <strong>{{ user.name }}</strong><br>
               <span class="muted">ID: {{ user.id }}</span>
             </td>
-            <td style="padding:10px 12px;">{{ user.email }}</td>
-            <td style="padding:10px 12px;">{{ user.role|capitalize }}</td>
-            <td style="padding:10px 12px;">
+            <td>{{ user.email }}</td>
+            <td>{{ user.role|capitalize }}</td>
+            <td>
               {% if user.is_active %}
                 <span class="tag ok">Active</span>
               {% else %}
                 <span class="tag warn">Inactive</span>
               {% endif %}
             </td>
-            <td style="padding:10px 12px;">
-              {{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}
-            </td>
-            <td style="padding:10px 12px;">
-              <div class="action-row">
+            <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+            <td>
+              <div class="toolbar compact">
                 <a class="btn small" href="{{ url_for('auth.edit_user', user_id=user.id) }}">Edit</a>
                 {% if user.id != current_user.id %}
                   <form method="post" action="{{ url_for('auth.delete_user', user_id=user.id) }}" onsubmit="return confirm('Remove user {{ user.name }}? This cannot be undone.');">
@@ -63,7 +52,7 @@
       </tbody>
     </table>
   {% else %}
-    <p class="muted" style="margin:0;">No users found. Start by adding one.</p>
+    <div class="empty-state">No users found. Start by adding one.</div>
   {% endif %}
 </div>
 {% endblock %}

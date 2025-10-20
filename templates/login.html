@@ -1,21 +1,125 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <meta charset="utf-8"/>
-    <title>Sign in</title>
+    <meta charset="utf-8">
+    <title>Sign in &bull; KBM</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-      body { font-family: system-ui, Arial; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; background:#f4f4f4; }
-      .card { width:340px; padding:20px; border:1px solid #ddd; border-radius:12px; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
-      input, button { width:100%; padding:10px; margin:8px 0; border-radius:8px; border:1px solid #ccc; font-size:16px; }
-      button { background:#0d6efd; color:#fff; border-color:#0d6efd; cursor:pointer; }
-      button:hover { background:#0b5ed7; }
-      .flash { color:#b00; margin-bottom:8px; }
-      label { display:flex; gap:8px; align-items:center; font-size:14px; }
+      :root {
+        color-scheme: dark;
+        --accent: #e53935;
+        --accent-soft: rgba(229, 57, 53, 0.15);
+        --bg: radial-gradient(circle at top, #1f2024 0%, #0d0e12 55%, #05060a 100%);
+        --panel: rgba(17, 24, 39, 0.85);
+        --border: rgba(229, 57, 53, 0.35);
+        --text: #f8fafc;
+        --muted: #9ca3af;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        color: var(--text);
+      }
+
+      .shell {
+        width: min(360px, calc(100vw - 40px));
+        padding: 32px;
+        border-radius: 18px;
+        background: var(--panel);
+        border: 1px solid rgba(229, 57, 53, 0.25);
+        box-shadow: 0 24px 60px rgba(229, 57, 53, 0.12);
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        backdrop-filter: blur(12px);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .caption {
+        margin: 0;
+        text-align: center;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      input[type="password"],
+      input[type="text"] {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(229, 57, 53, 0.35);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        font-size: 16px;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: rgba(229, 57, 53, 0.65);
+        box-shadow: 0 0 0 4px rgba(229, 57, 53, 0.22);
+      }
+
+      .remember-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .btn-primary {
+        border: none;
+        border-radius: 12px;
+        padding: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #f87171 0%, var(--accent) 90%);
+        color: #fff;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 30px rgba(229, 57, 53, 0.25);
+      }
+
+      .flash {
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        background: rgba(239, 68, 68, 0.18);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        color: #fecaca;
+      }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h2>Enter PIN</h2>
+    <div class="shell">
+      <div>
+        <h1>Welcome back</h1>
+        <p class="caption">Enter your PIN to access KBM</p>
+      </div>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -26,11 +130,11 @@
       {% endwith %}
 
       <form action="{{ url_for('auth.login_post') }}" method="post">
-        <input name="pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="1234" required />
-        <label>
-          <input type="checkbox" name="remember" value="1" /> Remember me (30 days)
+        <input name="pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="1234" required>
+        <label class="remember-row">
+          <input type="checkbox" name="remember" value="1"> Remember me (30 days)
         </label>
-        <button type="submit">Sign in</button>
+        <button class="btn-primary" type="submit">Sign in</button>
       </form>
     </div>
   </body>

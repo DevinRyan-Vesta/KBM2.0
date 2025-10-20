@@ -1,0 +1,597 @@
+{% extends "base.html" %}
+{% block title %}Reports - KBM{% endblock %}
+
+{% block content %}
+<style>
+  .report-section {
+    margin-bottom: 32px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--color-muted);
+  }
+  .count-badge.alert {
+    background: rgba(248, 113, 113, 0.18);
+    color: var(--color-danger);
+  }
+  .count-badge.warn {
+    background: rgba(251, 191, 36, 0.18);
+    color: #fbbf24;
+  }
+  .count-badge.success {
+    background: rgba(74, 222, 128, 0.18);
+    color: #4ade80;
+  }
+  .report-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 4px;
+  }
+  .report-tab {
+    padding: 8px 16px;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    border: none;
+    color: var(--color-muted);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .report-tab:hover {
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--color-text);
+  }
+  .report-tab.active {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  .report-content {
+    display: none;
+  }
+  .report-content.active {
+    display: block;
+  }
+
+  /* Export dropdown for reports */
+  .report-export-btn {
+    margin-left: auto;
+    position: relative;
+  }
+  .report-export-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 150px;
+    display: none;
+  }
+  .report-export-dropdown.show {
+    display: block;
+  }
+  .report-export-dropdown a {
+    display: block;
+    padding: 10px 14px;
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .report-export-dropdown a:last-child {
+    border-bottom: none;
+  }
+  .report-export-dropdown a:hover {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+</style>
+
+<div class="page-header">
+  <h1>Reports & Analytics</h1>
+  <div class="toolbar">
+    <a class="btn ghost" href="{{ url_for('main.home') }}">Back to Dashboard</a>
+  </div>
+</div>
+
+<!-- Report Tabs -->
+<div class="card">
+  <div class="report-tabs">
+    <button class="report-tab active" data-tab="overdue">Overdue Items</button>
+    <button class="report-tab" data-tab="upcoming">Upcoming Returns</button>
+    <button class="report-tab" data-tab="long-term">Long-Term Checkouts</button>
+    <button class="report-tab" data-tab="keys">Key Reports</button>
+    <button class="report-tab" data-tab="assignments">Assignments</button>
+  </div>
+
+  <!-- Overdue Items Report -->
+  <div class="report-content active" id="overdue">
+    <div class="section-header">
+      <h3>Overdue Returns</h3>
+      <span class="count-badge {{ 'alert' if all_overdue|length > 0 else '' }}">
+        {{ all_overdue|length }} items
+      </span>
+      {% if all_overdue %}
+      <div class="report-export-btn">
+        <button type="button" class="btn small" onclick="toggleReportExport(event, 'overdue-returns')">Export ▾</button>
+        <div class="report-export-dropdown" id="export-overdue-returns">
+          <a href="/exports/reports/overdue-returns?format=csv">Export as CSV</a>
+          <a href="/exports/reports/overdue-returns?format=excel">Export as Excel</a>
+          <a href="/exports/reports/overdue-returns?format=pdf">Export as PDF</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% if all_overdue %}
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Assigned To</th>
+              <th>Assignment Type</th>
+              <th>Due Date</th>
+              <th>Days Overdue</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in all_overdue %}
+              {% set days_overdue = ((None if not item.expected_return_date else (item.expected_return_date - item.expected_return_date.__class__.utcnow()).days * -1)) %}
+              <tr>
+                <td><strong>{{ item.label }}</strong><br><span class="muted text-small">{{ item.custom_id or "-" }}</span></td>
+                <td><span class="muted">{{ item.type }}</span></td>
+                <td>
+                  <span class="tag {{ 'ok' if item.status == 'assigned' else 'warn' }}">
+                    {{ item.status|replace('_', ' ')|title }}
+                  </span>
+                </td>
+                <td>{{ item.assigned_to or '-' }}</td>
+                <td>
+                  {% if item.assignment_type %}
+                    <span class="tag">{{ item.assignment_type|title }}</span>
+                  {% else %}
+                    <span class="muted">-</span>
+                  {% endif %}
+                </td>
+                <td class="muted">{{ item.expected_return_date.strftime('%Y-%m-%d') if item.expected_return_date else '-' }}</td>
+                <td>
+                  {% if days_overdue %}
+                    <span class="tag warn">{{ days_overdue }} days</span>
+                  {% else %}
+                    <span class="muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.type == 'Key' %}
+                    <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ item.label }}">View</a>
+                  {% elif item.type == 'Lockbox' %}
+                    <a class="btn small" href="{{ url_for('inventory.list_lockboxes') }}?q={{ item.label }}">View</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No overdue items</div>
+    {% endif %}
+  </div>
+
+  <!-- Upcoming Returns Report -->
+  <div class="report-content" id="upcoming">
+    <div class="section-header">
+      <h3>Upcoming Returns (Next 30 Days)</h3>
+      <span class="count-badge {{ 'warn' if all_upcoming|length > 0 else '' }}">
+        {{ all_upcoming|length }} items
+      </span>
+      {% if all_upcoming %}
+      <div class="report-export-btn">
+        <button type="button" class="btn small" onclick="toggleReportExport(event, 'upcoming-returns')">Export ▾</button>
+        <div class="report-export-dropdown" id="export-upcoming-returns">
+          <a href="/exports/reports/upcoming-returns?format=csv">Export as CSV</a>
+          <a href="/exports/reports/upcoming-returns?format=excel">Export as Excel</a>
+          <a href="/exports/reports/upcoming-returns?format=pdf">Export as PDF</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% if all_upcoming %}
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Type</th>
+              <th>Assigned To</th>
+              <th>Assignment Type</th>
+              <th>Due Date</th>
+              <th>Days Until Due</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in all_upcoming %}
+              {% set days_until = ((None if not item.expected_return_date else (item.expected_return_date - item.expected_return_date.__class__.utcnow()).days)) %}
+              <tr>
+                <td><strong>{{ item.label }}</strong><br><span class="muted text-small">{{ item.custom_id or "-" }}</span></td>
+                <td><span class="muted">{{ item.type }}</span></td>
+                <td>{{ item.assigned_to or '-' }}</td>
+                <td>
+                  {% if item.assignment_type %}
+                    <span class="tag">{{ item.assignment_type|title }}</span>
+                  {% else %}
+                    <span class="muted">-</span>
+                  {% endif %}
+                </td>
+                <td class="muted">{{ item.expected_return_date.strftime('%Y-%m-%d') if item.expected_return_date else '-' }}</td>
+                <td>
+                  {% if days_until is not none %}
+                    <span class="tag {{ 'warn' if days_until <= 3 else '' }}">{{ days_until }} days</span>
+                  {% else %}
+                    <span class="muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.type == 'Key' %}
+                    <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ item.label }}">View</a>
+                  {% elif item.type == 'Lockbox' %}
+                    <a class="btn small" href="{{ url_for('inventory.list_lockboxes') }}?q={{ item.label }}">View</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No upcoming returns</div>
+    {% endif %}
+  </div>
+
+  <!-- Long-Term Checkouts Report -->
+  <div class="report-content" id="long-term">
+    <div class="section-header">
+      <h3>Items Checked Out > 30 Days</h3>
+      <span class="count-badge {{ 'warn' if long_term|length > 0 else '' }}">
+        {{ long_term|length }} items
+      </span>
+      {% if long_term %}
+      <div class="report-export-btn">
+        <button type="button" class="btn small" onclick="toggleReportExport(event, 'long-term-checkouts')">Export ▾</button>
+        <div class="report-export-dropdown" id="export-long-term-checkouts">
+          <a href="/exports/reports/long-term-checkouts?format=csv">Export as CSV</a>
+          <a href="/exports/reports/long-term-checkouts?format=excel">Export as Excel</a>
+          <a href="/exports/reports/long-term-checkouts?format=pdf">Export as PDF</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% if long_term %}
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Assigned To</th>
+              <th>Assignment Type</th>
+              <th>Checked Out Date</th>
+              <th>Days Out</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in long_term %}
+              {% set days_out = ((None if not item.last_action_at else (item.last_action_at.__class__.utcnow() - item.last_action_at).days)) %}
+              <tr>
+                <td><strong>{{ item.label }}</strong><br><span class="muted text-small">{{ item.custom_id or "-" }}</span></td>
+                <td><span class="muted">{{ item.type }}</span></td>
+                <td>
+                  <span class="tag {{ 'ok' if item.status == 'assigned' else 'warn' }}">
+                    {{ item.status|replace('_', ' ')|title }}
+                  </span>
+                </td>
+                <td>{{ item.assigned_to or '-' }}</td>
+                <td>
+                  {% if item.assignment_type %}
+                    <span class="tag">{{ item.assignment_type|title }}</span>
+                  {% else %}
+                    <span class="muted">-</span>
+                  {% endif %}
+                </td>
+                <td class="muted">{{ item.last_action_at.strftime('%Y-%m-%d') if item.last_action_at else '-' }}</td>
+                <td>
+                  {% if days_out %}
+                    <span class="tag {{ 'warn' if days_out > 60 else '' }}">{{ days_out }} days</span>
+                  {% else %}
+                    <span class="muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.type == 'Key' %}
+                    <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ item.label }}">View</a>
+                  {% elif item.type == 'Lockbox' %}
+                    <a class="btn small" href="{{ url_for('inventory.list_lockboxes') }}?q={{ item.label }}">View</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">No long-term checkouts</div>
+    {% endif %}
+  </div>
+
+  <!-- Key Reports -->
+  <div class="report-content" id="keys">
+    <div class="report-section">
+      <div class="section-header">
+        <h3>Keys with Less Than 6 Copies</h3>
+        <span class="count-badge {{ 'alert' if all_keys_low|length > 0 else '' }}">
+          {{ all_keys_low|length }} keys
+        </span>
+      </div>
+      {% if all_keys_low %}
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Address</th>
+                <th>Unit #</th>
+                <th>Total Copies</th>
+                <th>Checked Out</th>
+                <th>Available</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for key in all_keys_low %}
+                {% set available = (key.total_copies or 0) - (key.copies_checked_out or 0) %}
+                <tr>
+                  <td><strong>{{ key.label }}</strong><br><span class="muted text-small">{{ key.custom_id or "-" }}</span></td>
+                  <td class="muted">{{ key.address or '-' }}</td>
+                  <td>
+                    <span class="tag {{ 'alert' if key.total_copies < 4 else 'warn' }}">
+                      {{ key.total_copies or 0 }} copies
+                    </span>
+                  </td>
+                  <td class="muted">{{ key.copies_checked_out or 0 }}</td>
+                  <td class="muted">{{ available }}</td>
+                  <td>
+                    <span class="tag {{ 'ok' if key.status == 'available' else '' }}">
+                      {{ key.status|replace('_', ' ')|title }}
+                    </span>
+                  </td>
+                  <td>
+                    <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ key.label }}">View</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">All keys have 6 or more copies</div>
+      {% endif %}
+    </div>
+
+    <div class="report-section" style="margin-top: 32px;">
+      <div class="section-header">
+        <h3>Keys with No Available Copies</h3>
+        <span class="count-badge {{ 'alert' if keys_no_available|length > 0 else 'success' }}">
+          {{ keys_no_available|length }} keys
+        </span>
+      </div>
+      {% if keys_no_available %}
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Address</th>
+                <th>Unit #</th>
+                <th>Total Copies</th>
+                <th>All Checked Out</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for key in keys_no_available %}
+                <tr>
+                  <td><strong>{{ key.label }}</strong><br><span class="muted text-small">{{ key.custom_id or "-" }}</span></td>
+                  <td class="muted">{{ key.address or '-' }}</td>
+                  <td class="muted">{{ key.total_copies or 0 }}</td>
+                  <td><span class="tag warn">{{ key.copies_checked_out or 0 }}</span></td>
+                  <td>
+                    <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ key.label }}">View</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">All keys have at least one available copy</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Assignments Report -->
+  <div class="report-content" id="assignments">
+    <div class="report-section">
+      <div class="section-header">
+        <h3>Tenant Assignments</h3>
+        <span class="count-badge">{{ tenant_assignments|length }} items</span>
+      </div>
+      {% if tenant_assignments %}
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Tenant Name</th>
+                <th>Address/Location</th>
+                <th>Assigned Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in tenant_assignments %}
+                <tr>
+                  <td><strong>{{ item.label }}</strong></td>
+                  <td><span class="muted">{{ item.type }}</span></td>
+                  <td>{{ item.assigned_to or '-' }}</td>
+                  <td class="muted">{{ item.address or item.location or '-' }}</td>
+                  <td class="muted">{{ item.last_action_at.strftime('%Y-%m-%d') if item.last_action_at else '-' }}</td>
+                  <td>
+                    {% if item.type == 'Key' %}
+                      <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ item.label }}">View</a>
+                    {% elif item.type == 'Lockbox' %}
+                      <a class="btn small" href="{{ url_for('inventory.list_lockboxes') }}?q={{ item.label }}">View</a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">No tenant assignments</div>
+      {% endif %}
+    </div>
+
+    <div class="report-section" style="margin-top: 32px;">
+      <div class="section-header">
+        <h3>Contractor Assignments</h3>
+        <span class="count-badge">{{ contractor_assignments|length }} items</span>
+      </div>
+      {% if contractor_assignments %}
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Contractor Name</th>
+                <th>Expected Return</th>
+                <th>Assigned Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in contractor_assignments %}
+                <tr>
+                  <td><strong>{{ item.label }}</strong></td>
+                  <td><span class="muted">{{ item.type }}</span></td>
+                  <td>{{ item.assigned_to or '-' }}</td>
+                  <td class="muted">{{ item.expected_return_date.strftime('%Y-%m-%d') if item.expected_return_date else '-' }}</td>
+                  <td class="muted">{{ item.last_action_at.strftime('%Y-%m-%d') if item.last_action_at else '-' }}</td>
+                  <td>
+                    {% if item.type == 'Key' %}
+                      <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ item.label }}">View</a>
+                    {% elif item.type == 'Lockbox' %}
+                      <a class="btn small" href="{{ url_for('inventory.list_lockboxes') }}?q={{ item.label }}">View</a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">No contractor assignments</div>
+      {% endif %}
+    </div>
+
+    <div class="report-section" style="margin-top: 32px;">
+      <div class="section-header">
+        <h3>Property Assignments</h3>
+        <span class="count-badge">{{ property_assignments|length }} items</span>
+      </div>
+      {% if property_assignments %}
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Property/Location</th>
+                <th>Assigned Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in property_assignments %}
+                <tr>
+                  <td><strong>{{ item.label }}</strong></td>
+                  <td><span class="muted">{{ item.type }}</span></td>
+                  <td>{{ item.assigned_to or item.address or item.location or '-' }}</td>
+                  <td class="muted">{{ item.last_action_at.strftime('%Y-%m-%d') if item.last_action_at else '-' }}</td>
+                  <td>
+                    {% if item.type == 'Key' %}
+                      <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ item.label }}">View</a>
+                    {% elif item.type == 'Lockbox' %}
+                      <a class="btn small" href="{{ url_for('inventory.list_lockboxes') }}?q={{ item.label }}">View</a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">No property assignments</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Tab switching functionality
+  const tabs = document.querySelectorAll('.report-tab');
+  const contents = document.querySelectorAll('.report-content');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Remove active class from all tabs and contents
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.classList.remove('active'));
+
+      // Add active class to clicked tab
+      tab.classList.add('active');
+
+      // Show corresponding content
+      const targetId = tab.dataset.tab;
+      document.getElementById(targetId).classList.add('active');
+    });
+  });
+</script>
+
+{% endblock %}

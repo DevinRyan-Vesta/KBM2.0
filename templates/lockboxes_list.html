@@ -1,43 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Lockboxes - KBM{% endblock %}
+{% block title %}Legacy Lockboxes - KBM{% endblock %}
 
 {% block content %}
-  <h1>Lockboxes</h1>
-
-  <form action="{{ url_for('inventory.add_lockbox') }}" method="post" style="margin-bottom:16px;">
-    <label>
-      Label:
-      <input name="label" placeholder="e.g., LB-A12" required />
-    </label>
-    <label style="margin-left: 8px;">
-      Code:
-      <input name="code" placeholder="e.g., 1234" required />
-    </label>
-    <label style="margin-left: 8px;">
-      Location:
-      <input name="location" placeholder="e.g., Front Desk" />
-    </label>
-    <button type="submit">Add</button>
+<div class="form-shell">
+  <h2>Quick Create</h2>
+  <form action="{{ url_for('inventory.list_lockboxes') }}" method="post" class="card form-card">
+    <div class="form-field">
+      <label for="label">Label</label>
+      <input id="label" name="label" placeholder="e.g., LB-A12" required>
+    </div>
+    <div class="form-field">
+      <label for="location">Location</label>
+      <input id="location" name="location" placeholder="e.g., Front Desk">
+    </div>
+    <div class="toolbar align-end">
+      <button class="btn primary" type="submit">Add</button>
+    </div>
   </form>
+</div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Label</th>
-        <th>Location</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for lb in lockboxes %}
+<div class="card table-card">
+  {% if lockboxes %}
+    <table>
+      <thead>
         <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ lb.label }}</td>
-          <td>{{ lb.location }}</td>
+          <th>#</th>
+          <th>Label</th>
+          <th>Location</th>
         </tr>
-      {% else %}
-        <tr><td colspan="3">No lockboxes yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for lb in lockboxes %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ lb.label }}</td>
+            <td>{{ lb.location }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">No lockboxes yet.</div>
+  {% endif %}
+</div>
 {% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Add Sign - KBM{% endblock %}
+
+{% block content %}
+<div class="form-shell">
+  <div class="page-header">
+    <h1>Add New Sign</h1>
+  </div>
+
+  <div class="card form-card">
+    <form method="post" action="{{ url_for('inventory.add_sign') }}" id="signForm">
+      <div class="form-grid two-column">
+        <div class="form-field">
+          <label for="label">Label *</label>
+          <input type="text" id="label" name="label" placeholder="e.g., SIGN-A1 or Frame-Red-001" required>
+        </div>
+
+        <div class="form-field">
+          <label for="sign_subtype">Sign Type *</label>
+          <select id="sign_subtype" name="sign_subtype" required onchange="togglePieceFields()">
+            <option value="">-- Select Type --</option>
+            <option value="Piece">Individual Piece</option>
+            <option value="Assembled Unit">Assembled Unit (use Builder instead)</option>
+          </select>
+        </div>
+
+        <div class="form-field" id="piece_type_field" style="display: none;">
+          <label for="piece_type">Piece Type</label>
+          <select id="piece_type" name="piece_type">
+            <option value="">-- Select Piece Type --</option>
+            {% for pt in piece_types %}
+            <option value="{{ pt }}">{{ pt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field" id="rider_text_field" style="display: none;">
+          <label for="rider_text">Rider Text</label>
+          <input type="text" id="rider_text" name="rider_text" placeholder="Text on rider (for Name/Status/Bonus riders)">
+        </div>
+
+        <div class="form-field">
+          <label for="material">Material</label>
+          <input type="text" id="material" name="material" placeholder="e.g., Aluminum, Corrugated Plastic">
+        </div>
+
+        <div class="form-field">
+          <label for="condition">Condition</label>
+          <select id="condition" name="condition">
+            <option value="">-- Select Condition --</option>
+            {% for cond in condition_options %}
+            <option value="{{ cond }}">{{ cond }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="location">Storage Location</label>
+          <input type="text" id="location" name="location" placeholder="e.g., Storage Shed A">
+        </div>
+
+        <div class="form-field">
+          <label for="address">Property Address</label>
+          <input type="text" id="address" name="address" placeholder="Current property address (if applicable)">
+        </div>
+      </div>
+
+      <div class="toolbar spaced">
+        <button type="submit" class="btn primary">Add Sign</button>
+        <a href="{{ url_for('inventory.list_signs') }}" class="btn ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function togglePieceFields() {
+  const subtypeSelect = document.getElementById('sign_subtype');
+  const pieceTypeField = document.getElementById('piece_type_field');
+  const riderTextField = document.getElementById('rider_text_field');
+  const pieceTypeSelect = document.getElementById('piece_type');
+
+  if (subtypeSelect.value === 'Piece') {
+    pieceTypeField.style.display = 'block';
+    toggleRiderField();
+  } else {
+    pieceTypeField.style.display = 'none';
+    riderTextField.style.display = 'none';
+  }
+}
+
+function toggleRiderField() {
+  const pieceTypeSelect = document.getElementById('piece_type');
+  const riderTextField = document.getElementById('rider_text_field');
+  const riderTypes = ['Name Rider', 'Status Rider', 'Bonus Rider'];
+
+  if (riderTypes.includes(pieceTypeSelect.value)) {
+    riderTextField.style.display = 'block';
+  } else {
+    riderTextField.style.display = 'none';
+  }
+}
+
+// Add event listener for piece type changes
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('piece_type').addEventListener('change', toggleRiderField);
+});
+</script>
+{% endblock %}

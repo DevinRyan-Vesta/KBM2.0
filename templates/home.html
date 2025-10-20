@@ -2,92 +2,267 @@
 {% block title %}Home - KBM{% endblock %}
 
 {% block content %}
-  <h2 style="margin:8px 0 16px 0;">Overview</h2>
+<style>
+  .stat-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  .stat-box {
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(148, 163, 184, 0.06);
+    border: 1px solid var(--color-border);
+  }
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+  }
+  .alert-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(248, 113, 113, 0.18);
+    color: var(--color-danger);
+    margin-left: 8px;
+  }
+</style>
 
-  <div class="grid">
-    <!-- Lockboxes -->
-    <div class="card">
-      <h3>Lockboxes</h3>
-      {% if lockboxes %}
-        <table>
-          <thead>
-            <tr><th>Label</th><th>Location</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {% for i in lockboxes %}
-              <tr>
-                <td>{{ i.label }}</td>
-                <td class="muted">{{ i.location or "-" }}</td>
-                <td class="muted">{{ i.status or "-" }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p class="muted">No lockboxes yet.</p>
-      {% endif %}
-      <div class="row-actions">
-        <a class="btn primary" href="{{ safe_url('inventory.list_lockboxes') }}">Go to Lockboxes</a>
-        <a class="btn" href="{{ safe_url('inventory.add_lockbox') }}">Add Lockbox</a>
+<div class="page-header">
+  <h1>Operations Dashboard</h1>
+  <a class="btn primary" href="{{ safe_url('checkout.start') }}">Quick Check In/Out</a>
+</div>
+
+<!-- Inventory Statistics -->
+<div class="grid cols-3">
+  <div class="card">
+    <h3>Lockboxes</h3>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-value">{{ lockbox_total }}</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ lockbox_available }}</div>
+        <div class="stat-label">Available</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ lockbox_checked_out }}</div>
+        <div class="stat-label">Checked Out</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ lockbox_assigned }}</div>
+        <div class="stat-label">Assigned</div>
       </div>
     </div>
-
-    <!-- Keys -->
-    <div class="card">
-      <h3>Keys</h3>
-      {% if keys %}
-        <table>
-          <thead>
-            <tr><th>Label</th><th>Location</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {% for i in keys %}
-              <tr>
-                <td>{{ i.label }}</td>
-                <td class="muted">{{ i.location or "-" }}</td>
-                <td class="muted">{{ i.status or "-" }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p class="muted">No keys yet.</p>
-      {% endif %}
-      <div class="row-actions">
-        <a class="btn primary" href="{{ safe_url('inventory.list_keys') }}">Go to Keys</a>
-        <a class="btn" href="{{ safe_url('inventory.add_key') }}">Add Key</a>
-      </div>
-    </div>
-
-    <!-- Signs -->
-    <div class="card">
-      <h3>Signs</h3>
-      {% if signs %}
-        <table>
-          <thead>
-            <tr><th>Label</th><th>Location</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {% for i in signs %}
-              <tr>
-                <td>{{ i.label }}</td>
-                <td class="muted">{{ i.location or "-" }}</td>
-                <td class="muted">{{ i.status or "-" }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p class="muted">No signs yet.</p>
-      {% endif %}
-      <div class="row-actions">
-        <a class="btn primary" href="{{ safe_url('inventory.list_signs') }}">Go to Signs</a>
-        <a class="btn" href="{{ safe_url('inventory.add_sign') }}">Add Sign</a>
-      </div>
+    <div class="toolbar spaced">
+      <a class="btn primary" href="{{ safe_url('inventory.list_lockboxes') }}">View All</a>
+      <a class="btn ghost" href="{{ safe_url('inventory.add_lockbox') }}">Add Lockbox</a>
     </div>
   </div>
 
-  <div style="margin-top:16px;">
-    <a class="btn primary" href="{{ safe_url('checkout.start') }}">Go to Checkout</a>
+  <div class="card">
+    <h3>Keys</h3>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-value">{{ key_total }}</div>
+        <div class="stat-label">Total Sets</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ key_available_count }}</div>
+        <div class="stat-label">Available</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ key_checked_out_count }}</div>
+        <div class="stat-label">Checked Out</div>
+      </div>
+    </div>
+    <div class="toolbar spaced">
+      <a class="btn primary" href="{{ safe_url('inventory.list_keys') }}">View All</a>
+      <a class="btn ghost" href="{{ safe_url('inventory.add_key') }}">Add Key</a>
+    </div>
   </div>
+
+  <div class="card">
+    <h3>Signs</h3>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-value">{{ sign_total }}</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ sign_available }}</div>
+        <div class="stat-label">Available</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ sign_checked_out }}</div>
+        <div class="stat-label">Checked Out</div>
+      </div>
+    </div>
+    <div class="toolbar spaced">
+      <a class="btn primary" href="{{ safe_url('inventory.list_signs') }}">View All</a>
+      <a class="btn ghost" href="{{ safe_url('inventory.add_sign') }}">Add Sign</a>
+    </div>
+  </div>
+</div>
+
+<!-- Alerts and Tracking -->
+<div class="grid cols-2" style="margin-top: 24px;">
+  <div class="card">
+    <h3>
+      Overdue Returns
+      {% if overdue_items|length > 0 %}
+        <span class="alert-badge">{{ overdue_items|length }}</span>
+      {% endif %}
+    </h3>
+    {% if overdue_items %}
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Type</th>
+            <th>Assigned To</th>
+            <th>Due Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in overdue_items %}
+            <tr>
+              <td><strong>{{ item.label }}</strong></td>
+              <td><span class="muted">{{ item.type }}</span></td>
+              <td>{{ item.assigned_to or '-' }}</td>
+              <td class="muted text-small">{{ item.expected_return_date.strftime('%Y-%m-%d') if item.expected_return_date else '-' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">No overdue items</div>
+    {% endif %}
+    <div class="toolbar spaced">
+      <a class="btn small" href="{{ url_for('main.reports') }}">View All Reports</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>
+      Upcoming Returns (7 days)
+      {% if upcoming_returns|length > 0 %}
+        <span class="tag">{{ upcoming_returns|length }}</span>
+      {% endif %}
+    </h3>
+    {% if upcoming_returns %}
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Type</th>
+            <th>Assigned To</th>
+            <th>Due Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in upcoming_returns %}
+            <tr>
+              <td><strong>{{ item.label }}</strong></td>
+              <td><span class="muted">{{ item.type }}</span></td>
+              <td>{{ item.assigned_to or '-' }}</td>
+              <td class="muted text-small">{{ item.expected_return_date.strftime('%Y-%m-%d') if item.expected_return_date else '-' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">No upcoming returns</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Keys with Low Copy Count -->
+{% if keys_low_copies %}
+<div class="card" style="margin-top: 24px;">
+  <h3>
+    Keys with Less Than 6 Copies
+    <span class="alert-badge">{{ keys_low_copies|length }}</span>
+  </h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Label</th>
+        <th>Address</th>
+        <th>Unit #</th>
+        <th>Total Copies</th>
+        <th>Available</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for key in keys_low_copies %}
+        {% set available = (key.total_copies or 0) - (key.copies_checked_out or 0) %}
+        <tr>
+          <td><strong>{{ key.label }}</strong></td>
+          <td class="muted">{{ key.address or '-' }}</td>
+          <td>
+            <span class="tag {{ 'warn' if key.total_copies < 4 else '' }}">
+              {{ key.total_copies or 0 }} copies
+            </span>
+          </td>
+          <td class="muted">{{ available }} available</td>
+          <td>
+            <a class="btn small" href="{{ url_for('inventory.list_keys') }}?q={{ key.label }}">View</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- Long Checkout Items -->
+{% if long_checkout_items %}
+<div class="card" style="margin-top: 24px;">
+  <h3>
+    Items Checked Out > 30 Days
+    <span class="alert-badge">{{ long_checkout_items|length }}</span>
+  </h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Type</th>
+        <th>Status</th>
+        <th>Assigned To</th>
+        <th>Checked Out</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in long_checkout_items %}
+        <tr>
+          <td><strong>{{ item.label }}</strong></td>
+          <td><span class="muted">{{ item.type }}</span></td>
+          <td>
+            <span class="tag {{ 'ok' if item.status == 'assigned' else 'warn' }}">
+              {{ item.status|replace('_', ' ')|title }}
+            </span>
+          </td>
+          <td>{{ item.assigned_to or '-' }}</td>
+          <td class="muted text-small">{{ item.last_action_at.strftime('%Y-%m-%d') if item.last_action_at else '-' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 {% endblock %}

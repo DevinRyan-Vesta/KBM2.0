@@ -1,0 +1,57 @@
+﻿{% extends "base.html" %}
+{% block title %}{{ smartlock.label }} - Smart Lock{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ smartlock.label }}</h1>
+  <div class="toolbar">
+    <a class="btn" href="{{ url_for('smartlocks.list_smartlocks') }}">Back</a>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Lock Information</h2>
+  <div class="info-grid">
+    <div class="info-item">
+      <div class="info-label">Provider</div>
+      <div class="info-value">{{ smartlock.provider or '-' }}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Primary Code</div>
+      <div class="info-value large"><code>{{ smartlock.code }}</code></div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Backup Code</div>
+      <div class="info-value">{{ smartlock.backup_code or '-' }}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Property</div>
+      <div class="info-value">
+        {% if smartlock.property %}
+          <a href="{{ url_for('properties.property_detail', property_id=smartlock.property.id) }}">{{ smartlock.property.name }}</a>
+          {% if smartlock.property_unit %}<br><span class="muted text-small">Unit: {{ smartlock.property_unit.label }}</span>{% endif %}
+        {% else %}
+          <span class="muted">-</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if smartlock.instructions %}
+    <div class="divider"></div>
+    <div class="info-item">
+      <div class="info-label">Instructions</div>
+      <div class="info-value">{{ smartlock.instructions }}</div>
+    </div>
+  {% endif %}
+
+  {% if smartlock.notes %}
+    <div class="divider"></div>
+    <div class="info-item">
+      <div class="info-label">Notes</div>
+      <div class="info-value">{{ smartlock.notes }}</div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+

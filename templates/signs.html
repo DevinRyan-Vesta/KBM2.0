@@ -1,0 +1,660 @@
+{% extends "base.html" %}
+{% block title %}Signs - KBM
+<!-- Export Menu -->
+<div id="export-menu" class="dropdown-menu" style="display: none;">
+  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
+  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
+  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
+</div>
+
+
+<script>
+  // Export menu functionality
+  let exportMenuData = null;
+
+  function showExportMenu(event, itemType) {
+    event.preventDefault();
+    const menu = document.getElementById('export-menu');
+    const button = event.target;
+    const rect = button.getBoundingClientRect();
+
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.display = 'block';
+    exportMenuData = itemType;
+
+    // Close menu on outside click
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenu);
+    }, 0);
+  }
+
+  function closeExportMenu(event) {
+    const menu = document.getElementById('export-menu');
+    if (event && menu.contains(event.target)) return;
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+
+  function exportData(event, format) {
+    event.preventDefault();
+    if (!exportMenuData) return;
+
+    showExportPreview(exportMenuData, format);
+    closeExportMenu();
+  }
+</script>
+
+
+<!-- Export Preview Modal -->
+<div id="export-preview-modal" class="modal-root">
+  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
+  <div class="modal-dialog" style="max-width: 900px;">
+    <h3>Export Preview</h3>
+    <div id="preview-content" class="modal-body">
+      <p class="muted">Loading preview...</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
+      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
+      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
+      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block content %}
+<style>
+  .bulkbar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: rgba(229, 57, 53, 0.08);
+    color: var(--color-text);
+    margin-bottom: 18px;
+  }
+  .bulkbar.show { display: flex; }
+  .select-col { width: 40px; }
+  .row-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions-col { width: 380px; }
+  .sign-type-badge {
+    display: inline-flex;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .sign-type-badge.piece { background: rgba(96, 165, 250, 0.18); color: #60a5fa; }
+  .sign-type-badge.assembled { background: rgba(168, 85, 247, 0.18); color: #a855f7; }
+  .piece-indicator {
+    font-size: 11px;
+    color: var(--color-muted);
+    font-style: italic;
+  }
+  .condition-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  .condition-excellent { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
+  .condition-good { background: rgba(34, 197, 94, 0.18); color: #22c55e; }
+  .condition-fair { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+  .condition-poor { background: rgba(248, 113, 113, 0.18); color: #f87171; }
+  .condition-needs_repair { background: rgba(239, 68, 68, 0.18); color: #ef4444; }
+
+  /* Export dropdown menu */
+  .dropdown-menu {
+    position: absolute;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 150px;
+  }
+  .dropdown-menu a {
+    display: block;
+    padding: 10px 14px;
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .dropdown-menu a:last-child {
+    border-bottom: none;
+  }
+  .dropdown-menu a:hover {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+</style>
+
+{% set status_options = status_options or ['available', 'assigned', 'checked_out', 'maintenance', 'retired'] %}
+{% set status_options_lower = status_options | map('lower') | list %}
+
+<div class="page-header">
+  <h1>Signs</h1>
+  <div class="toolbar">
+    <form method="get" class="searchbar" action="{{ url_for('inventory.list_signs') }}">
+      <input type="text" name="q" placeholder="Search ID, label, address, type..." value="{{ q or '' }}">
+      <button class="btn small" type="submit">Search</button>
+      {% if q %}
+        <a class="btn small" href="{{ url_for('inventory.list_signs') }}">Clear</a>
+      {% endif %}
+    </form>
+    <a class="btn primary" href="{{ url_for('inventory.build_sign') }}">Build Sign</a>
+    <a class="btn primary" href="{{ url_for('inventory.add_sign') }}">Add Sign/Piece</a>
+  </div>
+</div>
+
+<div class="card table-card">
+  {% set viewer_role = (current_user.role or '').lower() if current_user.is_authenticated else '' %}
+  {% if signs %}
+    <table>
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Type</th>
+          <th>Piece Type</th>
+          <th>Condition</th>
+          <th>Address</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Assigned To</th>
+          <th>Last Action</th>
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sign in signs %}
+          {% set status_lower = (sign.status or '')|lower %}
+          {% set is_piece = sign.sign_subtype == 'Piece' %}
+          {% set is_assembled = sign.sign_subtype == 'Assembled Unit' %}
+          {% set has_parent = sign.parent_sign_id is not none %}
+          <tr>
+            <td>
+              <div><strong><a href="{{ url_for('inventory.item_details', item_id=sign.id) }}" style="color: inherit; text-decoration: none;">{{ sign.label }}</a></strong></div>
+              <div class="muted">{{ sign.custom_id or '-' }}</div>
+              {% if has_parent %}
+                <div class="piece-indicator">Part of assembled unit</div>
+              {% endif %}
+            </td>
+            <td>
+              <span class="sign-type-badge {{ 'piece' if is_piece else 'assembled' }}">
+                {{ sign.sign_subtype or 'Unknown' }}
+              </span>
+            </td>
+            <td>{{ sign.piece_type or '-' }}</td>
+            <td>
+              {% if sign.condition %}
+                <span class="condition-badge condition-{{ sign.condition.lower().replace(' ', '_') }}">
+                  {{ sign.condition }}
+                </span>
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+            <td>{{ sign.address or '-' }}</td>
+            <td>{{ sign.location or '-' }}</td>
+            <td>
+              {% set st_lower = (sign.status or 'Unknown')|lower %}
+              <span class="tag {{ 'ok' if st_lower in ['available', 'assigned'] else 'warn' }}">{{ (sign.status or 'Unknown').replace('_',' ')|title }}</span>
+            </td>
+            <td>
+              {{ sign.assigned_to or '-' }}
+              {% if sign.assignment_type %}
+                <br><span class="muted text-small">({{ sign.assignment_type|title }})</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if sign.last_action %}
+                <div class="muted">
+                  {{ sign.last_action.replace('_', ' ')|title }}
+                  {% if sign.last_action_at %}<br><span class="text-small">{{ sign.last_action_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
+                </div>
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="row-buttons">
+                {% if not has_parent and status_lower in ['available', 'assigned'] %}
+                  <button class="btn small js-checkout" type="button"
+                    data-action="{{ url_for('inventory.checkout_sign', item_id=sign.id) }}"
+                    data-label="{{ sign.label|e }}"
+                    data-location="{{ sign.location|default('', true)|e }}"
+                    data-address="{{ sign.address|default('', true)|e }}">
+                    Check Out
+                  </button>
+                {% endif %}
+
+                {% if not has_parent and status_lower in ['available'] %}
+                  <button class="btn small js-assign" type="button"
+                    data-action="{{ url_for('inventory.assign_sign', item_id=sign.id) }}"
+                    data-label="{{ sign.label|e }}">
+                    Assign
+                  </button>
+                {% endif %}
+
+                {% if not has_parent and status_lower == 'checked_out' %}
+                  <button class="btn small js-checkin" type="button"
+                    data-action="{{ url_for('inventory.checkin_sign', item_id=sign.id) }}"
+                    data-label="{{ sign.label|e }}">
+                    Check In
+                  </button>
+                {% endif %}
+
+                {% if is_assembled %}
+                  <form method="post" action="{{ url_for('inventory.disassemble_sign', item_id=sign.id) }}" onsubmit="return confirm('Disassemble {{ sign.label }}? Individual pieces will become available.');">
+                    <button class="btn small" type="submit">Disassemble</button>
+                  </form>
+                {% endif %}
+
+                {% if viewer_role != 'agent' and not has_parent %}
+                  <form method="post" action="{{ url_for('inventory.delete_sign', item_id=sign.id) }}" onsubmit="return confirm('Remove sign {{ sign.label }}? This cannot be undone.');">
+                    <button class="btn small danger" type="submit">Delete</button>
+                  </form>
+                {% endif %}
+
+                {% if current_user.is_authenticated and (current_user.role or '')|lower == 'admin' %}
+                  <button
+                    class="btn small js-edit"
+                    type="button"
+                    data-action="{{ url_for('inventory.edit_sign', item_id=sign.id) }}"
+                    data-label="{{ sign.label|e }}"
+                    data-location="{{ sign.location|default('', true)|e }}"
+                    data-address="{{ sign.address|default('', true)|e }}"
+                    data-sign-subtype="{{ sign.sign_subtype|default('', true)|e }}"
+                    data-piece-type="{{ sign.piece_type|default('', true)|e }}"
+                    data-rider-text="{{ sign.rider_text|default('', true)|e }}"
+                    data-material="{{ sign.material|default('', true)|e }}"
+                    data-condition="{{ sign.condition|default('', true)|e }}"
+                    data-status="{{ (sign.status or '')|lower }}"
+                    data-assigned-to="{{ sign.assigned_to|default('', true)|e }}">
+                    Edit Details
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">No signs found.</div>
+  {% endif %}
+</div>
+
+<!-- Checkout Modal -->
+<div id="checkout-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="checkout"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
+    <form id="checkout-modal-form">
+      <h3 id="checkout-modal-title">Check Out Sign</h3>
+      <div id="checkout-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="checkout">Cancel</button>
+        <button type="submit" class="btn small primary">Check Out</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assignment Modal -->
+<div id="assign-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="assign"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="assign-modal-title">
+    <form id="assign-modal-form">
+      <h3 id="assign-modal-title">Assign Sign</h3>
+      <div id="assign-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="assign">Cancel</button>
+        <button type="submit" class="btn small primary">Assign</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Check-in Modal -->
+<div id="checkin-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="checkin"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="checkin-modal-title">
+    <form id="checkin-modal-form">
+      <h3 id="checkin-modal-title">Check In Sign</h3>
+      <div id="checkin-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="checkin">Cancel</button>
+        <button type="submit" class="btn small primary">Check In</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="edit-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="edit"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <form id="edit-modal-form">
+      <h3 id="edit-modal-title">Edit Sign</h3>
+      <div id="edit-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="edit">Cancel</button>
+        <button type="submit" class="btn small primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const statusOptions = {{ status_options_lower | tojson }};
+  const pieceTypes = {{ piece_types | tojson }};
+  const conditionOptions = {{ condition_options | tojson }};
+
+  function submitAction(url, payload) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = url;
+
+    // Add all payload fields
+    Object.entries(payload || {}).forEach(([key, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value ?? '';
+      form.appendChild(input);
+    });
+
+    // Add 'next' parameter from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const nextUrl = urlParams.get('next');
+    if (nextUrl) {
+      const nextInput = document.createElement('input');
+      nextInput.type = 'hidden';
+      nextInput.name = 'next';
+      nextInput.value = nextUrl;
+      form.appendChild(nextInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function createModalField(field) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'modal-field';
+
+    const label = document.createElement('label');
+    const fieldId = `modal-${field.name}`;
+    label.setAttribute('for', fieldId);
+    label.textContent = field.label + (field.required ? ' *' : '');
+
+    let input;
+    if (field.widget === 'select') {
+      input = document.createElement('select');
+      input.id = fieldId;
+      input.name = field.name;
+      const options = field.options || [];
+      const currentValue = (field.defaultValue || '').toString().toLowerCase();
+      options.forEach((opt) => {
+        const option = document.createElement('option');
+        const value = Array.isArray(opt) ? opt[0] : opt;
+        const labelText = Array.isArray(opt) ? opt[1] : opt;
+        option.value = value;
+        option.textContent = labelText.toString().replace(/_/g, ' ');
+        if (value.toString().toLowerCase() === currentValue) {
+          option.selected = true;
+        }
+        input.appendChild(option);
+      });
+    } else {
+      const elementType = field.type === 'textarea' ? 'textarea' : 'input';
+      input = document.createElement(elementType);
+      if (elementType === 'input') {
+        input.type = field.type || 'text';
+      }
+      input.placeholder = field.placeholder || '';
+      input.value = field.defaultValue || '';
+    }
+
+    input.id = fieldId;
+    input.name = field.name;
+    input.required = Boolean(field.required);
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(input);
+    if (field.help) {
+      const help = document.createElement('small');
+      help.className = 'muted';
+      help.textContent = field.help;
+      wrapper.appendChild(help);
+    }
+    return wrapper;
+  }
+
+  function openModal(modalId, fields, onSubmit) {
+    const modal = document.getElementById(`${modalId}-modal`);
+    const form = document.getElementById(`${modalId}-modal-form`);
+    const body = document.getElementById(`${modalId}-modal-body`);
+
+    body.innerHTML = '';
+    fields.forEach((field) => {
+      body.appendChild(createModalField(field));
+    });
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      onSubmit(formData);
+      closeModal(modalId);
+    };
+
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    const firstInput = body.querySelector('input, textarea, select');
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 50);
+    }
+  }
+
+  function closeModal(modalId) {
+    const modal = document.getElementById(`${modalId}-modal`);
+    const form = document.getElementById(`${modalId}-modal-form`);
+    modal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    form.reset();
+  }
+
+  // Set up cancel buttons
+  document.querySelectorAll('[data-modal-cancel]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const modalType = el.dataset.modalCancel;
+      closeModal(modalType);
+    });
+  });
+
+  // Checkout
+  document.querySelectorAll('.js-checkout').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'sign';
+
+      openModal('checkout', [
+        { name: 'purpose', label: 'Purpose', placeholder: 'e.g., Open House, Listing' },
+        { name: 'assigned_to', label: 'Assigned To', placeholder: 'Agent or property name' },
+        { name: 'address', label: 'Property Address', defaultValue: button.dataset.address || '' },
+        { name: 'location', label: 'Current Location', defaultValue: button.dataset.location || '' },
+      ], (formData) => {
+        submitAction(actionUrl, {
+          purpose: (formData.get('purpose') || '').trim(),
+          assigned_to: (formData.get('assigned_to') || '').trim(),
+          address: (formData.get('address') || '').trim(),
+          location: (formData.get('location') || '').trim(),
+        });
+      });
+    });
+  });
+
+  // Assign
+  document.querySelectorAll('.js-assign').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'sign';
+
+      openModal('assign', [
+        { name: 'assigned_to', label: 'Agent Name', required: true, placeholder: 'Agent name' },
+        { name: 'address', label: 'Property Address', placeholder: 'Optional' },
+        { name: 'location', label: 'Current Location', placeholder: 'Optional' },
+      ], (formData) => {
+        submitAction(actionUrl, {
+          assigned_to: (formData.get('assigned_to') || '').trim(),
+          assignment_type: 'agent',
+          address: (formData.get('address') || '').trim(),
+          location: (formData.get('location') || '').trim(),
+        });
+      });
+    });
+  });
+
+  // Check-in
+  document.querySelectorAll('.js-checkin').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'sign';
+
+      openModal('checkin', [
+        { name: 'address', label: 'Property Address', placeholder: 'Where was it?' },
+        { name: 'location', label: 'Return Location', placeholder: 'Where is it now?' },
+      ], (formData) => {
+        submitAction(actionUrl, {
+          address: (formData.get('address') || '').trim(),
+          location: (formData.get('location') || '').trim(),
+        });
+      });
+    });
+  });
+
+  // Edit
+  document.querySelectorAll('.js-edit').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'sign';
+
+      openModal('edit', [
+        { name: 'label', label: 'Label', required: true, defaultValue: button.dataset.label || '' },
+        { name: 'sign_subtype', label: 'Sign Type', defaultValue: button.dataset.signSubtype || '' },
+        { name: 'piece_type', label: 'Piece Type', widget: 'select', options: ['', ...pieceTypes], defaultValue: button.dataset.pieceType || '' },
+        { name: 'rider_text', label: 'Rider Text', defaultValue: button.dataset.riderText || '' },
+        { name: 'material', label: 'Material', defaultValue: button.dataset.material || '' },
+        { name: 'condition', label: 'Condition', widget: 'select', options: ['', ...conditionOptions], defaultValue: button.dataset.condition || '' },
+        { name: 'location', label: 'Storage Location', defaultValue: button.dataset.location || '' },
+        { name: 'address', label: 'Property Address', defaultValue: button.dataset.address || '' },
+        { name: 'status', label: 'Status', widget: 'select', options: statusOptions, defaultValue: (button.dataset.status || '').toLowerCase() },
+        { name: 'assigned_to', label: 'Assigned To', defaultValue: button.dataset.assignedTo || '' },
+      ], (formData) => {
+        const payload = {
+          label: (formData.get('label') || '').trim(),
+          sign_subtype: (formData.get('sign_subtype') || '').trim(),
+          piece_type: (formData.get('piece_type') || '').trim(),
+          rider_text: (formData.get('rider_text') || '').trim(),
+          material: (formData.get('material') || '').trim(),
+          condition: (formData.get('condition') || '').trim(),
+          location: (formData.get('location') || '').trim(),
+          address: (formData.get('address') || '').trim(),
+          status: (formData.get('status') || '').trim(),
+          assigned_to: (formData.get('assigned_to') || '').trim(),
+        };
+
+        if (!payload.label) {
+          alert('Label is required');
+          return;
+        }
+
+        submitAction(actionUrl, payload);
+      });
+    });
+  });
+
+  // Close on Escape
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      ['checkout', 'assign', 'checkin', 'edit'].forEach(modalId => {
+        const modal = document.getElementById(`${modalId}-modal`);
+        if (modal.classList.contains('show')) {
+          closeModal(modalId);
+        }
+      });
+    }
+  });
+</script>
+
+
+<!-- Export Menu -->
+<div id="export-menu" class="dropdown-menu" style="display: none;">
+  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
+  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
+  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
+</div>
+
+
+<script>
+  // Export menu functionality
+  let exportMenuData = null;
+
+  function showExportMenu(event, itemType) {
+    event.preventDefault();
+    const menu = document.getElementById('export-menu');
+    const button = event.target;
+    const rect = button.getBoundingClientRect();
+
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.display = 'block';
+    exportMenuData = itemType;
+
+    // Close menu on outside click
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenu);
+    }, 0);
+  }
+
+  function closeExportMenu(event) {
+    const menu = document.getElementById('export-menu');
+    if (event && menu.contains(event.target)) return;
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+
+  function exportData(event, format) {
+    event.preventDefault();
+    if (!exportMenuData) return;
+
+    showExportPreview(exportMenuData, format);
+    closeExportMenu();
+  }
+</script>
+
+
+<!-- Export Preview Modal -->
+<div id="export-preview-modal" class="modal-root">
+  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
+  <div class="modal-dialog" style="max-width: 900px;">
+    <h3>Export Preview</h3>
+    <div id="preview-content" class="modal-body">
+      <p class="muted">Loading preview...</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
+      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
+      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
+      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

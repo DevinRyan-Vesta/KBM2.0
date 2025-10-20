@@ -1,0 +1,965 @@
+{% extends "base.html" %}
+{% block title %}Keys - KBM
+<!-- Export Preview Modal -->
+<div id="export-preview-modal" class="modal-root">
+  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
+  <div class="modal-dialog" style="max-width: 900px;">
+    <h3>Export Preview</h3>
+    <div id="preview-content" class="modal-body">
+      <p class="muted">Loading preview...</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
+      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
+      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
+      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block content %}
+<style>
+  .bulkbar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: rgba(229, 57, 53, 0.08);
+    color: var(--color-text);
+    margin-bottom: 18px;
+  }
+  .bulkbar.show { display: flex; }
+  .select-col { width: 40px; }
+  .row-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .actions-col { width: 360px; }
+  .copy-info { display: flex; gap: 8px; align-items: center; }
+  .copy-badge {
+    display: inline-flex;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .copy-badge.full { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
+  .copy-badge.low { background: rgba(248, 113, 113, 0.18); color: var(--color-danger); }
+  .copy-badge.medium { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+
+  /* Autocomplete styles */
+  .autocomplete-wrapper {
+    position: relative;
+  }
+  .autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-top: 4px;
+  }
+  .autocomplete-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border, #eee);
+  }
+  .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+  .autocomplete-item:hover,
+  .autocomplete-item.selected {
+    background: rgba(229, 57, 53, 0.08);
+  }
+  .autocomplete-name {
+    font-weight: 600;
+    color: var(--color-text, #333);
+  }
+  .autocomplete-meta {
+    font-size: 12px;
+    color: var(--color-muted, #666);
+    margin-top: 2px;
+  }
+  
+  /* Export dropdown menu */
+  .dropdown-menu {
+    position: absolute;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 150px;
+  }
+  .dropdown-menu a {
+    display: block;
+    padding: 10px 14px;
+    color: var(--color-text, #333);
+    text-decoration: none;
+    border-bottom: 1px solid var(--color-border, #eee);
+  }
+  .dropdown-menu a:last-child {
+    border-bottom: none;
+  }
+  .dropdown-menu a:hover {
+    background: rgba(229, 57, 53, 0.08);
+  }
+  .btn-group {
+    display: flex;
+    gap: 8px;
+  }
+</style>
+
+{% set status_options = status_options or ['available', 'assigned', 'checked_out'] %}
+{% set status_options_lower = status_options | map('lower') | list %}
+
+<div class="page-header">
+  <h1>Keys</h1>
+  <div class="toolbar">
+    <form method="get" class="searchbar" action="{{ url_for('inventory.list_keys') }}">
+      <input type="text" name="q" placeholder="Search ID, label, address..." value="{{ q or '' }}">
+      <button class="btn small" type="submit">Search</button>
+      {% if q %}
+        <a class="btn small" href="{{ url_for('inventory.list_keys') }}">Clear</a>
+      {% endif %}
+    </form>
+    <div class="btn-group">
+      <button type="button" class="btn small" onclick="showExportMenu(event, 'keys')">Export ▾</button>
+      <a class="btn small" href="{{ url_for('inventory.import_keys') }}">Import</a>
+      <a class="btn primary" href="{{ url_for('inventory.add_key') }}">Add Key</a>
+    </div>
+  </div>
+</div>
+
+<div id="export-menu" class="dropdown-menu" style="display: none;">
+  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
+  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
+  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
+</div>
+
+<div class="card table-card">
+  {% set viewer_role = (current_user.role or '').lower() if current_user.is_authenticated else '' %}
+  {% if keys %}
+    <table>
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Location / Property</th>
+          <th>Key Box Location</th>
+          <th>Copies</th>
+          <th>Status</th>
+          <th>Assigned To</th>
+          <th>Last Action</th>
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key in keys %}
+          {% set status_lower = (key.status or '')|lower %}
+          {% set total = key.total_copies or 0 %}
+          {% set checked_out = key.copies_checked_out or 0 %}
+          {% set available = total - checked_out %}
+          <tr>
+            <td>
+              <div><strong><a href="{{ url_for('inventory.item_details', item_id=key.id) }}" style="color: inherit; text-decoration: none;">{{ key.label }}</a></strong></div>
+              <div class="muted">{{ key.custom_id or '-' }}</div>
+            </td>
+            <td>
+              {% if key.property %}
+                <strong>{{ key.property.name }}</strong><br>
+                <span class="muted text-small">
+                  {{ key.property.address_line1 or '' }}
+                  {% if key.property.city %}, {{ key.property.city }}{% endif %}
+                  {% if key.property.state %}, {{ key.property.state }}{% endif %}
+                </span><br>
+              {% endif %}
+              {% if key.address %}
+                <span class="muted text-small">{{ key.address }}</span>
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+            <td>{{ key.location or '-' }}<br><span class="muted text-small">Hook #{{ key.key_hook_number or '-' }}</span></td>
+            <td>
+              <div class="copy-info">
+                <span class="copy-badge {{ 'full' if total >= 6 else ('low' if total < 4 else 'medium') }}">
+                  {{ total }} total
+                </span>
+                <span class="muted text-small">{{ available }} avail</span>
+              </div>
+            </td>
+            <td>
+              {% set st_lower = (key.status or 'Unknown')|lower %}
+              <span class="tag {{ 'ok' if st_lower in ['available', 'assigned'] else 'warn' }}">{{ (key.status or 'Unknown').replace('_',' ')|title }}</span>
+            </td>
+            <td>
+              {{ key.assigned_to or '-' }}
+              {% if key.assignment_type %}
+                <br><span class="muted text-small">({{ key.assignment_type|title }})</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if key.last_action %}
+                <div class="muted">
+                  {{ key.last_action.replace('_', ' ')|title }}
+                  {% if key.last_action_at %}<br><span class="text-small">{{ key.last_action_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
+                </div>
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="row-buttons">
+                {% if available > 0 %}
+                  <button class="btn small js-checkout" type="button"
+                    data-action="{{ url_for('inventory.checkout_key', item_id=key.id) }}"
+                    data-label="{{ key.label|e }}"
+                    data-location="{{ key.location|default('', true)|e }}"
+                    data-address="{{ key.address|default('', true)|e }}"
+                    data-available="{{ available }}">
+                    Check Out
+                  </button>
+                {% endif %}
+
+                {% if available > 0 %}
+                  <button class="btn small js-assign" type="button"
+                    data-action="{{ url_for('inventory.assign_key', item_id=key.id) }}"
+                    data-label="{{ key.label|e }}"
+                    data-available="{{ available }}"
+                    data-property-id="{{ key.property_id or '' }}"
+                    data-property-unit-id="{{ key.property_unit_id or '' }}">
+                    Assign
+                  </button>
+                {% endif %}
+
+                {% if checked_out > 0 %}
+                  <button class="btn small js-checkin" type="button"
+                    data-action="{{ url_for('inventory.checkin_key', item_id=key.id) }}"
+                    data-label="{{ key.label|e }}"
+                    data-checked-out="{{ checked_out }}">
+                    Check In
+                  </button>
+                {% endif %}
+
+                <button class="btn small js-adjust-qty" type="button"
+                  data-action="{{ url_for('inventory.adjust_key_quantity', item_id=key.id) }}"
+                  data-label="{{ key.label|e }}"
+                  data-total="{{ total }}">
+                  Adjust Qty
+                </button>
+
+                {% if viewer_role != 'agent' %}
+                  <form method="post" action="{{ url_for('inventory.delete_key', item_id=key.id) }}" onsubmit="return confirm('Remove key {{ key.label }}? This cannot be undone.');">
+                    <button class="btn small danger" type="submit">Delete</button>
+                  </form>
+                {% endif %}
+
+                {% if current_user.is_authenticated and (current_user.role or '')|lower == 'admin' %}
+                  <button
+                    class="btn small js-edit"
+                    type="button"
+                    data-action="{{ url_for('inventory.edit_key', item_id=key.id) }}"
+                    data-label="{{ key.label|e }}"
+                    data-location="{{ key.location|default('', true)|e }}"
+                    data-address="{{ key.address|default('', true)|e }}"
+                    data-key-hook="{{ key.key_hook_number|default('', true)|e }}"
+                    data-keycode="{{ key.keycode|default('', true)|e }}"
+                    data-total="{{ total }}"
+                    data-status="{{ (key.status or '')|lower }}"
+                    data-assigned-to="{{ key.assigned_to|default('', true)|e }}"
+                    data-property-id="{{ key.property_id or '' }}"
+                    data-property-unit-id="{{ key.property_unit_id or '' }}">
+                    Edit Details
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">No keys found.</div>
+  {% endif %}
+</div>
+
+<!-- Checkout Modal -->
+<div id="checkout-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="checkout"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="checkout-modal-title">
+    <form id="checkout-modal-form">
+      <h3 id="checkout-modal-title">Check Out Key</h3>
+      <div id="checkout-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="checkout">Cancel</button>
+        <button type="submit" class="btn small primary">Check Out</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assignment Modal -->
+<div id="assign-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="assign"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="assign-modal-title">
+    <form id="assign-modal-form">
+      <h3 id="assign-modal-title">Assign Key</h3>
+      <div id="assign-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="assign">Cancel</button>
+        <button type="submit" class="btn small primary">Assign</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Check-in Modal -->
+<div id="checkin-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="checkin"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="checkin-modal-title">
+    <form id="checkin-modal-form">
+      <h3 id="checkin-modal-title">Check In Key</h3>
+      <div id="checkin-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="checkin">Cancel</button>
+        <button type="submit" class="btn small primary">Check In</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Adjust Quantity Modal -->
+<div id="adjust-qty-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="adjust-qty"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="adjust-qty-modal-title">
+    <form id="adjust-qty-modal-form">
+      <h3 id="adjust-qty-modal-title">Adjust Key Quantity</h3>
+      <div id="adjust-qty-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="adjust-qty">Cancel</button>
+        <button type="submit" class="btn small primary">Update</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="edit-modal" class="modal-root" aria-hidden="true">
+  <div class="modal-backdrop" data-modal-cancel="edit"></div>
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <form id="edit-modal-form">
+      <h3 id="edit-modal-title">Edit Key</h3>
+      <div id="edit-modal-body" class="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn small" data-modal-cancel="edit">Cancel</button>
+        <button type="submit" class="btn small primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const statusOptions = {{ status_options_lower | tojson }};
+
+  function submitAction(url, payload) {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = url;
+
+    // Add all payload fields
+    Object.entries(payload || {}).forEach(([key, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = value ?? '';
+      form.appendChild(input);
+    });
+
+    // Add 'next' parameter from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const nextUrl = urlParams.get('next');
+    if (nextUrl) {
+      const nextInput = document.createElement('input');
+      nextInput.type = 'hidden';
+      nextInput.name = 'next';
+      nextInput.value = nextUrl;
+      form.appendChild(nextInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function createModalField(field) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'modal-field';
+
+    const label = document.createElement('label');
+    const fieldId = `modal-${field.name}`;
+    label.setAttribute('for', fieldId);
+    label.textContent = field.label + (field.required ? ' *' : '');
+
+    let input;
+    if (field.widget === 'select') {
+      input = document.createElement('select');
+      input.id = fieldId;
+      input.name = field.name;
+      const options = field.options || [];
+      const currentValue = (field.defaultValue || '').toString().toLowerCase();
+      options.forEach((opt) => {
+        const option = document.createElement('option');
+        const value = Array.isArray(opt) ? opt[0] : opt;
+        const labelText = Array.isArray(opt) ? opt[1] : opt;
+        option.value = value;
+        option.textContent = labelText.toString().replace(/_/g, ' ');
+        if (value.toString().toLowerCase() === currentValue) {
+          option.selected = true;
+        }
+        input.appendChild(option);
+      });
+    } else {
+      const elementType = field.type === 'textarea' ? 'textarea' : 'input';
+      input = document.createElement(elementType);
+      if (elementType === 'input') {
+        input.type = field.type || 'text';
+      }
+      input.placeholder = field.placeholder || '';
+      input.value = field.defaultValue || '';
+    }
+
+    input.id = fieldId;
+    input.name = field.name;
+    input.required = Boolean(field.required);
+    
+    // Add autocomplete support
+    if (field.autocomplete) {
+      input.setAttribute('autocomplete', 'off');
+      input.dataset.autocomplete = field.autocomplete;
+      wrapper.classList.add('autocomplete-wrapper');
+    }
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(input);
+    
+    // Add autocomplete dropdown if needed
+    if (field.autocomplete) {
+      const dropdown = document.createElement('div');
+      dropdown.className = 'autocomplete-dropdown';
+      dropdown.style.display = 'none';
+      wrapper.appendChild(dropdown);
+    }
+    
+    if (field.help) {
+      const help = document.createElement('small');
+      help.className = 'muted';
+      help.textContent = field.help;
+      wrapper.appendChild(help);
+    }
+    return wrapper;
+  }
+
+  function openModal(modalId, fields, onSubmit) {
+    const modal = document.getElementById(`${modalId}-modal`);
+    const form = document.getElementById(`${modalId}-modal-form`);
+    const body = document.getElementById(`${modalId}-modal-body`);
+
+    body.innerHTML = '';
+    fields.forEach((field) => {
+      body.appendChild(createModalField(field));
+    });
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      onSubmit(formData);
+      closeModal(modalId);
+    };
+
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    
+    // Initialize autocomplete for any fields that need it
+    body.querySelectorAll('input[data-autocomplete]').forEach(setupContactAutocomplete);
+    
+    const firstInput = body.querySelector('input, textarea, select');
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 50);
+    }
+  }
+
+  const propertyOptions = {{ property_select_options|default([])|tojson }};
+  const propertyMap = {{ property_map|default({})|tojson }};
+  const propertyUnits = {{ property_units_map|default({})|tojson }};
+  window.KBM_PROPERTY_OPTIONS = propertyOptions;
+  window.KBM_PROPERTY_MAP = propertyMap;
+
+  function findPropertyForUnit(unitId) {
+    if (!unitId) {
+      return null;
+    }
+    for (const [propId, units] of Object.entries(propertyUnits)) {
+      if (!propId) continue;
+      if ((units || []).some((unit) => unit.id === unitId)) {
+        const info = propertyMap[propId] || { id: propId };
+        return { id: propId, name: info.name || '', display: info.display || '' };
+      }
+    }
+    return null;
+  }
+
+  function refreshUnitOptions(selectEl, propertyId, selectedUnitId) {
+    if (!selectEl) return;
+    const units = propertyUnits[propertyId || ''] || [];
+    selectEl.innerHTML = '';
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = '-- None --';
+    selectEl.appendChild(noneOption);
+    units.forEach((unit) => {
+      const opt = document.createElement('option');
+      opt.value = unit.id;
+      opt.textContent = unit.label;
+      if (selectedUnitId && unit.id === selectedUnitId) {
+        opt.selected = true;
+      }
+      selectEl.appendChild(opt);
+    });
+    const wrapper = selectEl.closest('.modal-field');
+    if (wrapper) {
+      wrapper.style.display = units.length ? 'block' : 'none';
+    }
+  }
+
+  function configurePropertyUnitSelect(initialPropertyId, initialUnitId) {
+    const propertySelectEl = document.getElementById('modal-property_id');
+    const unitSelectEl = document.getElementById('modal-property_unit_id');
+    if (!propertySelectEl || !unitSelectEl) return;
+
+    refreshUnitOptions(unitSelectEl, initialPropertyId, initialUnitId);
+
+    propertySelectEl.addEventListener('change', () => {
+      refreshUnitOptions(unitSelectEl, propertySelectEl.value || '', '');
+    });
+  }
+
+  function closeModal(modalId) {
+    const modal = document.getElementById(`${modalId}-modal`);
+    const form = document.getElementById(`${modalId}-modal-form`);
+    modal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    form.reset();
+  }
+
+  // Set up cancel buttons
+  document.querySelectorAll('[data-modal-cancel]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const modalType = el.dataset.modalCancel;
+      closeModal(modalType);
+    });
+  });
+
+  // Checkout
+  document.querySelectorAll('.js-checkout').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'key';
+      const available = parseInt(button.dataset.available) || 1;
+
+      openModal('checkout', [
+        { name: 'copies', label: 'Number of Copies', type: 'number', required: true, defaultValue: '1', help: `${available} copies available` },
+        { name: 'checked_out_to', label: 'Checked Out To (optional)', required: false, placeholder: 'Leave empty to use your name' },
+        { name: 'purpose', label: 'Purpose', placeholder: 'Optional' },
+        { name: 'expected_return_date', label: 'Expected Return Date', type: 'date', placeholder: 'Optional' },
+      ], (formData) => {
+        const copies = parseInt(formData.get('copies')) || 0;
+        if (copies < 1 || copies > available) {
+          alert(`Please enter a valid number of copies (1-${available})`);
+          return;
+        }
+        submitAction(actionUrl, {
+          copies: copies,
+          checked_out_to: (formData.get('checked_out_to') || '').trim(),
+          purpose: (formData.get('purpose') || '').trim(),
+          expected_return_date: (formData.get('expected_return_date') || '').trim(),
+        });
+      });
+    });
+  });
+
+  // Contact autocomplete setup
+  function setupContactAutocomplete(input) {
+    const wrapper = input.closest('.autocomplete-wrapper');
+    if (!wrapper) return;
+    
+    const dropdown = wrapper.querySelector('.autocomplete-dropdown');
+    if (!dropdown) return;
+    
+    let debounceTimer;
+    let selectedIndex = -1;
+    
+    input.addEventListener('input', (e) => {
+      clearTimeout(debounceTimer);
+      const query = e.target.value.trim();
+      
+      if (query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      
+      debounceTimer = setTimeout(async () => {
+        try {
+          const response = await fetch(`/contacts/search?q=${encodeURIComponent(query)}`);
+          const contacts = await response.json();
+          
+          if (contacts.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+          }
+          
+          dropdown.innerHTML = contacts.map((contact, index) => `
+            <div class="autocomplete-item" data-index="${index}" data-name="${contact.name}" data-contact-type="${contact.contact_type}">
+              <div class="autocomplete-name">${contact.name}</div>
+              <div class="autocomplete-meta">${contact.company || contact.email || ''}</div>
+            </div>
+          `).join('');
+          
+          dropdown.style.display = 'block';
+          selectedIndex = -1;
+          
+          // Add click handlers
+          dropdown.querySelectorAll('.autocomplete-item').forEach((item) => {
+            item.addEventListener('click', () => {
+              input.value = item.dataset.name;
+              dropdown.style.display = 'none';
+              
+              // Auto-select assignment type based on contact type
+              const contactType = item.dataset.contactType;
+              const assignmentTypeSelect = document.getElementById('modal-assignment_type');
+              if (assignmentTypeSelect && contactType) {
+                // Map contact types to assignment types
+                const typeMap = {
+                  'tenant': 'tenant',
+                  'contractor': 'contractor',
+                  'agent': 'property',
+                  'staff': 'property'
+                };
+                const assignmentType = typeMap[contactType] || '';
+                if (assignmentType) {
+                  assignmentTypeSelect.value = assignmentType;
+                  // Trigger change event in case there are listeners
+                  assignmentTypeSelect.dispatchEvent(new Event('change'));
+                }
+              }
+            });
+          });
+        } catch (error) {
+          console.error('Error fetching contacts:', error);
+        }
+      }, 300);
+    });
+    
+    input.addEventListener('keydown', (e) => {
+      const items = dropdown.querySelectorAll('.autocomplete-item');
+      if (!items.length) return;
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+        updateSelection(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, -1);
+        updateSelection(items);
+      } else if (e.key === 'Enter' && selectedIndex >= 0) {
+        e.preventDefault();
+        items[selectedIndex].click();
+      } else if (e.key === 'Escape') {
+        dropdown.style.display = 'none';
+      }
+    });
+    
+    function updateSelection(items) {
+      items.forEach((item, index) => {
+        item.classList.toggle('selected', index === selectedIndex);
+      });
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!wrapper.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+  }
+
+  // Assign
+  document.querySelectorAll('.js-assign').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'key';
+      const available = parseInt(button.dataset.available) || 1;
+      const defaultPropertyId = button.dataset.propertyId || '';
+      const defaultPropertyUnitId = button.dataset.propertyUnitId || '';
+      const defaultUnitOptions = [['', '-- None --']].concat(
+        (propertyUnits[defaultPropertyId || ''] || []).map((unit) => [unit.id, unit.label])
+      );
+
+      openModal('assign', [
+        { name: 'copies', label: 'Number of Copies', type: 'number', required: true, defaultValue: '1', help: `${available} copies available` },
+        { name: 'assigned_to', label: 'Assigned To', placeholder: 'Start typing to search contacts...', autocomplete: 'contacts' },
+        { name: 'assignment_type', label: 'Assignment Type', widget: 'select', required: true, options: ['tenant', 'contractor', 'property'] },
+        { name: 'expected_return_date', label: 'Expected Return Date (Contractors)', type: 'date', placeholder: 'Required for contractors' },
+        { name: 'property_id', label: 'Property', widget: 'select', options: propertyOptions, defaultValue: defaultPropertyId, help: 'Only required when assignment type is Property' },
+        { name: 'property_unit_id', label: 'Property Unit', widget: 'select', options: defaultUnitOptions, defaultValue: defaultPropertyUnitId },
+      ], (formData) => {
+        const copies = parseInt(formData.get('copies')) || 0;
+        const assignmentType = formData.get('assignment_type');
+        const expectedReturn = formData.get('expected_return_date');
+        const propertyId = (formData.get('property_id') || '').trim();
+        const propertyUnitId = (formData.get('property_unit_id') || '').trim();
+        let assignedTo = (formData.get('assigned_to') || '').trim();
+
+        if (copies < 1 || copies > available) {
+          alert(`Please enter a valid number of copies (1-${available})`);
+          return;
+        }
+
+        if (assignmentType === 'contractor' && !expectedReturn) {
+          alert('Expected return date is required for contractor assignments');
+          return;
+        }
+
+        if (assignmentType === 'property') {
+          if (!propertyId && !propertyUnitId) {
+            alert('Select a property or unit to complete this assignment.');
+            return;
+          }
+          if (!assignedTo) {
+            if (propertyUnitId) {
+              const owningProperty = propertyId ? propertyMap[propertyId] : findPropertyForUnit(propertyUnitId);
+              const unitInfo = (propertyUnits[propertyId || (owningProperty && owningProperty.id) || ''] || []).find((unit) => unit.id === propertyUnitId);
+              if (owningProperty && unitInfo) {
+                assignedTo = owningProperty.name ? `${owningProperty.name} (${unitInfo.label})` : unitInfo.label;
+              } else if (unitInfo) {
+                assignedTo = unitInfo.label;
+              }
+            } else if (propertyMap[propertyId]) {
+              assignedTo = propertyMap[propertyId].name || '';
+            }
+          }
+        } else if (!assignedTo) {
+          alert('Please specify who the key is assigned to.');
+          return;
+        }
+
+        submitAction(actionUrl, {
+          copies: copies,
+          assigned_to: assignedTo,
+          assignment_type: assignmentType,
+          expected_return_date: expectedReturn,
+          property_id: propertyId,
+          property_unit_id: propertyUnitId,
+        });
+      });
+
+      configurePropertyUnitSelect(defaultPropertyId, defaultPropertyUnitId);
+    });
+  });
+
+  // Check-in
+  document.querySelectorAll('.js-checkin').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'key';
+      // Extract item_id from URL like /inventory/keys/123/checkin
+      const urlParts = actionUrl.split('/').filter(x => x);
+      const itemId = urlParts[urlParts.indexOf('keys') + 1];
+
+      try {
+        // Fetch active checkouts for this key
+        const response = await fetch(`/inventory/keys/${itemId}/active-checkouts`);
+        const data = await response.json();
+
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        if (!data.checkouts || data.checkouts.length === 0) {
+          alert('No active checkouts found for this key.');
+          return;
+        }
+
+        // Build selection options
+        const checkoutOptions = data.checkouts.map(co => {
+          const dateStr = co.checked_out_at || 'Unknown date';
+          const purposeStr = co.purpose ? ` - ${co.purpose}` : '';
+          return [co.id, `${co.checked_out_to} (${co.quantity} cop${co.quantity > 1 ? 'ies' : 'y'}, ${dateStr}${purposeStr})`];
+        });
+
+        openModal('checkin', [
+          { name: 'checkout_id', label: 'Select Checkout to Return', widget: 'select', required: true, options: checkoutOptions, help: 'Select which checkout you are returning' },
+        ], (formData) => {
+          const checkoutId = formData.get('checkout_id');
+          if (!checkoutId) {
+            alert('Please select a checkout to return');
+            return;
+          }
+          submitAction(actionUrl, { checkout_id: checkoutId });
+        });
+      } catch (error) {
+        console.error('Error fetching checkouts:', error);
+        alert('Failed to load checkout information. Please try again.');
+      }
+    });
+  });
+
+  // Adjust Quantity
+  document.querySelectorAll('.js-adjust-qty').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'key';
+      const currentTotal = parseInt(button.dataset.total) || 0;
+
+      openModal('adjust-qty', [
+        { name: 'new_total', label: 'New Total Copies', type: 'number', required: true, defaultValue: currentTotal.toString(), help: `Current: ${currentTotal} copies` },
+        { name: 'reason', label: 'Reason', widget: 'select', required: true, options: ['made_copy', 'destroyed', 'lost', 'other'] },
+        { name: 'notes', label: 'Notes', type: 'textarea', placeholder: 'Optional details' },
+      ], (formData) => {
+        const newTotal = parseInt(formData.get('new_total')) || 0;
+        if (newTotal < 0) {
+          alert('Total copies cannot be negative');
+          return;
+        }
+        submitAction(actionUrl, {
+          new_total: newTotal,
+          reason: formData.get('reason'),
+          notes: (formData.get('notes') || '').trim(),
+        });
+      });
+    });
+  });
+
+  // Edit
+  document.querySelectorAll('.js-edit').forEach((button) => {
+    button.addEventListener('click', () => {
+      const actionUrl = button.dataset.action;
+      const label = button.dataset.label || 'key';
+      const defaultPropertyId = button.dataset.propertyId || '';
+      const defaultPropertyUnitId = button.dataset.propertyUnitId || '';
+      const propertyUnitOptions = [['', '-- None --']].concat(
+        (propertyUnits[defaultPropertyId || ''] || []).map((unit) => [unit.id, unit.label])
+      );
+
+      openModal('edit', [
+        { name: 'label', label: 'Label', required: true, defaultValue: button.dataset.label || '' },
+        { name: 'location', label: 'Key Box Location', defaultValue: button.dataset.location || '' },
+        { name: 'address', label: 'Address', defaultValue: button.dataset.address || '' },
+        { name: 'key_hook_number', label: 'Key Hook #', defaultValue: button.dataset.keyHook || '' },
+        { name: 'keycode', label: 'Key Code', defaultValue: button.dataset.keycode || '' },
+        { name: 'total_copies', label: 'Total Copies', type: 'number', defaultValue: button.dataset.total || '0' },
+        { name: 'status', label: 'Status', widget: 'select', options: statusOptions, defaultValue: (button.dataset.status || '').toLowerCase() },
+        { name: 'property_id', label: 'Property', widget: 'select', options: propertyOptions, defaultValue: button.dataset.propertyId || '' },
+        { name: 'property_unit_id', label: 'Property Unit', widget: 'select', options: propertyUnitOptions, defaultValue: defaultPropertyUnitId },
+        { name: 'assigned_to', label: 'Assigned To', defaultValue: button.dataset.assignedTo || '' },
+      ], (formData) => {
+        const payload = {
+          label: (formData.get('label') || '').trim(),
+          location: (formData.get('location') || '').trim(),
+          address: (formData.get('address') || '').trim(),
+          key_hook_number: (formData.get('key_hook_number') || '').trim(),
+          keycode: (formData.get('keycode') || '').trim(),
+          total_copies: parseInt(formData.get('total_copies')) || 0,
+          status: (formData.get('status') || '').trim(),
+          assigned_to: (formData.get('assigned_to') || '').trim(),
+          property_id: (formData.get('property_id') || '').trim(),
+          property_unit_id: (formData.get('property_unit_id') || '').trim(),
+        };
+
+        if (!payload.label) {
+          alert('Label is required');
+          return;
+        }
+
+        submitAction(actionUrl, payload);
+      });
+
+      configurePropertyUnitSelect(defaultPropertyId, defaultPropertyUnitId);
+    });
+  });
+
+  // Close on Escape
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      ['checkout', 'assign', 'checkin', 'adjust-qty', 'edit'].forEach(modalId => {
+        const modal = document.getElementById(`${modalId}-modal`);
+        if (modal.classList.contains('show')) {
+          closeModal(modalId);
+        }
+      });
+    }
+  });
+
+  // Export menu functionality
+  let exportMenuData = null;
+  
+  function showExportMenu(event, itemType) {
+    event.preventDefault();
+    const menu = document.getElementById('export-menu');
+    const button = event.target;
+    const rect = button.getBoundingClientRect();
+    
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.display = 'block';
+    exportMenuData = itemType;
+    
+    // Close menu when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', closeExportMenu);
+    }, 0);
+  }
+  
+  function closeExportMenu(event) {
+    const menu = document.getElementById('export-menu');
+    if (event && menu.contains(event.target)) return;
+    menu.style.display = 'none';
+    document.removeEventListener('click', closeExportMenu);
+  }
+  
+  function exportData(event, format) {
+    event.preventDefault();
+    if (!exportMenuData) return;
+    
+    const url = `/exports/items/${exportMenuData}?format=${format}`;
+    window.location.href = url;
+    closeExportMenu();
+  }
+</script>
+
+
+<!-- Export Preview Modal -->
+<div id="export-preview-modal" class="modal-root">
+  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
+  <div class="modal-dialog" style="max-width: 900px;">
+    <h3>Export Preview</h3>
+    <div id="preview-content" class="modal-body">
+      <p class="muted">Loading preview...</p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
+      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
+      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
+      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

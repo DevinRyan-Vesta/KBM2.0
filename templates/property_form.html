@@ -1,0 +1,65 @@
+﻿{% extends "base.html" %}
+{% block title %}{{ page_title }} - Properties{% endblock %}
+
+{% block content %}
+<div class="form-shell">
+  <div class="page-header">
+    <h1>{{ page_title }}</h1>
+  </div>
+
+  <div class="card form-card">
+    <form method="post" action="{{ form_action }}">
+      <div class="form-grid two-column">
+        <div class="form-field">
+          <label for="name">Property Name *</label>
+          <input type="text" id="name" name="name" value="{{ property.name if property else '' }}" required>
+        </div>
+        <div class="form-field">
+          <label for="type">Property Type *</label>
+          <select id="type" name="type" required>
+            {% for type in property_types %}
+              {% set label = type.replace('_', ' ')|title %}
+              <option value="{{ type }}" {% if property and (property.type or '').lower() == type %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="address_line1">Address Line 1 *</label>
+          <input type="text" id="address_line1" name="address_line1" value="{{ property.address_line1 if property else '' }}" required>
+        </div>
+        <div class="form-field">
+          <label for="address_line2">Address Line 2</label>
+          <input type="text" id="address_line2" name="address_line2" value="{{ property.address_line2 if property else '' }}">
+        </div>
+        <div class="form-field">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" value="{{ property.city if property else '' }}">
+        </div>
+        <div class="form-field">
+          <label for="state">State/Region</label>
+          <input type="text" id="state" name="state" value="{{ property.state if property else '' }}">
+        </div>
+        <div class="form-field">
+          <label for="postal_code">Postal Code</label>
+          <input type="text" id="postal_code" name="postal_code" value="{{ property.postal_code if property else '' }}">
+        </div>
+        <div class="form-field">
+          <label for="country">Country</label>
+          <input type="text" id="country" name="country" value="{{ property.country if property else 'USA' }}">
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="4" placeholder="Additional details, access instructions, etc.">{{ property.notes if property else '' }}</textarea>
+      </div>
+
+      <div class="toolbar spaced">
+        <button type="submit" class="btn primary">{{ submit_label }}</button>
+        <a class="btn ghost" href="{{ url_for('properties.list_properties') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+

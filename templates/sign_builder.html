@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}Build Sign - KBM{% endblock %}
+
+{% block content %}
+<style>
+  .builder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .piece-selector {
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-elevated);
+  }
+  .piece-selector h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  .piece-selector select {
+    width: 100%;
+  }
+  .piece-count {
+    font-size: 12px;
+    color: var(--color-muted);
+    margin-top: 4px;
+  }
+  .piece-preview {
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(96, 165, 250, 0.08);
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .piece-preview .muted {
+    color: var(--color-muted);
+  }
+  .builder-summary {
+    padding: 16px;
+    background: rgba(168, 85, 247, 0.08);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .builder-summary h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: var(--color-text);
+  }
+  .selected-pieces {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0 0;
+  }
+  .selected-pieces li {
+    padding: 4px 0;
+    font-size: 14px;
+  }
+  .no-pieces {
+    color: var(--color-muted);
+    font-style: italic;
+    padding: 12px;
+    text-align: center;
+  }
+</style>
+
+<div class="form-shell">
+  <div class="page-header">
+    <h1>Build Assembled Sign</h1>
+    <p class="muted">Select individual pieces to combine into a complete sign unit</p>
+  </div>
+
+  <div id="builder-summary" class="builder-summary" style="display: none;">
+    <h3>Selected Pieces: <span id="piece-count">0</span></h3>
+    <ul id="selected-pieces-list" class="selected-pieces"></ul>
+  </div>
+
+  <div class="card form-card">
+    <form method="post" action="{{ url_for('inventory.build_sign') }}" id="builderForm">
+      <div class="form-grid two-column">
+        <div class="form-field">
+          <label for="label">Assembled Unit Label *</label>
+          <input type="text" id="label" name="label" placeholder="e.g., SIGN-UNIT-001" required>
+        </div>
+
+        <div class="form-field">
+          <label for="material">Material</label>
+          <input type="text" id="material" name="material" placeholder="e.g., Aluminum Frame">
+        </div>
+
+        <div class="form-field">
+          <label for="condition">Overall Condition</label>
+          <select id="condition" name="condition">
+            <option value="">-- Select Condition --</option>
+            {% for cond in condition_options %}
+            <option value="{{ cond }}">{{ cond }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="location">Storage Location</label>
+          <input type="text" id="location" name="location" placeholder="e.g., Storage Shed A">
+        </div>
+
+        <div class="form-field">
+          <label for="address">Current Property Address</label>
+          <input type="text" id="address" name="address" placeholder="If applicable">
+        </div>
+      </div>
+
+      <h3 style="margin: 24px 0 16px 0;">Select Pieces</h3>
+      <div class="builder-grid">
+        {% for piece_type in piece_types %}
+          <div class="piece-selector">
+            <h4>{{ piece_type }}{% if piece_type in ['Frame', 'Sign'] %} *{% endif %}</h4>
+            <select
+              id="piece_{{ piece_type.lower().replace(' ', '_') }}"
+              name="piece_{{ piece_type.lower().replace(' ', '_') }}"
+              {% if piece_type in ['Frame', 'Sign'] %}required{% endif %}
+              onchange="updateSummary()">
+              <option value="">-- Select {{ piece_type }} --</option>
+              {% if pieces_by_type[piece_type] %}
+                {% for piece in pieces_by_type[piece_type] %}
+                  <option
+                    value="{{ piece.id }}"
+                    data-label="{{ piece.label }}"
+                    data-material="{{ piece.material or '' }}"
+                    data-condition="{{ piece.condition or '' }}"
+                    data-rider="{{ piece.rider_text or '' }}"
+                    data-custom-id="{{ piece.custom_id or '' }}">
+                    {{ piece.label }}{% if piece.custom_id %} ({{ piece.custom_id }}){% endif %}
+                  </option>
+                {% endfor %}
+              {% endif %}
+            </select>
+            <div class="piece-count">
+              {{ pieces_by_type[piece_type]|length }} available
+            </div>
+            <div id="preview_{{ piece_type.lower().replace(' ', '_') }}" class="piece-preview" style="display: none;"></div>
+          </div>
+        {% endfor %}
+      </div>
+
+      {% set has_pieces = pieces_by_type.values()|map('length')|sum > 0 %}
+      {% if not has_pieces %}
+        <div class="no-pieces">
+          No individual pieces available. Add sign pieces first before building assembled units.
+        </div>
+      {% endif %}
+
+      <div class="toolbar spaced" style="margin-top: 24px;">
+        <button type="submit" class="btn primary" id="submitBtn">Build Assembled Sign</button>
+        <a href="{{ url_for('inventory.list_signs') }}" class="btn ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateSummary() {
+  const pieceTypes = {{ piece_types | tojson }};
+  const selectedPieces = [];
+  let hasSelection = false;
+
+  pieceTypes.forEach(pieceType => {
+    const selectId = `piece_${pieceType.toLowerCase().replace(' ', '_')}`;
+    const previewId = `preview_${pieceType.toLowerCase().replace(' ', '_')}`;
+    const select = document.getElementById(selectId);
+    const preview = document.getElementById(previewId);
+
+    if (select && select.value) {
+      hasSelection = true;
+      const option = select.options[select.selectedIndex];
+      const label = option.dataset.label || option.text;
+      const material = option.dataset.material;
+      const condition = option.dataset.condition;
+      const riderText = option.dataset.rider;
+      const customId = option.dataset.customId;
+
+      selectedPieces.push({
+        type: pieceType,
+        label: label,
+        material: material,
+        condition: condition,
+        riderText: riderText,
+        customId: customId
+      });
+
+      // Show preview
+      let previewHtml = `<strong>${label}</strong>`;
+      if (customId) previewHtml += `<br><span class="muted">${customId}</span>`;
+      if (material) previewHtml += `<br><span class="muted">Material: ${material}</span>`;
+      if (condition) previewHtml += `<br><span class="muted">Condition: ${condition}</span>`;
+      if (riderText) previewHtml += `<br><span class="muted">Text: ${riderText}</span>`;
+
+      preview.innerHTML = previewHtml;
+      preview.style.display = 'block';
+    } else {
+      preview.style.display = 'none';
+    }
+  });
+
+  // Update summary
+  const summary = document.getElementById('builder-summary');
+  const countEl = document.getElementById('piece-count');
+  const listEl = document.getElementById('selected-pieces-list');
+
+  if (hasSelection) {
+    summary.style.display = 'block';
+    countEl.textContent = selectedPieces.length;
+
+    listEl.innerHTML = selectedPieces.map(piece =>
+      `<li><strong>${piece.type}:</strong> ${piece.label}${piece.riderText ? ` - "${piece.riderText}"` : ''}</li>`
+    ).join('');
+  } else {
+    summary.style.display = 'none';
+  }
+
+  // Enable/disable submit button
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = !hasSelection;
+}
+
+// Initial update
+document.addEventListener('DOMContentLoaded', function() {
+  updateSummary();
+});
+</script>
+{% endblock %}

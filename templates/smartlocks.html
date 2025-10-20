@@ -1,0 +1,53 @@
+﻿{% extends "base.html" %}
+{% block title %}Smart Locks - KBM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Smart Lock Codes</h1>
+  <div class="toolbar">
+    <form method="get" class="searchbar" action="{{ url_for('smartlocks.list_smartlocks') }}">
+      <input type="text" name="q" placeholder="Search label, code, provider" value="{{ q or '' }}">
+      <button class="btn small" type="submit">Search</button>
+      {% if q %}
+        <a class="btn small" href="{{ url_for('smartlocks.list_smartlocks') }}">Clear</a>
+      {% endif %}
+    </form>
+    <a class="btn primary" href="{{ url_for('smartlocks.create_smartlock') }}">Add Smart Lock</a>
+  </div>
+</div>
+
+<div class="card table-card">
+  {% if smartlocks %}
+    <table>
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Provider</th>
+          <th>Code</th>
+          <th>Property</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lock in smartlocks %}
+          <tr>
+            <td><a href="{{ url_for('smartlocks.smartlock_detail', lock_id=lock.id) }}">{{ lock.label }}</a></td>
+            <td>{{ lock.provider or '-' }}</td>
+            <td><code>{{ lock.code }}</code>{% if lock.backup_code %}<br><span class="muted text-small">Backup: {{ lock.backup_code }}</span>{% endif %}</td>
+            <td>
+              {% if lock.property %}
+                <a href="{{ url_for('properties.property_detail', property_id=lock.property.id) }}">{{ lock.property.name }}</a>
+                {% if lock.property_unit %}<br><span class="muted text-small">Unit: {{ lock.property_unit.label }}</span>{% endif %}
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">No smart lock codes recorded.</div>
+  {% endif %}
+</div>
+{% endblock %}
+

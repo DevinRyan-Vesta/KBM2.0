@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}Checkout Receipt - KBM{% endblock %}
+
+{% block content %}
+<style media="screen">
+  .receipt-container {
+    max-width: 800px;
+    margin: 20px auto;
+    background: white;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  .receipt-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--color-accent);
+  }
+  .receipt-header h1 {
+    margin: 0;
+    color: var(--color-accent);
+  }
+  .receipt-header p {
+    margin: 5px 0;
+    color: var(--color-muted);
+  }
+  .receipt-section {
+    margin: 25px 0;
+  }
+  .receipt-section h2 {
+    font-size: 16px;
+    text-transform: uppercase;
+    color: var(--color-text);
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .detail-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    padding: 8px 0;
+    border-bottom: 1px dotted #e0e0e0;
+  }
+  .detail-row:last-child {
+    border-bottom: none;
+  }
+  .detail-label {
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  .detail-value {
+    color: var(--color-muted);
+  }
+  .receipt-footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 2px solid var(--color-border);
+    text-align: center;
+    color: var(--color-muted);
+    font-size: 12px;
+  }
+  .receipt-actions {
+    text-align: center;
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  @media print {
+    /* Hide everything except the receipt */
+    body * {
+      visibility: hidden;
+    }
+    .receipt-container, .receipt-container * {
+      visibility: visible;
+    }
+    .receipt-actions {
+      display: none !important;
+    }
+
+    /* Position receipt at top of page */
+    .receipt-container {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin: 0;
+      padding: 20px;
+      box-shadow: none;
+      border-radius: 0;
+      background: white !important;
+    }
+
+    /* Preserve all formatting for print */
+    .receipt-header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e53935;
+    }
+    .receipt-header h1 {
+      margin: 0;
+      color: #e53935;
+      font-size: 28px;
+    }
+    .receipt-header p {
+      margin: 5px 0;
+      color: #6b7280;
+    }
+    .receipt-section {
+      margin: 25px 0;
+      page-break-inside: avoid;
+    }
+    .receipt-section h2 {
+      font-size: 16px;
+      text-transform: uppercase;
+      color: #1f2937;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .detail-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      padding: 8px 0;
+      border-bottom: 1px dotted #e0e0e0;
+    }
+    .detail-label {
+      font-weight: 600;
+      color: #1f2937;
+    }
+    .detail-value {
+      color: #6b7280;
+    }
+    .receipt-footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 2px solid #e0e0e0;
+      text-align: center;
+      color: #6b7280;
+      font-size: 12px;
+    }
+
+    /* Clean up page margins */
+    @page {
+      margin: 0.5in;
+    }
+  }
+</style>
+
+<div class="receipt-container" id="receipt">
+  <div class="receipt-header">
+    <h1>CHECKOUT RECEIPT</h1>
+    <p>Key & Lockbox Management System</p>
+    <p><strong>Receipt #{{ checkout.id }}</strong></p>
+    {% if barcode_svg %}
+    <div class="barcode-container" style="margin: 20px auto; text-align: center;">
+      <img src="data:image/svg+xml;base64,{{ barcode_svg }}" alt="Barcode" style="max-width: 250px; height: auto;">
+      <p style="font-family: monospace; font-size: 14px; margin: 5px 0 0 0; color: var(--color-muted);">{{ barcode_data }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="receipt-section">
+    <h2>Item Information</h2>
+    <div class="detail-row">
+      <div class="detail-label">Item Type:</div>
+      <div class="detail-value">{{ item.type }}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Item ID:</div>
+      <div class="detail-value">{{ item.custom_id or '-' }}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Label:</div>
+      <div class="detail-value"><strong>{{ item.label }}</strong></div>
+    </div>
+    {% if item.address %}
+    <div class="detail-row">
+      <div class="detail-label">Address:</div>
+      <div class="detail-value">{{ item.address }}</div>
+    </div>
+    {% endif %}
+    {% if item.location %}
+    <div class="detail-row">
+      <div class="detail-label">Location:</div>
+      <div class="detail-value">{{ item.location }}</div>
+    </div>
+    {% endif %}
+    {% if item.type == 'Key' %}
+      {% if item.key_hook_number %}
+      <div class="detail-row">
+        <div class="detail-label">Key Hook #:</div>
+        <div class="detail-value">{{ item.key_hook_number }}</div>
+      </div>
+      {% endif %}
+      <div class="detail-row">
+        <div class="detail-label">Quantity:</div>
+        <div class="detail-value"><strong>{{ checkout.quantity }} cop{{ 'y' if checkout.quantity == 1 else 'ies' }}</strong></div>
+      </div>
+    {% elif item.type == 'Lockbox' %}
+      {% if item.code_current %}
+      <div class="detail-row">
+        <div class="detail-label">Current Code:</div>
+        <div class="detail-value"><strong>{{ item.code_current }}</strong></div>
+      </div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="receipt-section">
+    <h2>Checkout Details</h2>
+    <div class="detail-row">
+      <div class="detail-label">Checked Out To:</div>
+      <div class="detail-value"><strong>{{ checkout.checked_out_to }}</strong></div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Checked Out By:</div>
+      <div class="detail-value">{{ checkout.checked_out_by.name if checkout.checked_out_by else '-' }}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Checkout Date:</div>
+      <div class="detail-value">{{ checkout.checked_out_at.strftime('%B %d, %Y at %I:%M %p') if checkout.checked_out_at else '-' }}</div>
+    </div>
+    {% if checkout.purpose %}
+    <div class="detail-row">
+      <div class="detail-label">Purpose:</div>
+      <div class="detail-value">{{ checkout.purpose }}</div>
+    </div>
+    {% endif %}
+    {% if checkout.expected_return_date %}
+    <div class="detail-row">
+      <div class="detail-label">Expected Return:</div>
+      <div class="detail-value"><strong>{{ checkout.expected_return_date.strftime('%B %d, %Y') }}</strong></div>
+    </div>
+    {% endif %}
+    {% if checkout.assignment_type %}
+    <div class="detail-row">
+      <div class="detail-label">Assignment Type:</div>
+      <div class="detail-value">{{ checkout.assignment_type|title }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if item.property or item.property_unit %}
+  <div class="receipt-section">
+    <h2>Property Information</h2>
+    {% if item.property %}
+    <div class="detail-row">
+      <div class="detail-label">Property:</div>
+      <div class="detail-value">{{ item.property.name }}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Property Address:</div>
+      <div class="detail-value">
+        {{ item.property.address_line1 }}
+        {% if item.property.city %}, {{ item.property.city }}{% endif %}
+        {% if item.property.state %}, {{ item.property.state }}{% endif %}
+        {% if item.property.postal_code %} {{ item.property.postal_code }}{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if item.property_unit %}
+    <div class="detail-row">
+      <div class="detail-label">Unit:</div>
+      <div class="detail-value">{{ item.property_unit.label }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="receipt-footer">
+    <p>This receipt serves as proof of checkout.</p>
+    <p>Please return the item(s) in good condition{% if checkout.expected_return_date %} by {{ checkout.expected_return_date.strftime('%B %d, %Y') }}{% endif %}.</p>
+    <p style="margin-top: 15px; font-size: 11px;">Generated on {{ now.strftime('%B %d, %Y at %I:%M %p') }}</p>
+  </div>
+</div>
+
+<div class="receipt-actions no-print">
+  <button onclick="window.print()" class="btn primary">Print Receipt</button>
+  <a href="{{ url_for('inventory.list_keys') if item.type == 'Key' else url_for('main.home') }}" class="btn ghost">Back to {{ item.type }}s</a>
+</div>
+
+{% endblock %}
