@@ -85,7 +85,7 @@ def generate_excel(data: List[Dict[str, Any]], filename: str) -> Response:
 
 
 def generate_pdf(data: List[Dict[str, Any]], filename: str, title: str = "Report") -> Response:
-    """Generate PDF file from data with KBM styling"""
+    """Generate PDF file from data with KBM styling and improved formatting"""
     try:
         from reportlab.lib.pagesizes import letter, landscape
         from reportlab.lib import colors
@@ -102,13 +102,15 @@ def generate_pdf(data: List[Dict[str, Any]], filename: str, title: str = "Report
         return Response("No data to export", status=400)
 
     output = BytesIO()
+
+    # Use smaller margins for more space
     doc = SimpleDocTemplate(
         output,
         pagesize=landscape(letter),
-        topMargin=0.75*inch,
-        bottomMargin=0.75*inch,
-        leftMargin=0.75*inch,
-        rightMargin=0.75*inch
+        topMargin=0.5*inch,
+        bottomMargin=0.5*inch,
+        leftMargin=0.5*inch,
+        rightMargin=0.5*inch
     )
     elements = []
 
@@ -119,32 +121,32 @@ def generate_pdf(data: List[Dict[str, Any]], filename: str, title: str = "Report
     kbm_header = ParagraphStyle(
         'KBMHeader',
         parent=styles['Normal'],
-        fontSize=24,
+        fontSize=20,
         textColor=colors.HexColor('#e53935'),
         fontName='Helvetica-Bold',
         alignment=TA_CENTER,
-        spaceAfter=6
+        spaceAfter=4
     )
 
     # Title style
     title_style = ParagraphStyle(
         'KBMTitle',
         parent=styles['Normal'],
-        fontSize=16,
+        fontSize=14,
         textColor=colors.HexColor('#1f2937'),
         fontName='Helvetica-Bold',
         alignment=TA_CENTER,
-        spaceAfter=12
+        spaceAfter=8
     )
 
     # Metadata style
     meta_style = ParagraphStyle(
         'KBMMeta',
         parent=styles['Normal'],
-        fontSize=9,
+        fontSize=8,
         textColor=colors.HexColor('#6b7280'),
         alignment=TA_CENTER,
-        spaceAfter=20
+        spaceAfter=12
     )
 
     # Header with KBM branding
@@ -153,8 +155,6 @@ def generate_pdf(data: List[Dict[str, Any]], filename: str, title: str = "Report
 
     subtitle_para = Paragraph('Key & Lockbox Management System', meta_style)
     elements.append(subtitle_para)
-
-    elements.append(Spacer(1, 0.1 * inch))
 
     # Title
     title_para = Paragraph(title, title_style)
@@ -165,52 +165,120 @@ def generate_pdf(data: List[Dict[str, Any]], filename: str, title: str = "Report
     meta_para = Paragraph(f'Exported on {export_date} | Total Records: {len(data)}', meta_style)
     elements.append(meta_para)
 
-    elements.append(Spacer(1, 0.2 * inch))
+    elements.append(Spacer(1, 0.15 * inch))
 
-    # Prepare table data
+    # Prepare table data with text wrapping support
     headers = list(data[0].keys())
-    table_data = [headers]
-    for row in data:
-        table_data.append([str(row.get(h, '')) if row.get(h) not in [None, ''] else '-' for h in headers])
+    num_columns = len(headers)
 
-    # KBM accent color
+    # Calculate available width
+    page_width = landscape(letter)[0]
+    available_width = page_width - (doc.leftMargin + doc.rightMargin)
+
+    # Dynamically adjust font size based on column count
+    if num_columns <= 6:
+        data_font_size = 9
+        header_font_size = 10
+    elif num_columns <= 9:
+        data_font_size = 8
+        header_font_size = 9
+    else:
+        data_font_size = 7
+        header_font_size = 8
+
+    # Cell text style for wrapping
+    cell_style = ParagraphStyle(
+        'CellText',
+        parent=styles['Normal'],
+        fontSize=data_font_size,
+        leading=data_font_size + 2,
+        textColor=colors.HexColor('#1f2937'),
+        fontName='Helvetica'
+    )
+
+    header_cell_style = ParagraphStyle(
+        'HeaderCellText',
+        parent=styles['Normal'],
+        fontSize=header_font_size,
+        leading=header_font_size + 2,
+        textColor=colors.white,
+        fontName='Helvetica-Bold'
+    )
+
+    # Build table data with Paragraph objects for text wrapping
+    table_data = []
+
+    # Header row with Paragraphs
+    header_row = [Paragraph(str(h), header_cell_style) for h in headers]
+    table_data.append(header_row)
+
+    # Data rows with Paragraphs
+    for row in data:
+        row_data = []
+        for h in headers:
+            value = row.get(h, '')
+            if value in [None, '']:
+                value = '-'
+            else:
+                value = str(value)
+            row_data.append(Paragraph(value, cell_style))
+        table_data.append(row_data)
+
+    # Calculate proportional column widths
+    # Give more space to columns that typically have longer text
+    col_widths = []
+    priority_columns = ['Label', 'Address', 'Location', 'Property', 'Assigned To']
+
+    base_width = available_width / num_columns
+    for header in headers:
+        if any(priority in header for priority in priority_columns):
+            col_widths.append(base_width * 1.3)  # 30% wider for important columns
+        else:
+            col_widths.append(base_width * 0.8)  # 20% narrower for short columns
+
+    # Normalize widths to fit available space
+    total_width = sum(col_widths)
+    col_widths = [w * (available_width / total_width) for w in col_widths]
+
+    # KBM accent colors
     kbm_red = colors.HexColor('#e53935')
     light_gray = colors.HexColor('#f5f7fb')
     border_gray = colors.HexColor('#e0e0e0')
     text_dark = colors.HexColor('#1f2937')
 
-    # Create table with KBM styling
-    table = Table(table_data)
+    # Create table with calculated column widths
+    table = Table(table_data, colWidths=col_widths, repeatRows=1)
     table.setStyle(TableStyle([
         # Header row styling
         ('BACKGROUND', (0, 0), (-1, 0), kbm_red),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('TOPPADDING', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('FONTSIZE', (0, 0), (-1, 0), header_font_size),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
 
         # Data rows styling
         ('BACKGROUND', (0, 1), (-1, -1), light_gray),
         ('TEXTCOLOR', (0, 1), (-1, -1), text_dark),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('FONTSIZE', (0, 1), (-1, -1), data_font_size),
+        ('TOPPADDING', (0, 1), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
 
         # Borders
         ('GRID', (0, 0), (-1, -1), 0.5, border_gray),
-        ('BOX', (0, 0), (-1, -1), 1, kbm_red),
+        ('BOX', (0, 0), (-1, -1), 1.5, kbm_red),
 
         # Alternating row colors for better readability
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [light_gray, colors.white]),
     ]))
 
     elements.append(table)
-    
+
     try:
         doc.build(elements)
         output.seek(0)
