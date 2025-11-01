@@ -122,10 +122,20 @@ class SystemUpdateManager:
         return success, output
 
     def rebuild_docker(self) -> Tuple[bool, str]:
-        """Rebuild Docker containers."""
-        success, output = self.run_command([
-            "docker", "compose", "build", "--no-cache"
-        ], timeout=600)
+        """Rebuild Docker containers by running build on host with full source access."""
+        # Run docker compose build from host using docker CLI container
+        # This gives the build process access to Dockerfile and all source files
+        # The build runs on the host volume (/volume1/KBM/KBM2.0) not the container mount
+        cmd = [
+            "docker", "run", "--rm",
+            "-v", "/var/run/docker.sock:/var/run/docker.sock",
+            "-v", "/volume1/KBM/KBM2.0:/workspace",
+            "-w", "/workspace",
+            "docker/compose:latest",
+            "build", "--no-cache", "python-app"
+        ]
+
+        success, output = self.run_command(cmd, timeout=600)
         return success, output
 
     def restart_containers(self) -> Tuple[bool, str]:
