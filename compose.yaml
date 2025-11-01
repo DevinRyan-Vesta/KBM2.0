@@ -10,8 +10,11 @@ services:
     expose:
       - "8000"  # Internal port only, not exposed to host
     volumes:
-      - ./master_db:/app/master_db      # Persist master database
-      - ./tenant_dbs:/app/tenant_dbs    # Persist tenant databases
+      - .:/app                           # Mount app code for git updates
+      - venv_data:/app/.venv             # Preserve virtual environment
+      - ./master_db:/app/master_db       # Persist master database
+      - ./tenant_dbs:/app/tenant_dbs     # Persist tenant databases
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
     networks:
       - appnet
 
@@ -52,6 +55,6 @@ networks:
   appnet:
     driver: bridge
 
-# volumes:
-#   postgres_data:
-#     driver: local
+volumes:
+  venv_data:
+    driver: local
