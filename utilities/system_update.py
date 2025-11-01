@@ -135,8 +135,8 @@ class SystemUpdateManager:
         if not success:
             return False, f"Failed to stop containers: {stop_output}"
 
-        # Start containers
-        success, start_output = self.run_command(["docker", "compose", "up", "-d"])
+        # Start containers (--no-build to skip build check since Dockerfile not mounted)
+        success, start_output = self.run_command(["docker", "compose", "up", "-d", "--no-build"])
         if not success:
             return False, f"Failed to start containers: {start_output}"
 
