@@ -51,7 +51,7 @@ RUN install -m 0755 -d /etc/apt/keyrings \
 
 # Create a non-root user and docker group for socket access
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
-    && addgroup --gid 999 docker \
+    && addgroup --gid 121 docker \
     && adduser appuser docker
 
 WORKDIR /app
