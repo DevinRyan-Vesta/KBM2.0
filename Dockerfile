@@ -82,6 +82,9 @@ RUN mkdir -p /app/tenant_dbs && chown -R appuser:appgroup /app/tenant_dbs
 # Use non-root user
 USER appuser
 
+# Configure git to trust the mounted repository
+RUN git config --global --add safe.directory /app
+
 # Expose the port (assuming 8000, adjust if needed)
 EXPOSE 8000
 

@@ -127,8 +127,9 @@ class SystemUpdateManager:
 
     def get_container_status(self) -> List[Dict[str, str]]:
         """Get status of running containers."""
+        # Use docker ps instead of docker compose ps to avoid project name issues
         success, output = self.run_command([
-            "docker", "compose", "ps", "--format", "json"
+            "docker", "ps", "-a", "--format", "json"
         ])
 
         if not success:
@@ -142,10 +143,10 @@ class SystemUpdateManager:
                     import json
                     container = json.loads(line)
                     containers.append({
-                        "name": container.get("Name", "unknown"),
+                        "name": container.get("Names", "unknown"),
                         "status": container.get("Status", "unknown"),
                         "state": container.get("State", "unknown"),
-                        "ports": container.get("Publishers", [])
+                        "ports": container.get("Ports", "")
                     })
                 except:
                     pass
@@ -154,10 +155,22 @@ class SystemUpdateManager:
 
     def get_logs(self, lines: int = 50) -> str:
         """Get recent container logs."""
+        # Get logs from specific containers by name
         success, output = self.run_command([
-            "docker", "compose", "logs", "--tail", str(lines)
+            "docker", "logs", "python-app", "--tail", str(lines)
         ])
-        return output if success else f"Error: {output}"
+        if not success:
+            return f"Error: {output}"
+
+        # Also get nginx logs
+        success_nginx, output_nginx = self.run_command([
+            "docker", "logs", "nginx-proxy", "--tail", str(lines)
+        ])
+
+        if success_nginx:
+            return f"=== Python App Logs ===\n{output}\n\n=== Nginx Logs ===\n{output_nginx}"
+
+        return output
 
     def create_backup(self, backup_dir: str = "/opt/kbm-backups") -> Tuple[bool, str]:
         """Create backup of databases."""
