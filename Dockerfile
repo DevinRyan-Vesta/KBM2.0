@@ -79,10 +79,14 @@ RUN mkdir -p /app/KBM2_data && chown -R appuser:appgroup /app/KBM2_data
 RUN mkdir -p /app/master_db && chown -R appuser:appgroup /app/master_db
 RUN mkdir -p /app/tenant_dbs && chown -R appuser:appgroup /app/tenant_dbs
 
+# Create home directory for appuser and configure git
+RUN mkdir -p /home/appuser && chown -R appuser:appgroup /home/appuser
+
 # Use non-root user
 USER appuser
 
-# Configure git to trust the mounted repository
+# Set HOME environment variable and configure git to trust the mounted repository
+ENV HOME=/home/appuser
 RUN git config --global --add safe.directory /app
 
 # Expose the port (assuming 8000, adjust if needed)
