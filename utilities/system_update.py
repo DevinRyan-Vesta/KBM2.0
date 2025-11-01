@@ -33,6 +33,22 @@ class SystemUpdateManager:
         except Exception as e:
             return False, f"Error: {str(e)}"
 
+    def run_git_on_host(self, git_args: List[str], timeout: int = 300) -> Tuple[bool, str]:
+        """
+        Run git command on the host using docker run with alpine/git.
+        This bypasses permission issues with the mounted .git directory.
+        """
+        # Find the host path by checking parent of mounted .git
+        # We'll use docker run to execute git on the host filesystem
+        cmd = [
+            "docker", "run", "--rm",
+            "-v", "/volume1/KBM/KBM2.0:/git",
+            "-w", "/git",
+            "alpine/git"
+        ] + git_args
+
+        return self.run_command(cmd, timeout=timeout)
+
     def get_current_version(self) -> Dict[str, str]:
         """Get current git commit information."""
         success, output = self.run_command(["git", "log", "-1", "--oneline"])
@@ -65,10 +81,10 @@ class SystemUpdateManager:
 
     def check_for_updates(self) -> Dict[str, any]:
         """Check if updates are available from remote."""
-        # Fetch latest
-        success, _ = self.run_command(["git", "fetch", "origin"])
+        # Fetch latest - run on host to avoid permission issues
+        success, fetch_output = self.run_git_on_host(["fetch", "origin"])
         if not success:
-            return {"error": "Failed to fetch from remote"}
+            return {"error": f"Failed to fetch from remote: {fetch_output}"}
 
         # Get current branch
         current_version = self.get_current_version()
@@ -101,7 +117,8 @@ class SystemUpdateManager:
 
     def pull_updates(self) -> Tuple[bool, str]:
         """Pull latest code from git."""
-        success, output = self.run_command(["git", "pull", "origin", "main"])
+        # Run on host to avoid permission issues
+        success, output = self.run_git_on_host(["pull", "origin", "main"])
         return success, output
 
     def rebuild_docker(self) -> Tuple[bool, str]:
