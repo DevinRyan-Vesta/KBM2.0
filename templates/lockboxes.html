@@ -40,7 +40,8 @@
     event.preventDefault();
     if (!exportMenuData) return;
 
-    showExportPreview(exportMenuData, format);
+    const url = `/exports/items/${exportMenuData}?format=${format}`;
+    window.location.href = url;
     closeExportMenu();
   }
 </script>
@@ -137,6 +138,7 @@
         <a class="btn small" href="{{ url_for('inventory.list_lockboxes') }}">Clear</a>
       {% endif %}
     </form>
+    <a class="btn small" href="{{ url_for('inventory.import_lockboxes') }}">Import</a>
     <button type="button" class="btn small" onclick="showExportMenu(event, 'lockboxes')">Export ▾</button>
     <a class="btn primary" href="{{ url_for('inventory.add_lockbox') }}">Add Lockbox</a>
   </div>
@@ -714,7 +716,8 @@
     event.preventDefault();
     if (!exportMenuData) return;
 
-    showExportPreview(exportMenuData, format);
+    const url = `/exports/items/${exportMenuData}?format=${format}`;
+    window.location.href = url;
     closeExportMenu();
   }
 </script>

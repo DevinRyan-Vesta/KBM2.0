@@ -18,8 +18,6 @@ Notes:
 
 === TODO ===
 
-[ ] PDF Export from keys page works but looks bad
-
 [ ] Import option is missing from lockboxes
 
 [ ] Export on lockboxes page doesn't work
@@ -41,6 +39,8 @@ Notes:
 
 
 LONG TERM
+
+[ ] PDF Export formatting improvements (works but could be better)
 
 [ ] Add customization options for company accounts
 
