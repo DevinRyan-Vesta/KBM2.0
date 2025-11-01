@@ -12,6 +12,7 @@ services:
     volumes:
       - ./.git:/app/.git                 # Mount git directory for updates (writable for fetch)
       - ./compose.yaml:/app/compose.yaml:ro  # Mount compose file for docker compose commands
+      - ./.env:/app/.env:ro              # Mount .env file for docker compose commands
       - ./master_db:/app/master_db       # Persist master database
       - ./tenant_dbs:/app/tenant_dbs     # Persist tenant databases
       - /volume1/KBM/backups:/app/backups  # Database backups directory
