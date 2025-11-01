@@ -49,8 +49,10 @@ RUN install -m 0755 -d /etc/apt/keyrings \
     && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+# Create a non-root user and docker group for socket access
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
+    && addgroup --gid 999 docker \
+    && adduser appuser docker
 
 WORKDIR /app
 
