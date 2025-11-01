@@ -189,7 +189,7 @@ class SystemUpdateManager:
 
         return output
 
-    def create_backup(self, backup_dir: str = "/opt/kbm-backups") -> Tuple[bool, str]:
+    def create_backup(self, backup_dir: str = "/app/backups") -> Tuple[bool, str]:
         """Create backup of databases."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_path = os.path.join(backup_dir, f"backup_{timestamp}")
