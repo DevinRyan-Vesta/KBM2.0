@@ -740,6 +740,18 @@
     );
   });
 
+  // Helper function to add CSRF token to forms
+  function addCsrfToken(form) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (csrfToken) {
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrf_token';
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+    }
+  }
+
   // Submit functions
   function submitCheckout(itemId, itemType, formData) {
     const form = document.createElement('form');
@@ -750,6 +762,9 @@
     } else if (itemType === 'Key') {
       form.action = `/inventory/keys/${itemId}/checkout`;
     }
+
+    // Add CSRF token
+    addCsrfToken(form);
 
     for (let [key, value] of formData.entries()) {
       const input = document.createElement('input');
@@ -773,6 +788,9 @@
       form.action = `/inventory/keys/${itemId}/checkin`;
     }
 
+    // Add CSRF token
+    addCsrfToken(form);
+
     for (let [key, value] of formData.entries()) {
       const input = document.createElement('input');
       input.type = 'hidden';
@@ -789,6 +807,9 @@
     const form = document.createElement('form');
     form.method = 'post';
     form.action = `/inventory/keys/${itemId}/assign`;
+
+    // Add CSRF token
+    addCsrfToken(form);
 
     for (let [key, value] of formData.entries()) {
       const input = document.createElement('input');
