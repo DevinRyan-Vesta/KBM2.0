@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>{% block title %}KBM{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
       :root {
         --color-bg: #101418;
@@ -42,6 +43,42 @@
         color: var(--color-text);
         transition: background 0.3s ease, color 0.3s ease;
       }
+
+      /* Link Styles */
+      a {
+        color: var(--color-accent);
+        text-decoration: underline;
+        text-decoration-color: rgba(229, 57, 53, 0.3);
+        transition: all 0.2s ease;
+      }
+
+      body.light a {
+        color: #c62828;
+        text-decoration-color: rgba(198, 40, 40, 0.3);
+      }
+
+      a:hover {
+        color: var(--color-accent);
+        text-decoration-color: var(--color-accent);
+      }
+
+      a:visited {
+        color: #ff6b9d;
+        text-decoration-color: rgba(255, 107, 157, 0.3);
+      }
+
+      body.light a:visited {
+        color: #ad1457;
+        text-decoration-color: rgba(173, 20, 87, 0.3);
+      }
+
+      /* Keep existing link overrides working */
+      .nav-links a,
+      .btn,
+      table a {
+        text-decoration: none;
+      }
+
 
       .layout {
         display: grid;

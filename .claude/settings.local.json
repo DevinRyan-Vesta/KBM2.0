@@ -6,7 +6,8 @@
       "Bash(for dir in accounts app_admin auth checkout contacts exports inventory main middleware properties smartlocks)",
       "Bash(do echo \"=== $dir ===\")",
       "Bash(ls -la $dir/)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

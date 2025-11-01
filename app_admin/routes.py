@@ -120,6 +120,31 @@ def update_account_status(account_id):
     return redirect(url_for('app_admin.view_account', account_id=account_id))
 
 
+
+
+@app_admin_bp.route('/admin/accounts/<int:account_id>/update-name', methods=['POST'])
+@login_required
+@app_admin_required
+@root_domain_only
+def update_account_name(account_id):
+    """
+    Update account company name.
+    """
+    account = Account.query.get_or_404(account_id)
+    new_name = request.form.get('company_name', '').strip()
+
+    if not new_name:
+        flash('Company name cannot be empty', 'error')
+        return redirect(url_for('app_admin.view_account', account_id=account_id))
+
+    old_name = account.company_name
+    account.company_name = new_name
+
+    master_db.session.commit()
+
+    flash(f'Company name updated from "{old_name}" to "{new_name}"', 'success')
+    return redirect(url_for('app_admin.view_account', account_id=account_id))
+
 @app_admin_bp.route('/admin/accounts/<int:account_id>/delete', methods=['POST'])
 @login_required
 @app_admin_required
@@ -256,3 +281,95 @@ def create_app_admin():
 
     flash(f'App admin {name} created successfully', 'success')
     return redirect(url_for('app_admin.list_app_admins'))
+
+
+@app_admin_bp.route('/admin/system/updates')
+@login_required
+@app_admin_required
+@root_domain_only
+def system_updates():
+    """
+    System updates page - view current version and check for updates.
+    """
+    from utilities.system_update import update_manager
+
+    current_version = update_manager.get_current_version()
+    containers = update_manager.get_container_status()
+
+    return render_template('app_admin/system_updates.html',
+                         current_version=current_version,
+                         containers=containers)
+
+
+@app_admin_bp.route('/admin/system/check-updates')
+@login_required
+@app_admin_required
+@root_domain_only
+def check_updates():
+    """
+    Check for available updates (AJAX endpoint).
+    """
+    from utilities.system_update import update_manager
+
+    result = update_manager.check_for_updates()
+    return jsonify(result)
+
+
+@app_admin_bp.route('/admin/system/update', methods=['POST'])
+@login_required
+@app_admin_required
+@root_domain_only
+def perform_update():
+    """
+    Perform system update.
+    """
+    from utilities.system_update import update_manager
+
+    rebuild = request.form.get('rebuild') == 'true'
+    result = update_manager.perform_update(rebuild=rebuild)
+
+    return jsonify(result)
+
+
+@app_admin_bp.route('/admin/system/logs')
+@login_required
+@app_admin_required
+@root_domain_only
+def system_logs():
+    """
+    Get system logs (AJAX endpoint).
+    """
+    from utilities.system_update import update_manager
+
+    lines = request.args.get('lines', 50, type=int)
+    logs = update_manager.get_logs(lines=lines)
+
+    return jsonify({"logs": logs})
+
+
+@app_admin_bp.route('/admin/system/containers')
+@login_required
+@app_admin_required
+@root_domain_only
+def container_status():
+    """
+    Get container status (AJAX endpoint).
+    """
+    from utilities.system_update import update_manager
+
+    containers = update_manager.get_container_status()
+    return jsonify({"containers": containers})
+
+
+@app_admin_bp.route('/admin/system/restart', methods=['POST'])
+@login_required
+@app_admin_required
+@root_domain_only
+def restart_system():
+    """
+    Restart Docker containers.
+    """
+    from utilities.system_update import update_manager
+
+    success, message = update_manager.restart_containers()
+    return jsonify({"success": success, "message": message})

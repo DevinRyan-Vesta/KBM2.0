@@ -2094,6 +2094,11 @@ def receipt_lookup():
             results = tenant_query(ItemCheckout).filter(or_(*filters)).order_by(
                 ItemCheckout.checked_out_at.desc()
             ).limit(50).all()
+    else:
+        # Show 10 most recent receipts by default when no search query
+        results = tenant_query(ItemCheckout).order_by(
+            ItemCheckout.checked_out_at.desc()
+        ).limit(10).all()
     
     return render_template("receipt_lookup.html", results=results, query=query)
 

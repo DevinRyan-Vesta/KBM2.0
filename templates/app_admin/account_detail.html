@@ -70,6 +70,20 @@
   </div>
 </div>
 
+
+<div class="card" style="margin-bottom: 24px;">
+  <h2>Company Name</h2>
+  <div class="divider"></div>
+  <form method="POST" action="{{ url_for('app_admin.update_account_name', account_id=account.id) }}" class="toolbar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="form-field" style="max-width: 400px; flex: 1;">
+      <label for="company_name">Company Name</label>
+      <input type="text" id="company_name" name="company_name" value="{{ account.company_name }}" required>
+    </div>
+    <button type="submit" class="btn primary" style="margin-top: auto;">Update Name</button>
+  </form>
+</div>
+
 <div class="card" style="margin-bottom: 24px;">
   <h2>Status Management</h2>
   <div class="divider"></div>

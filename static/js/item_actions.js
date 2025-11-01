@@ -184,6 +184,16 @@
     form.method = "post";
     form.action = url;
 
+    // Add CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (csrfToken) {
+      const csrfInput = document.createElement("input");
+      csrfInput.type = "hidden";
+      csrfInput.name = "csrf_token";
+      csrfInput.value = csrfToken;
+      form.appendChild(csrfInput);
+    }
+
     Object.entries(payload || {}).forEach(([key, value]) => {
       const input = document.createElement("input");
       input.type = "hidden";

@@ -1,10 +1,10 @@
 ﻿from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy import or_
 
 from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, get_tenant_session
 from middleware.tenant_middleware import tenant_required
-from utilities.database import db, SmartLock, Property, PropertyUnit
+from utilities.database import db, SmartLock, Property, PropertyUnit, log_activity
 
 smartlocks_bp = Blueprint(
     "smartlocks",

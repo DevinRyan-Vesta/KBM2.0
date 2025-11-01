@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}System Updates - App Admin{% endblock %}
+
+{% block content %}
+<style>
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .status-badge.success { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
+  .status-badge.running { background: rgba(59, 130, 246, 0.18); color: #3b82f6; }
+  .status-badge.pending { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+  .status-badge.failed { background: rgba(239, 68, 68, 0.18); color: #ef4444; }
+
+  .log-viewer {
+    background: #1a1a1a;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 16px;
+    border-radius: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  .update-item {
+    padding: 12px;
+    border-left: 3px solid var(--color-accent);
+    background: rgba(148, 163, 184, 0.04);
+    margin-bottom: 8px;
+    border-radius: 4px;
+  }
+
+  .commit-hash {
+    font-family: monospace;
+    background: rgba(148, 163, 184, 0.12);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .spinner {
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top: 3px solid var(--color-accent);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+
+<div class="page-header">
+  <div>
+    <a href="{{ url_for('app_admin.dashboard') }}" class="btn ghost" style="margin-bottom: 12px;">&larr; Back to Dashboard</a>
+    <h1>System Updates</h1>
+    <p class="muted">Manage application updates and view system status</p>
+  </div>
+</div>
+
+<!-- Current Version -->
+<div class="card" style="margin-bottom: 24px;">
+  <h2>Current Version</h2>
+  <div class="divider"></div>
+  <div class="grid cols-2">
+    <div class="info-item">
+      <div class="info-label">Commit Hash</div>
+      <div class="info-value">
+        <span class="commit-hash">{{ current_version.commit_hash }}</span>
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Branch</div>
+      <div class="info-value">{{ current_version.branch }}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Commit Date</div>
+      <div class="info-value">{{ current_version.commit_date }}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Message</div>
+      <div class="info-value">{{ current_version.commit_message }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Update Check -->
+<div class="card" style="margin-bottom: 24px;">
+  <h2>Check for Updates</h2>
+  <div class="divider"></div>
+
+  <div id="update-status" style="margin-bottom: 16px;">
+    <p class="muted">Click the button below to check for available updates from GitHub.</p>
+  </div>
+
+  <div id="available-updates" style="display: none; margin-bottom: 16px;">
+    <h3 style="margin-bottom: 12px;">Available Updates (<span id="update-count">0</span>)</h3>
+    <div id="update-list"></div>
+  </div>
+
+  <div class="toolbar">
+    <button type="button" class="btn primary" id="check-updates-btn" onclick="checkForUpdates()">
+      Check for Updates
+    </button>
+    <button type="button" class="btn primary" id="perform-update-btn" onclick="performUpdate(false)" style="display: none;">
+      Update Now
+    </button>
+    <button type="button" class="btn" id="update-rebuild-btn" onclick="performUpdate(true)" style="display: none;">
+      Update + Rebuild
+    </button>
+  </div>
+</div>
+
+<!-- Container Status -->
+<div class="card table-card" style="margin-bottom: 24px;">
+  <h2>Container Status</h2>
+  <div class="divider"></div>
+  {% if containers %}
+  <table>
+    <thead>
+      <tr>
+        <th>Container</th>
+        <th>State</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="container-table-body">
+      {% for container in containers %}
+      <tr>
+        <td>{{ container.name }}</td>
+        <td>
+          {% if container.state == 'running' %}
+          <span class="status-badge running">Running</span>
+          {% else %}
+          <span class="status-badge failed">{{ container.state|title }}</span>
+          {% endif %}
+        </td>
+        <td class="text-small muted">{{ container.status }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No containers found</div>
+  {% endif %}
+
+  <div class="toolbar spaced">
+    <button type="button" class="btn ghost" onclick="refreshContainerStatus()">
+      Refresh Status
+    </button>
+    <button type="button" class="btn danger" onclick="restartContainers()">
+      Restart Containers
+    </button>
+  </div>
+</div>
+
+<!-- System Logs -->
+<div class="card" style="margin-bottom: 24px;">
+  <h2>System Logs</h2>
+  <div class="divider"></div>
+  <div class="log-viewer" id="log-viewer">
+    Loading logs...
+  </div>
+  <div class="toolbar spaced">
+    <button type="button" class="btn ghost" onclick="refreshLogs()">
+      Refresh Logs
+    </button>
+    <button type="button" class="btn ghost" onclick="downloadLogs()">
+      Download Logs
+    </button>
+  </div>
+</div>
+
+<script>
+  // Check for updates
+  async function checkForUpdates() {
+    const btn = document.getElementById('check-updates-btn');
+    const statusDiv = document.getElementById('update-status');
+    const updatesDiv = document.getElementById('available-updates');
+    const updateList = document.getElementById('update-list');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Checking...';
+
+    try {
+      const response = await fetch('{{ url_for("app_admin.check_updates") }}');
+      const data = await response.json();
+
+      if (data.error) {
+        statusDiv.innerHTML = `<p class="flash error">${data.error}</p>`;
+        btn.disabled = false;
+        btn.textContent = 'Check for Updates';
+        return;
+      }
+
+      if (data.has_updates) {
+        statusDiv.innerHTML = `<p class="flash success">${data.update_count} update(s) available!</p>`;
+
+        // Show updates
+        updateList.innerHTML = '';
+        data.updates.forEach(update => {
+          const item = document.createElement('div');
+          item.className = 'update-item';
+          item.innerHTML = `
+            <span class="commit-hash">${update.commit_hash}</span>
+            <span>${update.message}</span>
+          `;
+          updateList.appendChild(item);
+        });
+
+        updatesDiv.style.display = 'block';
+        document.getElementById('update-count').textContent = data.update_count;
+        document.getElementById('perform-update-btn').style.display = 'inline-flex';
+        document.getElementById('update-rebuild-btn').style.display = 'inline-flex';
+      } else {
+        statusDiv.innerHTML = '<p class="flash info">No updates available. You are running the latest version!</p>';
+        updatesDiv.style.display = 'none';
+        document.getElementById('perform-update-btn').style.display = 'none';
+        document.getElementById('update-rebuild-btn').style.display = 'none';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Check for Updates';
+    } catch (error) {
+      statusDiv.innerHTML = `<p class="flash error">Error checking for updates: ${error.message}</p>`;
+      btn.disabled = false;
+      btn.textContent = 'Check for Updates';
+    }
+  }
+
+  // Perform update
+  async function performUpdate(rebuild) {
+    if (!confirm(`Perform system update${rebuild ? ' with rebuild' : ''}? The application will be temporarily unavailable.`)) {
+      return;
+    }
+
+    const statusDiv = document.getElementById('update-status');
+    const buttons = ['check-updates-btn', 'perform-update-btn', 'update-rebuild-btn'];
+    buttons.forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.disabled = true;
+    });
+
+    statusDiv.innerHTML = '<p class="flash info"><span class="spinner"></span> Updating system... This may take a few minutes.</p>';
+
+    try {
+      const formData = new FormData();
+      formData.append('csrf_token', '{{ csrf_token() }}');
+      formData.append('rebuild', rebuild ? 'true' : 'false');
+
+      const response = await fetch('{{ url_for("app_admin.perform_update") }}', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      let html = '<div>';
+      for (const [step, details] of Object.entries(result)) {
+        if (step === 'overall') continue;
+        const statusClass = details.status === 'success' ? 'success' : (details.status === 'failed' ? 'failed' : 'pending');
+        html += `<p><span class="status-badge ${statusClass}">${details.status}</span> <strong>${step}</strong>: ${details.message || ''}</p>`;
+      }
+      html += '</div>';
+
+      if (result.overall.status === 'success') {
+        statusDiv.innerHTML = '<p class="flash success">Update completed successfully!</p>' + html;
+        setTimeout(() => location.reload(), 3000);
+      } else {
+        statusDiv.innerHTML = '<p class="flash error">Update failed. Check the logs for details.</p>' + html;
+        buttons.forEach(id => {
+          const btn = document.getElementById(id);
+          if (btn) btn.disabled = false;
+        });
+      }
+    } catch (error) {
+      statusDiv.innerHTML = `<p class="flash error">Error performing update: ${error.message}</p>`;
+      buttons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = false;
+      });
+    }
+  }
+
+  // Refresh logs
+  async function refreshLogs() {
+    const viewer = document.getElementById('log-viewer');
+    viewer.textContent = 'Loading logs...';
+
+    try {
+      const response = await fetch('{{ url_for("app_admin.system_logs") }}?lines=100');
+      const data = await response.json();
+      viewer.textContent = data.logs || 'No logs available';
+      viewer.scrollTop = viewer.scrollHeight;
+    } catch (error) {
+      viewer.textContent = `Error loading logs: ${error.message}`;
+    }
+  }
+
+  // Download logs
+  function downloadLogs() {
+    const logs = document.getElementById('log-viewer').textContent;
+    const blob = new Blob([logs], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kbm-logs-${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+
+  // Refresh container status
+  async function refreshContainerStatus() {
+    try {
+      const response = await fetch('{{ url_for("app_admin.container_status") }}');
+      const data = await response.json();
+
+      const tbody = document.getElementById('container-table-body');
+      tbody.innerHTML = '';
+
+      data.containers.forEach(container => {
+        const row = document.createElement('tr');
+        const stateClass = container.state === 'running' ? 'running' : 'failed';
+        row.innerHTML = `
+          <td>${container.name}</td>
+          <td><span class="status-badge ${stateClass}">${container.state || 'Unknown'}</span></td>
+          <td class="text-small muted">${container.status || '-'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    } catch (error) {
+      console.error('Error refreshing container status:', error);
+    }
+  }
+
+  // Restart containers
+  async function restartContainers() {
+    if (!confirm('Restart all containers? The application will be temporarily unavailable.')) {
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('csrf_token', '{{ csrf_token() }}');
+
+      const response = await fetch('{{ url_for("app_admin.restart_system") }}', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert('Containers restarted successfully!');
+        setTimeout(() => location.reload(), 2000);
+      } else {
+        alert(`Failed to restart containers: ${data.message}`);
+      }
+    } catch (error) {
+      alert(`Error restarting containers: ${error.message}`);
+    }
+  }
+
+  // Load logs on page load
+  refreshLogs();
+
+  // Auto-refresh logs every 10 seconds
+  setInterval(refreshLogs, 10000);
+</script>
+{% endblock %}

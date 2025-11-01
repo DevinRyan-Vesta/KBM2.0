@@ -8,12 +8,12 @@
     abort,
     jsonify,
 )
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy import or_, func
 
-from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, get_tenant_session
+from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_flush, tenant_rollback, get_tenant_session
 from middleware.tenant_middleware import tenant_required
-from utilities.database import db, Property, PropertyUnit, Item, SmartLock
+from utilities.database import db, Property, PropertyUnit, log_activity, Item, SmartLock
 
 PROPERTY_TYPES = ["single_family", "multi_family", "commercial", "mixed"]
 
@@ -118,6 +118,20 @@ def create_property():
             notes=notes,
         )
         tenant_add(property_obj)
+        tenant_flush()
+        log_activity(
+            "property_created",
+            user=current_user,
+            target=property_obj,
+            summary=f"Created property {name}",
+            meta={
+                "name": name,
+                "type": property_type,
+                "address": address_line1,
+                "city": city,
+                "state": state,
+            },
+        )
         tenant_commit()
         flash("Property created.", "success")
         return redirect(url_for("properties.property_detail", property_id=property_obj.id))
