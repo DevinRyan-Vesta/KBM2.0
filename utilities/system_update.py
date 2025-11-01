@@ -126,13 +126,14 @@ class SystemUpdateManager:
         # Run docker compose build from host using docker CLI container
         # This gives the build process access to Dockerfile and all source files
         # The build runs on the host volume (/volume1/KBM/KBM2.0) not the container mount
+        # Use explicit project name to ensure consistency
         cmd = [
             "docker", "run", "--rm",
             "-v", "/var/run/docker.sock:/var/run/docker.sock",
             "-v", "/volume1/KBM/KBM2.0:/workspace",
             "-w", "/workspace",
             "docker/compose:latest",
-            "build", "--no-cache", "python-app"
+            "-p", "kbm20", "build", "--no-cache", "python-app"
         ]
 
         success, output = self.run_command(cmd, timeout=600)
@@ -140,13 +141,13 @@ class SystemUpdateManager:
 
     def restart_containers(self) -> Tuple[bool, str]:
         """Restart Docker containers."""
-        # Stop containers
-        success, stop_output = self.run_command(["docker", "compose", "down"])
+        # Stop containers (use explicit project name to match host build)
+        success, stop_output = self.run_command(["docker", "compose", "-p", "kbm20", "down"])
         if not success:
             return False, f"Failed to stop containers: {stop_output}"
 
         # Start containers (--no-build to skip build check since Dockerfile not mounted)
-        success, start_output = self.run_command(["docker", "compose", "up", "-d", "--no-build"])
+        success, start_output = self.run_command(["docker", "compose", "-p", "kbm20", "up", "-d", "--no-build"])
         if not success:
             return False, f"Failed to start containers: {start_output}"
 
