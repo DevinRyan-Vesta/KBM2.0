@@ -38,13 +38,13 @@ class SystemUpdateManager:
         Run git command on the host using docker run with alpine/git.
         This bypasses permission issues with the mounted .git directory.
         """
-        # Find the host path by checking parent of mounted .git
-        # We'll use docker run to execute git on the host filesystem
+        # Add safe.directory config to trust the mounted directory
         cmd = [
             "docker", "run", "--rm",
             "-v", "/volume1/KBM/KBM2.0:/git",
             "-w", "/git",
-            "alpine/git"
+            "alpine/git",
+            "-c", "safe.directory=/git"
         ] + git_args
 
         return self.run_command(cmd, timeout=timeout)
