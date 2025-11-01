@@ -14,6 +14,7 @@ services:
       - ./compose.yaml:/app/compose.yaml:ro  # Mount compose file for docker compose commands
       - ./master_db:/app/master_db       # Persist master database
       - ./tenant_dbs:/app/tenant_dbs     # Persist tenant databases
+      - /volume1/KBM/backups:/app/backups  # Database backups directory
       - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
     networks:
       - appnet
