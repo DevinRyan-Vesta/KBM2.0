@@ -157,6 +157,40 @@
         color: var(--color-accent);
       }
 
+      .nav-section {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 16px;
+      }
+
+      .nav-section-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-muted);
+        padding: 8px 12px 4px;
+        margin-bottom: 4px;
+      }
+
+      .nav-icon {
+        font-size: 16px;
+        width: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .nav-back {
+        color: var(--color-muted) !important;
+        font-size: 13px;
+      }
+
+      .nav-back:hover {
+        color: var(--color-text) !important;
+      }
+
       .sidebar-footer {
         margin-top: auto;
         display: flex;
@@ -722,19 +756,85 @@
           KBM <span>2.0</span>
         </div>
         <nav class="nav-links">
-          <a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">Home</a>
-          <a href="{{ url_for('inventory.list_lockboxes') }}" class="{% if request.endpoint == 'inventory.list_lockboxes' %}active{% endif %}">Lockboxes</a>
-          <a href="{{ safe_url('inventory.list_keys') }}" class="{% if request.endpoint and request.endpoint.endswith('list_keys') %}active{% endif %}">Keys</a>
-          <a href="{{ safe_url('inventory.list_signs') }}" class="{% if request.endpoint and request.endpoint.endswith('list_signs') %}active{% endif %}">Signs</a>
-          <a href="{{ safe_url('checkout.start') }}" class="{% if request.endpoint and request.endpoint.startswith('checkout') %}active{% endif %}">Check In/Out</a>
-          <a href="{{ url_for('inventory.receipt_lookup') }}" class="{% if request.endpoint == 'inventory.receipt_lookup' %}active{% endif %}">Receipts</a>
-          <a href="{{ url_for('main.reports') }}" class="{% if request.endpoint == 'main.reports' %}active{% endif %}">Reports</a>
-          <a href="{{ url_for('properties.list_properties') }}" class="{% if request.endpoint and request.endpoint.startswith('properties.') %}active{% endif %}">Properties</a>
-          <a href="{{ url_for('contacts.list_contacts') }}" class="{% if request.endpoint and request.endpoint.startswith('contacts.') %}active{% endif %}">Contacts</a>
-          <a href="{{ url_for('smartlocks.list_smartlocks') }}" class="{% if request.endpoint and request.endpoint.startswith('smartlocks.') %}active{% endif %}">Smart Locks</a>
-          {% if current_user.is_authenticated and (current_user.role or '').lower() == 'admin' %}
-            <a href="{{ url_for('auth.list_users') }}" class="{% if request.endpoint and request.endpoint.startswith('auth.list_users') %}active{% endif %}">Users</a>
-            <a href="{{ url_for('auth.activity_logs') }}" class="{% if request.endpoint == 'auth.activity_logs' %}active{% endif %}">Activity Logs</a>
+          {% if request.blueprint == 'app_admin' %}
+            {# App Admin Navigation #}
+            <div class="nav-section">
+              <div class="nav-section-label">System Administration</div>
+              <a href="{{ url_for('app_admin.dashboard') }}" class="{% if request.endpoint == 'app_admin.dashboard' %}active{% endif %}">
+                <span class="nav-icon">📊</span> Dashboard
+              </a>
+              <a href="{{ url_for('app_admin.list_accounts') }}" class="{% if request.endpoint in ['app_admin.list_accounts', 'app_admin.view_account'] %}active{% endif %}">
+                <span class="nav-icon">🏢</span> Accounts
+              </a>
+              <a href="{{ url_for('app_admin.list_app_admins') }}" class="{% if request.endpoint in ['app_admin.list_app_admins', 'app_admin.create_app_admin'] %}active{% endif %}">
+                <span class="nav-icon">👥</span> Administrators
+              </a>
+            </div>
+            <div class="nav-section">
+              <div class="nav-section-label">System</div>
+              <a href="{{ url_for('app_admin.system_updates') }}" class="{% if request.endpoint == 'app_admin.system_updates' %}active{% endif %}">
+                <span class="nav-icon">⚙️</span> Updates
+              </a>
+            </div>
+            <div class="nav-section">
+              <a href="{{ url_for('index') }}" class="nav-back">
+                <span class="nav-icon">←</span> Back to Main Site
+              </a>
+            </div>
+          {% else %}
+            {# Tenant Navigation #}
+            <div class="nav-section">
+              <a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">
+                <span class="nav-icon">🏠</span> Home
+              </a>
+            </div>
+            <div class="nav-section">
+              <div class="nav-section-label">Inventory</div>
+              <a href="{{ url_for('inventory.list_lockboxes') }}" class="{% if request.endpoint == 'inventory.list_lockboxes' %}active{% endif %}">
+                <span class="nav-icon">🔒</span> Lockboxes
+              </a>
+              <a href="{{ safe_url('inventory.list_keys') }}" class="{% if request.endpoint and request.endpoint.endswith('list_keys') %}active{% endif %}">
+                <span class="nav-icon">🔑</span> Keys
+              </a>
+              <a href="{{ safe_url('inventory.list_signs') }}" class="{% if request.endpoint and request.endpoint.endswith('list_signs') %}active{% endif %}">
+                <span class="nav-icon">🪧</span> Signs
+              </a>
+            </div>
+            <div class="nav-section">
+              <div class="nav-section-label">Operations</div>
+              <a href="{{ safe_url('checkout.start') }}" class="{% if request.endpoint and request.endpoint.startswith('checkout') %}active{% endif %}">
+                <span class="nav-icon">📝</span> Check In/Out
+              </a>
+              <a href="{{ url_for('inventory.receipt_lookup') }}" class="{% if request.endpoint == 'inventory.receipt_lookup' %}active{% endif %}">
+                <span class="nav-icon">🧾</span> Receipts
+              </a>
+              <a href="{{ url_for('main.reports') }}" class="{% if request.endpoint == 'main.reports' %}active{% endif %}">
+                <span class="nav-icon">📊</span> Reports
+              </a>
+            </div>
+            <div class="nav-section">
+              <div class="nav-section-label">Management</div>
+              <a href="{{ url_for('properties.list_properties') }}" class="{% if request.endpoint and request.endpoint.startswith('properties.') %}active{% endif %}">
+                <span class="nav-icon">🏘️</span> Properties
+              </a>
+              <a href="{{ url_for('contacts.list_contacts') }}" class="{% if request.endpoint and request.endpoint.startswith('contacts.') %}active{% endif %}">
+                <span class="nav-icon">👤</span> Contacts
+              </a>
+              <a href="{{ url_for('smartlocks.list_smartlocks') }}" class="{% if request.endpoint and request.endpoint.startswith('smartlocks.') %}active{% endif %}">
+                <span class="nav-icon">🔐</span> Smart Locks
+              </a>
+            </div>
+            {% if current_user.is_authenticated and (current_user.role or '').lower() == 'admin' %}
+            <div class="nav-section">
+              <div class="nav-section-label">Administration</div>
+              <a href="{{ url_for('auth.list_users') }}" class="{% if request.endpoint and request.endpoint.startswith('auth.list_users') %}active{% endif %}">
+                <span class="nav-icon">👥</span> Users
+              </a>
+              <a href="{{ url_for('auth.activity_logs') }}" class="{% if request.endpoint == 'auth.activity_logs' %}active{% endif %}">
+                <span class="nav-icon">📋</span> Activity Logs
+              </a>
+            </div>
+            {% endif %}
           {% endif %}
         </nav>
         <div class="sidebar-footer">
