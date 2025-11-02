@@ -280,7 +280,17 @@
 
 <div class="receipt-actions no-print">
   <button onclick="window.print()" class="btn primary">Print Receipt</button>
-  <a href="{{ url_for('inventory.list_keys') if item.type == 'Key' else url_for('main.home') }}" class="btn ghost">Back to {{ item.type }}s</a>
+  {% if from_page == 'receipts' %}
+  <a href="{{ url_for('inventory.receipt_lookup') }}" class="btn ghost">Back to Receipts</a>
+  {% elif from_page == 'keys' %}
+  <a href="{{ url_for('inventory.list_keys') }}" class="btn ghost">Back to Keys</a>
+  {% elif from_page == 'lockboxes' %}
+  <a href="{{ url_for('inventory.list_lockboxes') }}" class="btn ghost">Back to Lockboxes</a>
+  {% elif from_page == 'signs' %}
+  <a href="{{ url_for('inventory.list_signs') }}" class="btn ghost">Back to Signs</a>
+  {% else %}
+  <a href="{{ url_for('main.home') }}" class="btn ghost">Back to Home</a>
+  {% endif %}
 </div>
 
 {% endblock %}

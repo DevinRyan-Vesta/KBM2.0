@@ -2045,6 +2045,23 @@ def checkout_receipt(checkout_id):
     code128.write(barcode_io, options={'write_text': False, 'module_height': 10, 'module_width': 0.3})
     barcode_svg = base64.b64encode(barcode_io.getvalue()).decode('utf-8')
 
+    # Determine where user came from for back button context
+    from_page = request.args.get('from', 'auto')
+
+    # Auto-detect from referer if not explicitly provided
+    if from_page == 'auto':
+        referer = request.referrer
+        if referer and 'receipts' in referer:
+            from_page = 'receipts'
+        elif item.type == 'Key':
+            from_page = 'keys'
+        elif item.type == 'Lockbox':
+            from_page = 'lockboxes'
+        elif item.type == 'Sign':
+            from_page = 'signs'
+        else:
+            from_page = 'home'
+
     from datetime import datetime
     return render_template(
         "checkout_receipt.html",
@@ -2052,7 +2069,8 @@ def checkout_receipt(checkout_id):
         item=item,
         now=datetime.now(),
         barcode_svg=barcode_svg,
-        barcode_data=barcode_data
+        barcode_data=barcode_data,
+        from_page=from_page
     )
 
 
