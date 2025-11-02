@@ -166,13 +166,14 @@ docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} -
 
             # Trigger the script to run on the host in the background using docker run
             # The at command or nohup won't work from inside container, so we use docker run
-            # to spawn a lightweight alpine container on the host that will execute the script
+            # to spawn a docker container on the host that will execute the script
+            # Must use docker:latest (not alpine) because it has docker compose CLI
             trigger_cmd = [
                 "docker", "run", "--rm", "-d",
                 "-v", "/var/run/docker.sock:/var/run/docker.sock",
                 "-v", "/volume1/KBM/KBM2.0:/workspace",
                 "-w", "/workspace",
-                "alpine:latest",
+                "docker:latest",
                 "sh", "/workspace/restart_scheduled.sh"
             ]
 
