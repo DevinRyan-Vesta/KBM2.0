@@ -436,10 +436,10 @@ def profile():
 def activity_logs():
     """Activity logs page for tenant."""
     _require_admin()
-    
+
     from utilities.tenant_helpers import tenant_query
     from utilities.database import ActivityLog
-    
+
     logs = (
         tenant_query(ActivityLog)
         .order_by(ActivityLog.created_at.desc())
@@ -447,3 +447,58 @@ def activity_logs():
         .all()
     )
     return render_template("activity_logs.html", logs=logs)
+
+
+@auth_bp.route("/activity-logs/export", methods=["GET"])
+@login_required
+@tenant_required
+def export_activity_logs():
+    """Export activity logs to CSV."""
+    _require_admin()
+
+    from utilities.tenant_helpers import tenant_query
+    from utilities.database import ActivityLog
+    import csv
+    from io import StringIO
+
+    # Get all logs (or limit if needed)
+    limit = request.args.get('limit', 1000, type=int)
+    logs = (
+        tenant_query(ActivityLog)
+        .order_by(ActivityLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    # Create CSV
+    output = StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow(['Timestamp', 'User', 'Email', 'Action', 'Target Type', 'Target ID', 'Summary', 'Details'])
+
+    # Write data
+    for log in logs:
+        user_name = log.user.name if log.user else 'System'
+        user_email = log.user.email if log.user else ''
+        meta_str = str(log.meta) if log.meta else ''
+
+        writer.writerow([
+            log.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            user_name,
+            user_email,
+            log.action,
+            log.target_type or '',
+            log.target_id or '',
+            log.summary or '',
+            meta_str
+        ])
+
+    # Create response
+    output.seek(0)
+    from flask import make_response
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'text/csv'
+    response.headers['Content-Disposition'] = f'attachment; filename=activity_logs_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+
+    return response

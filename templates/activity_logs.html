@@ -3,8 +3,13 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>Activity Logs</h1>
-  <span class="muted">Showing latest {{ logs|length }} entries</span>
+  <div>
+    <h1>Activity Logs</h1>
+    <span class="muted">Showing latest {{ logs|length }} entries</span>
+  </div>
+  <div class="toolbar">
+    <a href="{{ url_for('auth.export_activity_logs') }}" class="btn primary">Export to CSV</a>
+  </div>
 </div>
 
 <div class="card table-card">
