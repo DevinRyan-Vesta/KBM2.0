@@ -2,7 +2,7 @@
 App admin routes for system-level administration.
 """
 
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required
 from . import app_admin_bp
 from utilities.master_database import master_db, Account, MasterUser
