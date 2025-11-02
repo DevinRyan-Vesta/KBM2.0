@@ -21,6 +21,8 @@ Notes:
 
 === TODO ===
 
+[ ] Receipts page search/autocomplete not returning results after completing actions
+
 [ ] No import or export on signs page
 
 [ ] No export on Activity log
@@ -87,10 +89,15 @@ REFERENCE INFORMATION - FIXES APPLIED
 4. RECEIPTS PAGE FIX
    Files Modified:
    - inventory/views.py (lines 2097-2101): Added default 10 most recent receipts
+   - templates/receipt_lookup.html: Fixed template to display results without query
 
    What was fixed:
-   - Receipts page now shows 10 most recent receipts when first loaded
+   - Backend loads 10 most recent receipts when no search query
+   - Template now displays results whether or not there's a search query
+   - Shows "Recent Receipts" heading by default, "Search Results" when searching
    - No longer shows empty page until you search
+
+   Note: Search functionality may need additional investigation if not returning expected results
 
 5. ACTIVITY LOGS FIX
    Files Modified:
