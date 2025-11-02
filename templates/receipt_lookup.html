@@ -36,9 +36,13 @@
   </form>
 </div>
 
-{% if query %}
 <div class="card">
+  {% if query %}
   <h3>Search Results</h3>
+  {% else %}
+  <h3>Recent Receipts</h3>
+  <p class="muted" style="margin-bottom: 16px;">Showing the 10 most recent receipts. Use the search above to find specific receipts.</p>
+  {% endif %}
 
   {% if results %}
   <div class="table-card">
@@ -95,13 +99,19 @@
     </table>
   </div>
   {% else %}
+  {% if query %}
   <div class="empty-state">
     <p>No receipts found for "{{ query }}"</p>
     <p class="muted text-small">Try searching by receipt number, barcode (RCP######), or person's name</p>
   </div>
+  {% else %}
+  <div class="empty-state">
+    <p>No receipts found</p>
+    <p class="muted text-small">Receipts will appear here after checking out items</p>
+  </div>
+  {% endif %}
   {% endif %}
 </div>
-{% endif %}
 
 <script>
 // Barcode scanner detection
