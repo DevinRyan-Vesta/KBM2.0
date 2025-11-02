@@ -15,12 +15,11 @@ Notes:
 [✓] Creating a property or smart lock does not appear in activity Logs - FIXED
 [✓] The company accounts need to be able to have their name edited - FIXED
 [✓] Can we create a UI by which i can update the app, typing in a whole bunch of command lines isn't my thing - FIXED
+[✓] Import option is missing from lockboxes - FIXED
+[✓] Export on lockboxes page doesn't work - FIXED
+[✓] Update Navigation, The Nav Bar is getting a little cluttered - FIXED
 
 === TODO ===
-
-[ ] Import option is missing from lockboxes
-
-[ ] Export on lockboxes page doesn't work
 
 [ ] No import or export on signs page
 
@@ -45,8 +44,6 @@ LONG TERM
 [ ] Add customization options for company accounts
 
 [ ] Add Favicon
-
-[ ] Update Navigation, The Nav Bar is getting a little cluttered
 
 [ ] Customization for reports and exports
 
@@ -119,6 +116,7 @@ Scripts Created (can be re-run if needed):
 - add_update_ui_routes.py
 - add_system_updates_link.py
 - update_todo_system_updates.py
+
 7. SYSTEM UPDATE UI
    Files Created:
    - utilities/system_update.py: Core update management functionality
@@ -140,6 +138,35 @@ Scripts Created (can be re-run if needed):
    - Navigate to root domain
    - Click "System Updates" in Quick Actions
 
+8. LOCKBOX IMPORT & EXPORT
+   Files Modified:
+   - inventory/import_views.py: Added LOCKBOX_FIELDS and three lockbox import routes
+   - templates/lockboxes.html: Added Import button and fixed exportData() function
+
+   What was fixed:
+   - Lockboxes now have Import functionality (CSV/Excel)
+   - Import follows same workflow as keys (upload, map columns, preview, import)
+   - Export functionality now works correctly on lockboxes page
+   - Supports property and unit mapping during import
+
+9. SMART DYNAMIC NAVIGATION
+   Files Modified:
+   - templates/base.html: Completely redesigned navigation system
+   - templates/app_admin/*.html: All admin templates revert to extending base.html
+   - templates/app_admin/admin_base.html: Deleted (no longer needed)
+
+   What was fixed:
+   - Single unified navigation system in base.html
+   - Context-aware: detects app_admin vs tenant context using request.blueprint
+   - Permission-aware: shows different options based on user context
+   - Organized into logical sections with labels (System Administration, Inventory, etc.)
+   - Added icons to all navigation links for better visual hierarchy
+   - Removed duplicate admin sidebar
+   - Fixed 404 "Back to Main Site" link that didn't apply to app admins
+
+   Navigation Sections:
+   - App Admin: Dashboard, Accounts, Administrators, System Updates
+   - Tenant: Home, Inventory (Lockboxes, Keys, Signs), Properties, Contacts, Smart Locks, Activity Log, Receipts
 
 Scripts Created (can be re-run if needed):
 - fix_csrf_tokens.py
@@ -161,3 +188,19 @@ TESTING RECOMMENDATIONS
 6. Create a property and check activity logs
 7. Create a smart lock and check activity logs
 8. Login as app admin and edit a company account name
+9. Test System Updates UI:
+   - Check for updates from GitHub
+   - Perform update with rebuild option
+   - Verify containers restart automatically
+   - Monitor container status
+   - View and download system logs
+10. Test lockbox import/export:
+    - Export existing lockboxes to CSV
+    - Import lockboxes from CSV/Excel file
+    - Test column mapping for all fields
+    - Verify property and unit associations
+11. Test smart navigation:
+    - Login as tenant user - verify tenant navigation
+    - Login as app admin - verify admin navigation
+    - Check active state highlighting
+    - Verify no 404 errors on navigation links
