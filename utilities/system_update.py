@@ -123,17 +123,17 @@ class SystemUpdateManager:
 
     def rebuild_docker(self) -> Tuple[bool, str]:
         """Rebuild Docker containers by running build on host with full source access."""
-        # Run docker compose build from host using docker CLI container
+        # Run docker compose build from host using modern docker CLI container
         # This gives the build process access to Dockerfile and all source files
         # The build runs on the host volume (/volume1/KBM/KBM2.0) not the container mount
-        # Use explicit project name and compose file to ensure consistency
+        # Use docker:latest which includes the modern compose plugin
         cmd = [
             "docker", "run", "--rm",
             "-v", "/var/run/docker.sock:/var/run/docker.sock",
             "-v", "/volume1/KBM/KBM2.0:/workspace",
             "-w", "/workspace",
-            "docker/compose:latest",
-            "-f", "compose.yaml",
+            "docker:latest",
+            "compose", "-f", "compose.yaml",
             "-p", "kbm20", "build", "--no-cache", "python-app"
         ]
 
