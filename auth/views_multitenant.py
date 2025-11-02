@@ -458,8 +458,10 @@ def export_activity_logs():
 
     from utilities.tenant_helpers import tenant_query
     from utilities.database import ActivityLog
+    from utilities.master_database import MasterUser
     import csv
     from io import StringIO
+    from datetime import datetime
 
     # Get all logs (or limit if needed)
     limit = request.args.get('limit', 1000, type=int)
@@ -470,6 +472,15 @@ def export_activity_logs():
         .all()
     )
 
+    # Get all unique user IDs from logs
+    user_ids = {log.user_id for log in logs if log.user_id}
+
+    # Query all users at once to avoid N+1 queries
+    users_dict = {}
+    if user_ids:
+        users = MasterUser.query.filter(MasterUser.id.in_(user_ids)).all()
+        users_dict = {u.id: u for u in users}
+
     # Create CSV
     output = StringIO()
     writer = csv.writer(output)
@@ -479,8 +490,9 @@ def export_activity_logs():
 
     # Write data
     for log in logs:
-        user_name = log.user.name if log.user else 'System'
-        user_email = log.user.email if log.user else ''
+        user = users_dict.get(log.user_id) if log.user_id else None
+        user_name = user.name if user else 'System'
+        user_email = user.email if user else ''
         meta_str = str(log.meta) if log.meta else ''
 
         writer.writerow([

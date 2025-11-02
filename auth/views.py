@@ -1,6 +1,7 @@
 from flask import request, Blueprint, render_template, redirect, url_for, flash, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from typing import Dict, Optional
+from datetime import datetime
 from utilities.database import db, User, ActivityLog, log_activity
 
 # Define the blueprint HERE. Do NOT import another auth_bp from elsewhere.
@@ -375,6 +376,15 @@ def export_activity_logs():
         .all()
     )
 
+    # Get all unique user IDs from logs
+    user_ids = {log.user_id for log in logs if log.user_id}
+
+    # Query all users at once to avoid N+1 queries
+    users_dict = {}
+    if user_ids:
+        users = User.query.filter(User.id.in_(user_ids)).all()
+        users_dict = {u.id: u for u in users}
+
     # Create CSV
     output = StringIO()
     writer = csv.writer(output)
@@ -384,8 +394,9 @@ def export_activity_logs():
 
     # Write data
     for log in logs:
-        user_name = log.user.name if log.user else 'System'
-        user_email = log.user.email if log.user else ''
+        user = users_dict.get(log.user_id) if log.user_id else None
+        user_name = user.name if user else 'System'
+        user_email = user.email if user else ''
         meta_str = str(log.meta) if log.meta else ''
 
         writer.writerow([
