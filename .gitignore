@@ -80,6 +80,7 @@ migrations/versions/*.pyc
 *.bak
 *.backup
 .cache/
+restart_scheduled.sh
 
 # OS
 Thumbs.db

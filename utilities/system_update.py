@@ -142,33 +142,46 @@ class SystemUpdateManager:
 
     def restart_containers(self) -> Tuple[bool, str]:
         """Restart Docker containers by running commands on host with delay."""
-        # Schedule restart to happen in 10 seconds using background process
-        # This allows the web response to return before container restarts
-        # The sleep delay ensures the HTTP response completes before shutdown
-        restart_script = """
-nohup sh -c '
-    sleep 10 && \
-    docker run --rm \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v /volume1/KBM/KBM2.0:/workspace \
-        -w /workspace \
-        docker:latest \
-        compose -f compose.yaml -p kbm20 up -d --no-build --force-recreate
-' > /dev/null 2>&1 &
+        # Write a restart script to the filesystem that the host can execute
+        # This script will be triggered from the host and will survive container shutdown
+        restart_script_content = """#!/bin/sh
+sleep 10
+docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d --no-build --force-recreate
 """
 
         try:
-            # Execute the background restart script
+            # Write the restart script to a file the host can access
+            script_path = os.path.join(self.repo_path, "restart_scheduled.sh")
+            with open(script_path, 'w') as f:
+                f.write(restart_script_content)
+
+            # Make it executable
+            os.chmod(script_path, 0o755)
+
+            # Trigger the script to run on the host in the background using docker run
+            # The at command or nohup won't work from inside container, so we use docker run
+            # to spawn a lightweight alpine container on the host that will execute the script
+            trigger_cmd = [
+                "docker", "run", "--rm", "-d",
+                "-v", "/var/run/docker.sock:/var/run/docker.sock",
+                "-v", "/volume1/KBM/KBM2.0:/workspace",
+                "-w", "/workspace",
+                "alpine:latest",
+                "sh", "/workspace/restart_scheduled.sh"
+            ]
+
             result = subprocess.run(
-                ["sh", "-c", restart_script],
+                trigger_cmd,
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
-                timeout=5  # Just enough time to start the background process
+                timeout=10
             )
 
-            # The background process has been started, containers will restart in 10 seconds
-            return True, "Container restart scheduled in 10 seconds"
+            if result.returncode == 0:
+                return True, "Container restart scheduled in 10 seconds"
+            else:
+                return False, f"Failed to schedule restart: {result.stderr}"
 
         except Exception as e:
             return False, f"Failed to schedule restart: {str(e)}"
