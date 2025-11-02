@@ -141,16 +141,23 @@ class SystemUpdateManager:
         return success, output
 
     def restart_containers(self) -> Tuple[bool, str]:
-        """Restart Docker containers."""
-        # Stop containers (use explicit project name to match host build)
-        success, stop_output = self.run_command(["docker", "compose", "-p", "kbm20", "down"])
-        if not success:
-            return False, f"Failed to stop containers: {stop_output}"
+        """Restart Docker containers by running commands on host."""
+        # Run docker compose restart from host using modern docker CLI container
+        # This allows the container to stop itself and have the host restart it
+        # Use docker:latest which includes the modern compose plugin
+        cmd = [
+            "docker", "run", "--rm",
+            "-v", "/var/run/docker.sock:/var/run/docker.sock",
+            "-v", "/volume1/KBM/KBM2.0:/workspace",
+            "-w", "/workspace",
+            "docker:latest",
+            "compose", "-f", "compose.yaml",
+            "-p", "kbm20", "up", "-d", "--no-build", "--force-recreate"
+        ]
 
-        # Start containers (--no-build to skip build check since Dockerfile not mounted)
-        success, start_output = self.run_command(["docker", "compose", "-p", "kbm20", "up", "-d", "--no-build"])
+        success, output = self.run_command(cmd, timeout=300)
         if not success:
-            return False, f"Failed to start containers: {start_output}"
+            return False, f"Failed to restart containers: {output}"
 
         return True, "Containers restarted successfully"
 
