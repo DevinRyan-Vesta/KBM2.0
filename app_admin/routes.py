@@ -367,9 +367,10 @@ def container_status():
 @root_domain_only
 def restart_system():
     """
-    Restart Docker containers.
+    Restart Docker containers without rebuilding.
     """
     from utilities.system_update import update_manager
 
-    success, message = update_manager.restart_containers()
+    # Use build=False for manual restart (no rebuild, just restart)
+    success, message = update_manager.restart_containers(build=False)
     return jsonify({"success": success, "message": message})

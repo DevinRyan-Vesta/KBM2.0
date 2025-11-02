@@ -140,13 +140,19 @@ class SystemUpdateManager:
         success, output = self.run_command(cmd, timeout=600)
         return success, output
 
-    def restart_containers(self) -> Tuple[bool, str]:
-        """Restart Docker containers by running commands on host with delay."""
+    def restart_containers(self, build: bool = True) -> Tuple[bool, str]:
+        """Restart Docker containers by running commands on host with delay.
+
+        Args:
+            build: If True, rebuild images before restarting (default for updates).
+                   If False, just restart with existing images.
+        """
         # Write a restart script to the filesystem that the host can execute
         # This script will be triggered from the host and will survive container shutdown
-        restart_script_content = """#!/bin/sh
+        build_flag = "--build" if build else "--no-build"
+        restart_script_content = f"""#!/bin/sh
 sleep 10
-docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d --no-build --force-recreate
+docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} --force-recreate
 """
 
         try:
@@ -300,7 +306,8 @@ docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d --no-build --f
                 return results
 
         # Step 4: Restart containers
-        success, message = self.restart_containers()
+        # Always rebuild when updating to pick up code changes
+        success, message = self.restart_containers(build=True)
         results["restart"] = {
             "status": "success" if success else "failed",
             "message": message
