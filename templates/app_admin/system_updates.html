@@ -283,8 +283,9 @@
       html += '</div>';
 
       if (result.overall.status === 'success') {
-        statusDiv.innerHTML = '<p class="flash success">Update completed successfully!</p>' + html;
-        setTimeout(() => location.reload(), 3000);
+        statusDiv.innerHTML = '<p class="flash success">Update completed successfully! System is restarting...</p>' + html + '<p class="muted" style="margin-top: 12px;">The application will restart in about 10 seconds. This page will reload automatically in 30 seconds.</p>';
+        // Wait 30 seconds for containers to restart before reloading
+        setTimeout(() => location.reload(), 30000);
       } else {
         statusDiv.innerHTML = '<p class="flash error">Update failed. Check the logs for details.</p>' + html;
         buttons.forEach(id => {
@@ -378,8 +379,9 @@
       const data = await response.json();
 
       if (data.success) {
-        alert('Containers restarted successfully!');
-        setTimeout(() => location.reload(), 2000);
+        alert('Container restart scheduled! The application will restart in about 10 seconds. This page will reload automatically in 30 seconds.');
+        // Wait 30 seconds for containers to restart before reloading
+        setTimeout(() => location.reload(), 30000);
       } else {
         alert(`Failed to restart containers: ${data.message}`);
       }

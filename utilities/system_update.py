@@ -141,25 +141,37 @@ class SystemUpdateManager:
         return success, output
 
     def restart_containers(self) -> Tuple[bool, str]:
-        """Restart Docker containers by running commands on host."""
-        # Run docker compose restart from host using modern docker CLI container
-        # This allows the container to stop itself and have the host restart it
-        # Use docker:latest which includes the modern compose plugin
-        cmd = [
-            "docker", "run", "--rm",
-            "-v", "/var/run/docker.sock:/var/run/docker.sock",
-            "-v", "/volume1/KBM/KBM2.0:/workspace",
-            "-w", "/workspace",
-            "docker:latest",
-            "compose", "-f", "compose.yaml",
-            "-p", "kbm20", "up", "-d", "--no-build", "--force-recreate"
-        ]
+        """Restart Docker containers by running commands on host with delay."""
+        # Schedule restart to happen in 10 seconds using background process
+        # This allows the web response to return before container restarts
+        # The sleep delay ensures the HTTP response completes before shutdown
+        restart_script = """
+nohup sh -c '
+    sleep 10 && \
+    docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v /volume1/KBM/KBM2.0:/workspace \
+        -w /workspace \
+        docker:latest \
+        compose -f compose.yaml -p kbm20 up -d --no-build --force-recreate
+' > /dev/null 2>&1 &
+"""
 
-        success, output = self.run_command(cmd, timeout=300)
-        if not success:
-            return False, f"Failed to restart containers: {output}"
+        try:
+            # Execute the background restart script
+            result = subprocess.run(
+                ["sh", "-c", restart_script],
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                timeout=5  # Just enough time to start the background process
+            )
 
-        return True, "Containers restarted successfully"
+            # The background process has been started, containers will restart in 10 seconds
+            return True, "Container restart scheduled in 10 seconds"
+
+        except Exception as e:
+            return False, f"Failed to schedule restart: {str(e)}"
 
     def get_container_status(self) -> List[Dict[str, str]]:
         """Get status of running containers."""
