@@ -25,6 +25,7 @@ class Item(db.Model):
     address = db.Column(db.String(255), nullable=True)      # search helper
     code_current = db.Column(db.String(20), nullable=True)
     code_previous = db.Column(db.String(20), nullable=True)
+    supra_id = db.Column(db.String(50), nullable=True)  # Supra lockbox ID
 
     # Key-specific fields
     key_hook_number = db.Column(db.String(20), nullable=True)  # Key Hook # in key box

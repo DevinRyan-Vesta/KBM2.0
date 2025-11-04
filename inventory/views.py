@@ -142,6 +142,7 @@ def add_lockbox():
         label = (request.form.get("label") or "").strip()
         location = (request.form.get("location") or "").strip()
         address = (request.form.get("address") or "").strip()
+        supra_id = (request.form.get("supra_id") or "").strip() or None
         # Accept both legacy `code_current` and template `code`
         code = (
             request.form.get("code")
@@ -187,6 +188,7 @@ def add_lockbox():
             address=address or None,
             code_current=code or None,
             code_previous=None,
+            supra_id=supra_id,
             status="available",
             last_action="created",
             last_action_at=utc_now(),
@@ -205,6 +207,7 @@ def add_lockbox():
                 "location": location or None,
                 "address": item.address,
                 "code": code,
+                "supra_id": supra_id,
                 "property_id": property_obj.id if property_obj else None,
             },
             commit=False,
@@ -492,6 +495,7 @@ def edit_lockbox(item_id: int):
         "address": lb.address,
         "code_current": lb.code_current,
         "code_previous": lb.code_previous,
+        "supra_id": lb.supra_id,
         "status": lb.status,
         "assigned_to": lb.assigned_to,
         "property_id": lb.property_id,
@@ -508,6 +512,7 @@ def edit_lockbox(item_id: int):
     lb.address = (form.get("address") or "").strip() or None
     lb.code_current = (form.get("code_current") or "").strip() or None
     lb.code_previous = (form.get("code_previous") or "").strip() or None
+    lb.supra_id = (form.get("supra_id") or "").strip() or None
 
     status = (form.get("status") or "").strip().lower()
     if status:

@@ -167,6 +167,7 @@
             <th>Location</th>
             <th>Address</th>
             <th>Codes</th>
+            <th>Supra ID</th>
             <th>Status</th>
             <th>Assigned To</th>
             <th>Last Action</th>
@@ -208,6 +209,7 @@
                   </div>
                 </div>
               </td>
+              <td>{{ lb.supra_id or '-' }}</td>
               <td>
                 {% set st_lower = (lb.status or 'Unknown')|lower %}
                 <span class="tag {{ 'ok' if st_lower in ['available', 'assigned'] else 'warn' }}">{{ (lb.status or 'Unknown').replace('_',' ')|title }}</span>
@@ -280,6 +282,7 @@
                       data-address="{{ lb.address|default('', true)|e }}"
                       data-code-current="{{ lb.code_current|default('', true)|e }}"
                       data-code-previous="{{ lb.code_previous|default('', true)|e }}"
+                      data-supra-id="{{ lb.supra_id|default('', true)|e }}"
                       data-status="{{ (lb.status or '')|lower }}"
                       data-assigned-to="{{ lb.assigned_to|default('', true)|e }}"
                       data-property-id="{{ lb.property_id or '' }}">
@@ -589,6 +592,7 @@
           { name: 'property_id', label: 'Property', widget: 'select', options: propertyOptions, defaultValue: button.dataset.propertyId || '' },
           { name: 'code_current', label: 'Current Code', defaultValue: button.dataset.codeCurrent || '' },
           { name: 'code_previous', label: 'Previous Code', defaultValue: button.dataset.codePrevious || '' },
+          { name: 'supra_id', label: 'Supra ID', defaultValue: button.dataset.supraId || '', placeholder: 'Optional - for Supra lockboxes' },
           { name: 'status', label: 'Status', widget: 'select', options: statusOptions, defaultValue: (button.dataset.status || '').toLowerCase() },
           { name: 'assigned_to', label: 'Assigned To', defaultValue: button.dataset.assignedTo || '', placeholder: 'Optional' },
         ],
@@ -600,6 +604,7 @@
           property_id: (formValues.get('property_id') || '').trim(),
           code_current: (formValues.get('code_current') || '').trim(),
           code_previous: (formValues.get('code_previous') || '').trim(),
+          supra_id: (formValues.get('supra_id') || '').trim(),
           status: (formValues.get('status') || '').trim(),
           assigned_to: (formValues.get('assigned_to') || '').trim(),
         };

@@ -83,6 +83,7 @@ LOCKBOX_FIELDS = {
     'label': {'required': True, 'name': 'Label'},
     'code_current': {'required': False, 'name': 'Current Code'},
     'code_previous': {'required': False, 'name': 'Previous Code'},
+    'supra_id': {'required': False, 'name': 'Supra ID'},
     'location': {'required': False, 'name': 'Location'},
     'address': {'required': False, 'name': 'Address'},
     'status': {'required': False, 'name': 'Status', 'default': 'available'},
