@@ -238,6 +238,18 @@ def edit_property(property_id: int):
     )
 
 
+@properties_bp.route("/<int:property_id>/units", methods=["GET"])
+@login_required
+@tenant_required
+def get_units(property_id: int):
+    """API endpoint to get units for a property (for AJAX calls)."""
+    property_obj = _get_property_or_404(property_id)
+    units = tenant_query(PropertyUnit).filter_by(property_id=property_id).order_by(PropertyUnit.label).all()
+    return jsonify({
+        "units": [{"id": u.id, "label": u.label} for u in units]
+    })
+
+
 @properties_bp.route("/<int:property_id>/units", methods=["POST"])
 @login_required
 @tenant_required

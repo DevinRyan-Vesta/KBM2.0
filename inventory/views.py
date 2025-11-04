@@ -384,8 +384,11 @@ def assign_lockbox(item_id):
     address = (request.form.get("address") or "").strip()
     location = (request.form.get("location") or "").strip()
     property_id_str = (request.form.get("property_id") or "").strip()
+    property_unit_id_str = (request.form.get("property_unit_id") or "").strip()
 
     property_obj = None
+    property_unit_obj = None
+
     if property_id_str:
         try:
             property_obj = get_tenant_session().get(Property, int(property_id_str))
@@ -394,6 +397,12 @@ def assign_lockbox(item_id):
         if property_obj is None:
             flash("Selected property could not be found.", "error")
             return redirect(_get_redirect_url(default_redirect))
+
+    if property_unit_id_str:
+        try:
+            property_unit_obj = get_tenant_session().get(PropertyUnit, int(property_unit_id_str))
+        except ValueError:
+            property_unit_obj = None
 
     # Validate contractor assignments require return date
     if assignment_type == "contractor" and not expected_return_date_str:
@@ -433,11 +442,16 @@ def assign_lockbox(item_id):
     elif not property_id_str:
         lb.property = None
 
+    if property_unit_obj:
+        lb.property_unit = property_unit_obj
+    elif not property_unit_id_str:
+        lb.property_unit = None
+
     if address:
         lb.address = address
     if location:
         lb.location = location
-    lb.property_unit = None  # lockboxes are not tied to units
+    # Keep status as "assigned" for UI display
     lb.status = "assigned"
     lb.last_action = "assigned"
     lb.last_action_at = utc_now()
@@ -455,6 +469,7 @@ def assign_lockbox(item_id):
             "address": address,
             "location": location,
             "property_id": property_obj.id if property_obj else None,
+            "property_unit_id": property_unit_obj.id if property_unit_obj else None,
         },
         commit=False,
     )

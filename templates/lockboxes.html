@@ -234,7 +234,7 @@
                     </button>
                   {% endif %}
 
-                  {% if status_lower in ['available', 'assigned'] %}
+                  {% if status_lower == 'available' %}
                     <button class="btn small js-checkout" type="button"
                       data-action="{{ url_for('inventory.checkout_lockbox', item_id=lb.id) }}"
                       data-label="{{ lb.label|e }}"
@@ -245,7 +245,7 @@
                     </button>
                   {% endif %}
 
-                  {% if status_lower == 'checked_out' %}
+                  {% if status_lower in ['checked_out', 'assigned'] %}
                     <button class="btn small js-checkin" type="button"
                       data-action="{{ url_for('inventory.checkin_lockbox', item_id=lb.id) }}"
                       data-label="{{ lb.label|e }}"
@@ -627,6 +627,7 @@
           { name: 'assignment_type', label: 'Assignment Type', widget: 'select', required: true, options: ['agent', 'property', 'contractor'] },
           { name: 'expected_return_date', label: 'Expected Return Date', type: 'date', placeholder: 'Required for contractors' },
           { name: 'property_id', label: 'Property', widget: 'select', options: propertyOptions, defaultValue: button.dataset.propertyId || '' },
+          { name: 'property_unit_id', label: 'Unit (Optional)', widget: 'select', options: [['', '(None)']] },
           { name: 'address', label: 'Property Address', placeholder: 'Optional' },
           { name: 'location', label: 'Location', placeholder: 'Optional' },
         ],
@@ -634,6 +635,7 @@
           const assignmentType = formValues.get('assignment_type');
           const expectedReturn = formValues.get('expected_return_date');
           const propertyId = (formValues.get('property_id') || '').trim();
+          const propertyUnitId = (formValues.get('property_unit_id') || '').trim();
           let assigneeValue = (formValues.get('assignee') || '').trim();
           let addressValue = (formValues.get('address') || '').trim();
           const locationValue = (formValues.get('location') || '').trim();
@@ -666,11 +668,66 @@
             assignment_type: assignmentType,
             expected_return_date: expectedReturn,
             property_id: propertyId,
+            property_unit_id: propertyUnitId,
             address: addressValue,
             location: locationValue,
           });
         }
       });
+
+      // After modal opens, add property change listener to load units
+      setTimeout(() => {
+        const propertySelect = document.getElementById('modal-property_id');
+        const unitSelect = document.getElementById('modal-property_unit_id');
+        const addressField = document.getElementById('modal-address');
+
+        if (propertySelect && unitSelect) {
+          const loadUnits = async (propertyId) => {
+            // Clear units
+            unitSelect.innerHTML = '<option value="">(None)</option>';
+
+            if (!propertyId) return;
+
+            try {
+              // Fetch units for this property
+              const response = await fetch(`/properties/${propertyId}/units`);
+              if (response.ok) {
+                const data = await response.json();
+                const units = data.units || [];
+
+                units.forEach(unit => {
+                  const option = document.createElement('option');
+                  option.value = unit.id;
+                  option.textContent = unit.label;
+                  unitSelect.appendChild(option);
+                });
+              }
+            } catch (error) {
+              console.error('Failed to load units:', error);
+            }
+          };
+
+          // Load units when property changes
+          propertySelect.addEventListener('change', (e) => {
+            const propertyId = e.target.value;
+            loadUnits(propertyId);
+
+            // Auto-fill address
+            if (propertyId && propertyMap[propertyId]) {
+              const propertyInfo = propertyMap[propertyId];
+              const parts = [propertyInfo.address?.line1, propertyInfo.address?.city, propertyInfo.address?.state, propertyInfo.address?.postal_code];
+              addressField.value = parts.filter(Boolean).join(', ');
+            } else {
+              addressField.value = '';
+            }
+          });
+
+          // Load units if property is already selected
+          if (propertySelect.value) {
+            loadUnits(propertySelect.value);
+          }
+        }
+      }, 100);
     });
   });
 </script>
