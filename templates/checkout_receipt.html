@@ -207,6 +207,12 @@
         <div class="detail-value"><strong>{{ item.code_current }}</strong></div>
       </div>
       {% endif %}
+      {% if item.supra_id %}
+      <div class="detail-row">
+        <div class="detail-label">Supra ID:</div>
+        <div class="detail-value"><strong>{{ item.supra_id }}</strong></div>
+      </div>
+      {% endif %}
     {% endif %}
   </div>
 
