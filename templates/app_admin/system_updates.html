@@ -184,6 +184,24 @@
   </div>
 </div>
 
+<!-- Restart Log -->
+<div class="card" style="margin-bottom: 24px;">
+  <h2>Restart Log</h2>
+  <div class="divider"></div>
+  <p class="muted">View the output from the most recent container restart operation.</p>
+  <div class="log-viewer" id="restart-log-viewer">
+    Click "View Restart Log" to load...
+  </div>
+  <div class="toolbar spaced">
+    <button type="button" class="btn ghost" onclick="refreshRestartLog()">
+      View Restart Log
+    </button>
+    <button type="button" class="btn ghost" onclick="downloadRestartLog()">
+      Download Restart Log
+    </button>
+  </div>
+</div>
+
 <script>
   // Check for updates
   async function checkForUpdates() {
@@ -388,6 +406,35 @@
     } catch (error) {
       alert(`Error restarting containers: ${error.message}`);
     }
+  }
+
+  // Refresh restart log
+  async function refreshRestartLog() {
+    const viewer = document.getElementById('restart-log-viewer');
+    viewer.textContent = 'Loading restart log...';
+
+    try {
+      const response = await fetch('{{ url_for("app_admin.restart_log") }}');
+      const data = await response.json();
+      viewer.textContent = data.log || 'No restart log available';
+      viewer.scrollTop = viewer.scrollHeight;
+    } catch (error) {
+      viewer.textContent = `Error loading restart log: ${error.message}`;
+    }
+  }
+
+  // Download restart log
+  function downloadRestartLog() {
+    const logs = document.getElementById('restart-log-viewer').textContent;
+    const blob = new Blob([logs], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kbm-restart-log-${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 
   // Load logs on page load

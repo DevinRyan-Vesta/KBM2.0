@@ -150,9 +150,18 @@ class SystemUpdateManager:
         # Write a restart script to the filesystem that the host can execute
         # This script will be triggered from the host and will survive container shutdown
         build_flag = "--build" if build else "--no-build"
+
+        # Create log file for restart output
+        log_file = "/workspace/restart_output.log"
         restart_script_content = f"""#!/bin/sh
+echo "=== Container Restart Started at $(date) ===" > {log_file}
 sleep 10
-docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} --force-recreate
+echo "Executing: docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} --force-recreate" >> {log_file}
+docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} --force-recreate >> {log_file} 2>&1
+exit_code=$?
+echo "Exit code: $exit_code" >> {log_file}
+echo "=== Container Restart Completed at $(date) ===" >> {log_file}
+exit $exit_code
 """
 
         try:
@@ -168,6 +177,7 @@ docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} -
             # The at command or nohup won't work from inside container, so we use docker run
             # to spawn a docker container on the host that will execute the script
             # Must use docker:latest (not alpine) because it has docker compose CLI
+            # Note: We use -d (detached) so this returns immediately
             trigger_cmd = [
                 "docker", "run", "--rm", "-d",
                 "-v", "/var/run/docker.sock:/var/run/docker.sock",
@@ -186,7 +196,7 @@ docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} -
             )
 
             if result.returncode == 0:
-                return True, "Container restart scheduled in 10 seconds"
+                return True, "Container restart scheduled in 10 seconds. Check restart_output.log for details."
             else:
                 return False, f"Failed to schedule restart: {result.stderr}"
 
@@ -239,6 +249,18 @@ docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} -
             return f"=== Python App Logs ===\n{output}\n\n=== Nginx Logs ===\n{output_nginx}"
 
         return output
+
+    def get_restart_log(self) -> str:
+        """Get the restart output log if it exists."""
+        log_path = os.path.join(self.repo_path, "restart_output.log")
+        try:
+            if os.path.exists(log_path):
+                with open(log_path, 'r') as f:
+                    return f.read()
+            else:
+                return "No restart log found. The restart may not have been executed yet."
+        except Exception as e:
+            return f"Error reading restart log: {str(e)}"
 
     def create_backup(self, backup_dir: str = "/app/backups") -> Tuple[bool, str]:
         """Create backup of databases."""

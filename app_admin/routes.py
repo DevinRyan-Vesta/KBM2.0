@@ -374,3 +374,17 @@ def restart_system():
     # Use build=False for manual restart (no rebuild, just restart)
     success, message = update_manager.restart_containers(build=False)
     return jsonify({"success": success, "message": message})
+
+
+@app_admin_bp.route('/admin/system/restart-log')
+@login_required
+@app_admin_required
+@root_domain_only
+def restart_log():
+    """
+    Get the restart output log (AJAX endpoint).
+    """
+    from utilities.system_update import update_manager
+
+    log_content = update_manager.get_restart_log()
+    return jsonify({"log": log_content})
