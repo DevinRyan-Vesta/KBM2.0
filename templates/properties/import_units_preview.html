@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Preview Import - Property Units - KBM{% endblock %}
+
+{% block content %}
+<div class="form-shell">
+  <div class="page-header">
+    <h1>Preview Import - Property Units</h1>
+    <p class="muted">Review {{ total_rows }} property units before importing</p>
+  </div>
+
+  <div class="card">
+    <div class="info-box" style="margin-bottom: 20px; padding: 15px; background: rgba(59, 130, 246, 0.08); border-radius: 8px;">
+      <p style="margin: 0;"><strong>Ready to import {{ total_rows }} property units</strong></p>
+      <p style="margin: 5px 0 0 0;">Review the first 10 rows below. Click "Import" to proceed.</p>
+    </div>
+
+    <h3>Preview (First 10 Rows)</h3>
+    <div style="overflow-x: auto; margin-bottom: 20px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #f5f5f5;">
+            {% for field_name, field_config in fields.items() %}
+              {% if field_name in mapping %}
+                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">{{ field_config.name }}</th>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview_data %}
+            <tr>
+              {% for field_name, field_config in fields.items() %}
+                {% if field_name in mapping %}
+                  <td style="padding: 10px; border: 1px solid #ddd;">{{ row.get(field_config.name, '') }}</td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="toolbar spaced">
+        <button type="submit" class="btn primary">Import {{ total_rows }} Property Units</button>
+        <a class="btn ghost" href="{{ url_for('properties.import_units') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

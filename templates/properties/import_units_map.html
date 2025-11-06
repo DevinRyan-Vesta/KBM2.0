@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Map Columns - Import Property Units - KBM{% endblock %}
+
+{% block content %}
+<style>
+  .form-card select {
+    appearance: none;
+    width: 100%;
+    padding: 12px 44px 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.02));
+    color: var(--color-text);
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  .form-card select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+    background: linear-gradient(135deg, rgba(229, 57, 53, 0.12), rgba(148, 163, 184, 0.05));
+  }
+</style>
+
+<div class="form-shell">
+  <div class="page-header">
+    <h1>Map Columns - Import Property Units</h1>
+    <p class="muted">Match your file columns to database fields</p>
+  </div>
+
+  <div class="card form-card">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="info-box" style="margin-bottom: 20px; padding: 15px; background: rgba(74, 222, 128, 0.08); border-radius: 8px;">
+        <p style="margin: 0;"><strong>File uploaded successfully: {{ filename }}</strong></p>
+        <p style="margin: 5px 0 0 0;">Map your file columns to the corresponding database fields below.</p>
+      </div>
+
+      <h3>Column Mapping</h3>
+      <div class="mapping-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+        {% for field_name, field_config in fields.items() %}
+          <div class="form-field">
+            <label for="field_{{ field_name }}">
+              {{ field_config.name }}
+              {% if field_config.required %}<span style="color: var(--color-danger);">*</span>{% endif %}
+            </label>
+            <select id="field_{{ field_name }}" name="field_{{ field_name }}" {% if field_config.required %}required{% endif %}>
+              <option value="">-- Select Column --</option>
+              {% for header in headers %}
+                <option value="{{ header }}"
+                  {% if header.lower().replace(' ', '_').replace('-', '_') == field_name or
+                        header.lower() == field_config.name.lower() or
+                        header.lower().replace(' ', '') == field_config.name.lower().replace(' ', '') %}
+                    selected
+                  {% endif %}>
+                  {{ header }}
+                </option>
+              {% endfor %}
+            </select>
+            {% if field_config.get('default') %}
+              <small class="muted">Default: {{ field_config.default }}</small>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="toolbar spaced">
+        <button type="submit" class="btn primary">Continue to Preview</button>
+        <a class="btn ghost" href="{{ url_for('properties.import_units') }}">Start Over</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

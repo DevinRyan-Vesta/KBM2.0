@@ -76,6 +76,8 @@
         <a class="btn small" href="{{ url_for('properties.list_properties') }}">Clear</a>
       {% endif %}
     </form>
+    <a class="btn" href="{{ url_for('properties.import_properties') }}">Import</a>
+    <a class="btn" href="{{ url_for('properties.import_units') }}">Import Units</a>
     <a class="btn primary" href="{{ url_for('properties.create_property') }}">Add Property</a>
   </div>
 </div>
