@@ -253,6 +253,8 @@ class User(db.Model, UserMixin):
     role = db.Column(db.String(20), nullable=False, default="user")  # e.g., "admin", "user"
     pin_hash = db.Column(db.String(255), nullable=False)
 
+    # Relationship to Contact
+    contact_profile = db.relationship("Contact", back_populates="user", uselist=False)
 
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
@@ -274,10 +276,13 @@ class Contact(db.Model):
     email = db.Column(db.String(255), nullable=True, index=True)
     phone = db.Column(db.String(50), nullable=True)
     # In multi-tenant setup, user IDs reference MasterUser in master DB
-    user_id = db.Column(db.Integer, nullable=True, unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, unique=True)
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
     updated_at = db.Column(db.DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+    # Relationship to User
+    user = db.relationship("User", back_populates="contact_profile")
 
     def to_dict(self) -> Dict[str, Any]:
         return {
