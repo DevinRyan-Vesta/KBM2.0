@@ -41,11 +41,13 @@ services:
     container_name: nginx-proxy
     restart: unless-stopped
     ports:
-      - "8080:80"   # Map NAS port 8080 to container port 80
+      - "8080:80"   # HTTP - Map NAS port 8080 to container port 80
+      - "8443:443"  # HTTPS - Map NAS port 8443 to container port 443
       # Ports 80 and 443 are used by NAS web interface
-      # Router will forward external 80 -> NAS 8080
+      # Router should forward external 80 -> NAS 8080 and external 443 -> NAS 8443
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx-ssl.conf:/etc/nginx/conf.d/default.conf:ro  # SSL-enabled config
+      - /volume1/KBM/ssl:/etc/nginx/ssl:ro                  # SSL certificates
     depends_on:
       - python-app
     networks:
