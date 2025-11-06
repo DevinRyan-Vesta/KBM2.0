@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Import Complete - Properties - KBM{% endblock %}
+
+{% block content %}
+<div class="form-shell">
+  <div class="page-header">
+    <h1>Import Complete</h1>
+  </div>
+
+  <div class="card">
+    <div class="info-box" style="margin-bottom: 20px; padding: 15px; background: rgba(74, 222, 128, 0.08); border-radius: 8px;">
+      <h3 style="margin-top: 0; color: var(--color-success);">✓ Import Successful</h3>
+      <p style="margin: 0;"><strong>{{ success_count }}</strong> properties imported successfully</p>
+      {% if error_count > 0 %}
+        <p style="margin: 5px 0 0 0; color: var(--color-danger);"><strong>{{ error_count }}</strong> errors occurred</p>
+      {% endif %}
+    </div>
+
+    {% if errors %}
+      <h3>Errors</h3>
+      <div style="background: rgba(248, 113, 113, 0.08); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <ul style="margin: 0; padding-left: 20px;">
+          {% for error in errors[:50] %}
+            <li>{{ error }}</li>
+          {% endfor %}
+          {% if errors|length > 50 %}
+            <li><em>... and {{ errors|length - 50 }} more errors</em></li>
+          {% endif %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <div class="toolbar">
+      <a href="{{ url_for('properties.list_properties') }}" class="btn primary">View Properties</a>
+      <a href="{{ url_for('properties.import_properties') }}" class="btn">Import More</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
