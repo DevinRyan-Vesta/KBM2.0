@@ -319,6 +319,39 @@ def apply_audit(audit_id: int):
     return redirect(url_for("audits.view_audit", audit_id=audit_id))
 
 
+@audits_bp.route("/<int:audit_id>/delete", methods=["POST"])
+@login_required
+@tenant_required
+def delete_audit(audit_id: int):
+    """Delete an audit"""
+    _require_admin()
+
+    audit = tenant_query(Audit).filter_by(id=audit_id).first()
+    if not audit:
+        flash("Audit not found.", "error")
+        return redirect(url_for("audits.list_audits"))
+
+    audit_date = audit.audit_date.strftime('%Y-%m-%d')
+
+    # The cascade delete in the database model will automatically delete all audit items
+    from utilities.tenant_helpers import tenant_delete
+    tenant_delete(audit)
+
+    log_activity(
+        "audit_deleted",
+        user=current_user,
+        target_type="Audit",
+        target_id=audit_id,
+        summary=f"Deleted audit from {audit_date}",
+        commit=False,
+    )
+
+    tenant_commit()
+
+    flash(f"Audit from {audit_date} deleted.", "success")
+    return redirect(url_for("audits.list_audits"))
+
+
 @audits_bp.route("/low-copy-report", methods=["GET"])
 @login_required
 @tenant_required

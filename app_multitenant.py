@@ -1,8 +1,8 @@
 # app_multitenant.py - Multi-tenant version of the application
-from flask import Flask, render_template, current_app, url_for, g
+from flask import Flask, render_template, current_app, url_for, g, redirect
 from flask_migrate import Migrate
 from pathlib import Path
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -162,6 +162,9 @@ def create_app():
     # 11) Error handlers
     @app.errorhandler(404)
     def handle_404(error):
+        # If app admin is on root domain and hits 404, redirect to dashboard
+        if current_user.is_authenticated and getattr(current_user, 'role', '') == 'app_admin' and g.get('is_root_domain', False):
+            return redirect(url_for('app_admin.dashboard'))
         return render_template("404.html", error=error), 404
 
     @app.errorhandler(403)

@@ -43,12 +43,12 @@ auth_bp = Blueprint(
     static_folder="../static"
 )
 
-ALLOWED_ROLES = ["admin", "user", "staff", "agent"]
+ALLOWED_ROLES = ["admin", "owner", "user", "staff", "agent"]
 
 
 def _require_admin():
     """Require current user to be an admin (tenant or app)."""
-    if getattr(current_user, "role", "").lower() not in ["admin", "app_admin"]:
+    if getattr(current_user, "role", "").lower() not in ["admin", "owner", "app_admin"]:
         abort(403)
 
 

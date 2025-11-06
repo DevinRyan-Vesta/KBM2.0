@@ -297,7 +297,7 @@ class ItemCheckout(db.Model):
     __tablename__ = "item_checkouts"
 
     id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False, index=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
     item = db.relationship("Item", backref="checkouts")
 
     # Who has it
