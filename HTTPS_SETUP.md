@@ -81,12 +81,17 @@ You should see a secure connection with a valid certificate!
 
 **Steps:**
 1. Select option 1 in `setup_ssl.sh`
-2. Certbot will display a TXT record to add
+2. Certbot will display a TXT record value (long random string)
 3. Log into your DNS provider (Namecheap, Cloudflare, etc.)
-4. Add DNS TXT record: `_acme-challenge.buywithvesta.com`
+4. Add DNS TXT record:
+   - **Host/Name**: `_acme-challenge` (just this, NOT the full domain)
+   - **Type**: TXT
+   - **Value**: (paste the value certbot shows)
 5. Wait 2-5 minutes for propagation
 6. Verify: `dig _acme-challenge.buywithvesta.com TXT`
 7. Press Enter in certbot
+
+**Note**: Most DNS providers auto-append `.buywithvesta.com`, so you only enter `_acme-challenge`
 
 **Why choose this?**
 - Works for all subdomains (current and future tenants)
