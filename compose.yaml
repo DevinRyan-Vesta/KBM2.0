@@ -17,6 +17,22 @@ services:
       - ./tenant_dbs:/app/tenant_dbs     # Persist tenant databases
       - /volume1/KBM/backups:/app/backups  # Database backups directory
       - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
+      # Mount source code for live updates without rebuilding
+      - ./templates:/app/templates       # Templates
+      - ./static:/app/static             # Static files
+      - ./audits:/app/audits             # Audits blueprint
+      - ./auth:/app/auth                 # Auth blueprint
+      - ./inventory:/app/inventory       # Inventory blueprint
+      - ./checkout:/app/checkout         # Checkout blueprint
+      - ./contacts:/app/contacts         # Contacts blueprint
+      - ./properties:/app/properties     # Properties blueprint
+      - ./smartlocks:/app/smartlocks     # Smart locks blueprint
+      - ./accounts:/app/accounts         # Accounts blueprint
+      - ./app_admin:/app/app_admin       # App admin blueprint
+      - ./main:/app/main                 # Main blueprint
+      - ./exports:/app/exports           # Exports blueprint
+      - ./utilities:/app/utilities       # Utilities
+      - ./middleware:/app/middleware     # Middleware
     networks:
       - appnet
 
