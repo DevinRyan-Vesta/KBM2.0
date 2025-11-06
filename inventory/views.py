@@ -336,6 +336,7 @@ def checkin_lockbox(item_id):
 
 @inventory_bp.post("/lockboxes/bulk")
 @login_required
+@tenant_required
 def bulk_lockboxes():
     """Handle bulk actions from the lockboxes list (placeholder)."""
     action = (request.form.get("action") or "").strip().lower()
@@ -373,6 +374,7 @@ def bulk_lockboxes():
 
 @inventory_bp.post("/lockboxes/<int:item_id>/assign")
 @login_required
+@tenant_required
 def assign_lockbox(item_id):
     default_redirect = url_for("inventory.list_lockboxes")
     lb = tenant_query(Item).filter_by(id=item_id, type="Lockbox").first()
@@ -482,6 +484,7 @@ def assign_lockbox(item_id):
 
 @inventory_bp.post("/lockboxes/<int:item_id>/edit")
 @login_required
+@tenant_required
 def edit_lockbox(item_id: int):
     _require_admin()
     lb = tenant_query(Item).filter_by(id=item_id, type="Lockbox").first()
@@ -559,6 +562,7 @@ def edit_lockbox(item_id: int):
 
 @inventory_bp.post("/lockboxes/<int:item_id>/code")
 @login_required
+@tenant_required
 def update_lockbox_code(item_id: int):
     lb = tenant_query(Item).filter_by(id=item_id, type="Lockbox").first()
     if not lb:
@@ -601,6 +605,7 @@ def update_lockbox_code(item_id: int):
 
 @inventory_bp.post("/lockboxes/<int:item_id>/delete")
 @login_required
+@tenant_required
 def delete_lockbox(item_id: int):
     role = (getattr(current_user, "role", "") or "").lower()
     if role == "agent":
@@ -1239,6 +1244,7 @@ def adjust_key_quantity(item_id):
 
 @inventory_bp.post("/keys/<int:item_id>/edit")
 @login_required
+@tenant_required
 def edit_key(item_id: int):
     _require_admin()
     key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
@@ -1341,6 +1347,7 @@ def edit_key(item_id: int):
 
 @inventory_bp.post("/keys/<int:item_id>/delete")
 @login_required
+@tenant_required
 def delete_key(item_id: int):
     role = (getattr(current_user, "role", "") or "").lower()
     if role == "agent":
@@ -1641,6 +1648,7 @@ def assign_sign(item_id):
 
 @inventory_bp.post("/signs/<int:item_id>/edit")
 @login_required
+@tenant_required
 def edit_sign(item_id: int):
     _require_admin()
     sign = tenant_query(Item).filter_by(id=item_id, type="Sign").first()
@@ -1708,6 +1716,7 @@ def edit_sign(item_id: int):
 
 @inventory_bp.post("/signs/<int:item_id>/delete")
 @login_required
+@tenant_required
 def delete_sign(item_id: int):
     role = (getattr(current_user, "role", "") or "").lower()
     if role == "agent":
@@ -1855,6 +1864,7 @@ def build_sign():
 
 @inventory_bp.post("/signs/<int:item_id>/disassemble")
 @login_required
+@tenant_required
 def disassemble_sign(item_id: int):
     """Disassemble an assembled unit back into individual pieces"""
     sign = tenant_query(Item).filter_by(id=item_id, type="Sign", sign_subtype="Assembled Unit").first()
