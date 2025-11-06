@@ -623,6 +623,12 @@ def delete_lockbox(item_id: int):
         "status": lb.status,
     }
 
+    # Delete related checkout records first (for existing databases without CASCADE)
+    from utilities.database import ItemCheckout
+    checkouts = tenant_query(ItemCheckout).filter_by(item_id=item_id).all()
+    for checkout in checkouts:
+        tenant_delete(checkout)
+
     tenant_delete(lb)
     log_activity(
         "lockbox_deleted",
