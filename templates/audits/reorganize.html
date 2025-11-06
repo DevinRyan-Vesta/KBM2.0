@@ -8,6 +8,7 @@
 </div>
 
 <form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
   {% for property_name, keys in keys_by_property %}
     <div class="card">
       <h3>{{ property_name }}</h3>

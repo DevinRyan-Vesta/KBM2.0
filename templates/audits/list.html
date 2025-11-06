@@ -11,6 +11,7 @@
     <a href="{{ url_for('audits.low_copy_report') }}" class="btn">Low Copy Report</a>
     <a href="{{ url_for('audits.reorganize_keys') }}" class="btn">Reorganize Keys</a>
     <form method="POST" action="{{ url_for('audits.create_audit') }}" style="display: inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <button type="submit" class="btn primary">Create New Audit</button>
     </form>
   </div>
@@ -65,6 +66,7 @@
       No audits created yet.
       <br><br>
       <form method="POST" action="{{ url_for('audits.create_audit') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <button type="submit" class="btn primary">Create First Audit</button>
       </form>
     </div>

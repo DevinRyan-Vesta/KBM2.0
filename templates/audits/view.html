@@ -13,11 +13,13 @@
     {% if audit.status != 'completed' %}
       <a href="{{ url_for('audits.input_results', audit_id=audit.id) }}" class="btn primary">Input Results</a>
       <form method="POST" action="{{ url_for('audits.complete_audit', audit_id=audit.id) }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <button type="submit" class="btn success">Mark Complete</button>
       </form>
     {% endif %}
     {% if discrepancies > 0 %}
       <form method="POST" action="{{ url_for('audits.apply_audit', audit_id=audit.id) }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <button type="submit" class="btn warning">Apply to Inventory</button>
       </form>
     {% endif %}
