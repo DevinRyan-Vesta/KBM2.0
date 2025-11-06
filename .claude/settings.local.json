@@ -7,7 +7,10 @@
       "Bash(do echo \"=== $dir ===\")",
       "Bash(ls -la $dir/)",
       "Bash(done)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git commit:*)",
+      "Bash(docker logs:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

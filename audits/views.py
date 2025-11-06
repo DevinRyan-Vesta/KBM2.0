@@ -24,12 +24,24 @@ def _require_admin():
 @tenant_required
 def list_audits():
     """List all audits"""
+    from utilities.master_database import MasterUser
+
     audits = (
         tenant_query(Audit)
         .order_by(Audit.created_at.desc())
         .all()
     )
-    return render_template("audits/list.html", audits=audits)
+
+    # Get all unique user IDs
+    user_ids = {audit.created_by_user_id for audit in audits}
+
+    # Query all users at once
+    users_dict = {}
+    if user_ids:
+        users = MasterUser.query.filter(MasterUser.id.in_(user_ids)).all()
+        users_dict = {u.id: u for u in users}
+
+    return render_template("audits/list.html", audits=audits, users_dict=users_dict)
 
 
 @audits_bp.route("/create", methods=["POST"])
@@ -392,7 +404,23 @@ def reorganize_keys():
         # Sort properties
         sorted_properties = sorted(keys_by_property.items())
 
-        return render_template("audits/reorganize.html", keys_by_property=sorted_properties)
+        # Generate suggested hook numbers
+        # Start numbering from 1, incrementing for each key
+        # Group by property so all keys for same property are together
+        hook_counter = 1
+        suggested_hooks = {}
+        for property_name, property_keys in sorted_properties:
+            # Sort keys alphabetically within each property
+            property_keys.sort(key=lambda k: k.label.lower())
+            for key in property_keys:
+                suggested_hooks[key.id] = str(hook_counter)
+                hook_counter += 1
+
+        return render_template(
+            "audits/reorganize.html",
+            keys_by_property=sorted_properties,
+            suggested_hooks=suggested_hooks
+        )
 
     # POST - apply reorganization
     try:

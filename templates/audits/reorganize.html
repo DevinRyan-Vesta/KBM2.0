@@ -3,11 +3,22 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>Reorganize Key Box</h1>
-  <span class="muted">Assign new keyhook positions</span>
+  <div>
+    <h1>Reorganize Key Box</h1>
+    <span class="muted">Keys grouped by property, sorted alphabetically</span>
+  </div>
+  <div class="toolbar">
+    <button type="button" class="btn primary" onclick="applySuggestions()">Apply Suggested Organization</button>
+  </div>
 </div>
 
-<form method="POST">
+<div id="conflicts-warning" class="card" style="display: none; background: rgba(255, 165, 0, 0.1); border: 1px solid orange; margin-bottom: 20px;">
+  <h3 style="color: orange;">⚠️ Conflicts Detected</h3>
+  <div id="conflicts-list"></div>
+  <p><em>You can still apply the reorganization if you want multiple keys on the same hook.</em></p>
+</div>
+
+<form method="POST" id="reorganize-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
   {% for property_name, keys in keys_by_property %}
     <div class="card">
@@ -29,8 +40,12 @@
               <td>{{ key.key_hook_number or '-' }}</td>
               <td>
                 <input type="text" name="keyhook_{{ key.id }}"
+                       class="keyhook-input"
                        value="{{ key.key_hook_number or '' }}"
-                       placeholder="New hook #">
+                       data-suggested="{{ suggested_hooks.get(key.id, '') }}"
+                       data-key-label="{{ key.label }}"
+                       placeholder="Suggested: {{ suggested_hooks.get(key.id, '') }}"
+                       onchange="checkConflicts()">
               </td>
               <td>{{ key.keycode or '-' }}</td>
               <td>{{ key.total_copies or 0 }}</td>
@@ -46,4 +61,69 @@
     <button type="submit" class="btn primary">Apply Reorganization</button>
   </div>
 </form>
+
+<script>
+function applySuggestions() {
+  // Fill all inputs with their suggested values
+  const inputs = document.querySelectorAll('.keyhook-input');
+  inputs.forEach(input => {
+    const suggested = input.getAttribute('data-suggested');
+    if (suggested) {
+      input.value = suggested;
+    }
+  });
+
+  // Check for conflicts after applying
+  checkConflicts();
+}
+
+function checkConflicts() {
+  const inputs = document.querySelectorAll('.keyhook-input');
+  const hookMap = {};  // Map of hook number -> array of key labels
+
+  // Build map of hook numbers to keys
+  inputs.forEach(input => {
+    const hookNum = input.value.trim();
+    const keyLabel = input.getAttribute('data-key-label');
+
+    if (hookNum) {
+      if (!hookMap[hookNum]) {
+        hookMap[hookNum] = [];
+      }
+      hookMap[hookNum].push(keyLabel);
+    }
+  });
+
+  // Find conflicts (hooks with multiple keys)
+  const conflicts = [];
+  for (const [hookNum, keys] of Object.entries(hookMap)) {
+    if (keys.length > 1) {
+      conflicts.push({
+        hook: hookNum,
+        keys: keys
+      });
+    }
+  }
+
+  // Display conflicts warning
+  const warningDiv = document.getElementById('conflicts-warning');
+  const conflictsList = document.getElementById('conflicts-list');
+
+  if (conflicts.length > 0) {
+    warningDiv.style.display = 'block';
+    conflictsList.innerHTML = '<ul>' +
+      conflicts.map(c =>
+        `<li><strong>Hook #${c.hook}:</strong> ${c.keys.join(', ')}</li>`
+      ).join('') +
+      '</ul>';
+  } else {
+    warningDiv.style.display = 'none';
+  }
+}
+
+// Check conflicts on page load
+document.addEventListener('DOMContentLoaded', function() {
+  checkConflicts();
+});
+</script>
 {% endblock %}

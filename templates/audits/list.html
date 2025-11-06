@@ -33,7 +33,14 @@
         {% for audit in audits %}
           <tr>
             <td class="nowrap">{{ audit.audit_date.strftime('%Y-%m-%d') }}</td>
-            <td>User #{{ audit.created_by_user_id }}</td>
+            <td>
+              {% set user = users_dict.get(audit.created_by_user_id) %}
+              {% if user %}
+                {{ user.name }}
+              {% else %}
+                User #{{ audit.created_by_user_id }}
+              {% endif %}
+            </td>
             <td>
               {% if audit.status == 'completed' %}
                 <span class="tag success">Completed</span>
