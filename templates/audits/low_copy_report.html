@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Low Copy Keys Report - KBM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Low Copy Keys Report</h1>
+    <span class="muted">Keys with less than {{ threshold }} copies</span>
+  </div>
+  <div class="toolbar">
+    <a href="{{ url_for('audits.list_audits') }}" class="btn">Back to Audits</a>
+    <a href="{{ url_for('audits.export_low_copy_report', threshold=threshold) }}" class="btn primary">Export to CSV</a>
+  </div>
+</div>
+
+<div class="card table-card">
+  {% if keys %}
+    <table>
+      <thead>
+        <tr>
+          <th>Key Label</th>
+          <th>Custom ID</th>
+          <th>Hook #</th>
+          <th>Total Copies</th>
+          <th>Keycode</th>
+          <th>Location</th>
+          <th>Property</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key in keys %}
+          <tr>
+            <td>{{ key.label }}</td>
+            <td>{{ key.custom_id or '-' }}</td>
+            <td>{{ key.key_hook_number or '-' }}</td>
+            <td><strong>{{ key.total_copies or 0 }}</strong></td>
+            <td>{{ key.keycode or '-' }}</td>
+            <td>{{ key.location or '-' }}</td>
+            <td>{{ key.property.name if key.property else '-' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">
+      No keys found with less than {{ threshold }} copies.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

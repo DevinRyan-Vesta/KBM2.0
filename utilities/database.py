@@ -396,6 +396,75 @@ class ActivityLog(db.Model):
             "meta": self.meta,
         }
 
+
+class Audit(db.Model):
+    """Represents a key audit session"""
+    __tablename__ = "audits"
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    audit_date = db.Column(db.DateTime, nullable=False, default=utc_now)
+    created_by_user_id = db.Column(db.Integer, nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default="pending")  # pending|in_progress|completed
+    notes = db.Column(db.Text, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    # Relationships
+    items = db.relationship("AuditItem", back_populates="audit", cascade="all, delete-orphan")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "created_at": self.created_at.isoformat(),
+            "audit_date": self.audit_date.isoformat(),
+            "created_by_user_id": self.created_by_user_id,
+            "status": self.status,
+            "notes": self.notes,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+
+class AuditItem(db.Model):
+    """Represents an individual item in an audit"""
+    __tablename__ = "audit_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    audit_id = db.Column(db.Integer, db.ForeignKey("audits.id", ondelete="CASCADE"), nullable=False, index=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Expected values (snapshot at audit creation)
+    expected_location = db.Column(db.String(120), nullable=True)  # keyhook number
+    expected_quantity = db.Column(db.Integer, nullable=True)  # total_copies
+
+    # Actual values (filled during audit)
+    actual_location = db.Column(db.String(120), nullable=True)
+    actual_quantity = db.Column(db.Integer, nullable=True)
+
+    # Discrepancy tracking
+    discrepancy_type = db.Column(db.String(50), nullable=True)  # none|missing|extra|wrong_location|quantity_mismatch
+    notes = db.Column(db.Text, nullable=True)
+
+    audited_at = db.Column(db.DateTime, nullable=True)  # When this specific item was audited
+
+    # Relationships
+    audit = db.relationship("Audit", back_populates="items")
+    item = db.relationship("Item")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "audit_id": self.audit_id,
+            "item_id": self.item_id,
+            "expected_location": self.expected_location,
+            "expected_quantity": self.expected_quantity,
+            "actual_location": self.actual_location,
+            "actual_quantity": self.actual_quantity,
+            "discrepancy_type": self.discrepancy_type,
+            "notes": self.notes,
+            "audited_at": self.audited_at.isoformat() if self.audited_at else None,
+        }
+
+
 def log_activity(
     action: str,
     *,

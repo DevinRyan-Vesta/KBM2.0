@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Audit #{{ audit.id }} - KBM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Audit #{{ audit.id }}</h1>
+    <span class="muted">{{ audit.audit_date.strftime('%Y-%m-%d') }} - {{ audit.status }}</span>
+  </div>
+  <div class="toolbar">
+    <a href="{{ url_for('audits.list_audits') }}" class="btn">Back to List</a>
+    <a href="{{ url_for('audits.print_audit', audit_id=audit.id) }}" class="btn" target="_blank">Print</a>
+    {% if audit.status != 'completed' %}
+      <a href="{{ url_for('audits.input_results', audit_id=audit.id) }}" class="btn primary">Input Results</a>
+      <form method="POST" action="{{ url_for('audits.complete_audit', audit_id=audit.id) }}" style="display: inline;">
+        <button type="submit" class="btn success">Mark Complete</button>
+      </form>
+    {% endif %}
+    {% if discrepancies > 0 %}
+      <form method="POST" action="{{ url_for('audits.apply_audit', audit_id=audit.id) }}" style="display: inline;">
+        <button type="submit" class="btn warning">Apply to Inventory</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>Audit Statistics</h3>
+  <p>Total Items: {{ total_items }} | Audited: {{ audited_items }} | Discrepancies: {{ discrepancies }}</p>
+</div>
+
+<div class="card table-card">
+  <table>
+    <thead>
+      <tr>
+        <th>Key Label</th>
+        <th>Hook #</th>
+        <th>Expected Qty</th>
+        <th>Actual Location</th>
+        <th>Actual Qty</th>
+        <th>Status</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ai in audit_items %}
+        <tr>
+          <td>{{ ai.item.label }}</td>
+          <td>{{ ai.expected_location or '-' }}</td>
+          <td>{{ ai.expected_quantity or '-' }}</td>
+          <td>{{ ai.actual_location or '-' }}</td>
+          <td>{{ ai.actual_quantity if ai.actual_quantity is not none else '-' }}</td>
+          <td>
+            {% if ai.discrepancy_type == 'none' %}
+              <span class="tag success">OK</span>
+            {% elif ai.discrepancy_type == 'missing' %}
+              <span class="tag error">Missing</span>
+            {% elif ai.discrepancy_type == 'wrong_location' %}
+              <span class="tag warning">Wrong Location</span>
+            {% elif ai.discrepancy_type == 'quantity_mismatch' %}
+              <span class="tag warning">Qty Mismatch</span>
+            {% else %}
+              <span class="tag">Not Audited</span>
+            {% endif %}
+          </td>
+          <td>{{ ai.notes or '-' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Input Audit Results - KBM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Input Audit Results</h1>
+  <span class="muted">Audit #{{ audit.id }} - {{ audit.audit_date.strftime('%Y-%m-%d') }}</span>
+</div>
+
+<form method="POST">
+  <div class="card table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Key Label</th>
+          <th>Expected Hook #</th>
+          <th>Expected Qty</th>
+          <th>Actual Location</th>
+          <th>Actual Qty</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ai in audit_items %}
+          <tr>
+            <td>{{ ai.item.label }}</td>
+            <td>{{ ai.expected_location or '-' }}</td>
+            <td>{{ ai.expected_quantity or '-' }}</td>
+            <td>
+              <input type="text" name="actual_location_{{ ai.id }}"
+                     value="{{ ai.actual_location or '' }}"
+                     placeholder="Hook #">
+            </td>
+            <td>
+              <input type="number" name="actual_quantity_{{ ai.id }}"
+                     value="{{ ai.actual_quantity if ai.actual_quantity is not none else '' }}"
+                     placeholder="Qty" min="0">
+            </td>
+            <td>
+              <input type="text" name="notes_{{ ai.id }}"
+                     value="{{ ai.notes or '' }}"
+                     placeholder="Notes">
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="toolbar">
+    <a href="{{ url_for('audits.view_audit', audit_id=audit.id) }}" class="btn">Cancel</a>
+    <button type="submit" class="btn primary">Save Results</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Reorganize Keys - KBM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Reorganize Key Box</h1>
+  <span class="muted">Assign new keyhook positions</span>
+</div>
+
+<form method="POST">
+  {% for property_name, keys in keys_by_property %}
+    <div class="card">
+      <h3>{{ property_name }}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Key Label</th>
+            <th>Current Hook #</th>
+            <th>New Hook #</th>
+            <th>Keycode</th>
+            <th>Total Copies</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for key in keys %}
+            <tr>
+              <td>{{ key.label }}</td>
+              <td>{{ key.key_hook_number or '-' }}</td>
+              <td>
+                <input type="text" name="keyhook_{{ key.id }}"
+                       value="{{ key.key_hook_number or '' }}"
+                       placeholder="New hook #">
+              </td>
+              <td>{{ key.keycode or '-' }}</td>
+              <td>{{ key.total_copies or 0 }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+
+  <div class="toolbar">
+    <a href="{{ url_for('audits.list_audits') }}" class="btn">Cancel</a>
+    <button type="submit" class="btn primary">Apply Reorganization</button>
+  </div>
+</form>
+{% endblock %}

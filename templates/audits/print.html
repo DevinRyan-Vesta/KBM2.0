@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Audit Sheet - {{ audit.audit_date.strftime('%Y-%m-%d') }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { border-bottom: 2px solid #000; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+    th { background-color: #f0f0f0; }
+    .checkbox { width: 30px; }
+    @media print {
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()" class="no-print">Print this page</button>
+
+  <h1>Key Audit Sheet</h1>
+  <p><strong>Audit Date:</strong> {{ audit.audit_date.strftime('%Y-%m-%d') }}</p>
+  <p><strong>Audit ID:</strong> #{{ audit.id }}</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="checkbox">✓</th>
+        <th>Key Hook #</th>
+        <th>Key Label</th>
+        <th>Expected Qty</th>
+        <th>Actual Location</th>
+        <th>Actual Qty</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ai in audit_items %}
+        <tr>
+          <td class="checkbox"></td>
+          <td>{{ ai.expected_location or '-' }}</td>
+          <td>{{ ai.item.label }}</td>
+          <td>{{ ai.expected_quantity or '-' }}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

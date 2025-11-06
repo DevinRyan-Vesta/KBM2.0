@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Key Audits - KBM{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Key Audits</h1>
+    <span class="muted">Manage key inventory audits</span>
+  </div>
+  <div class="toolbar">
+    <a href="{{ url_for('audits.low_copy_report') }}" class="btn">Low Copy Report</a>
+    <a href="{{ url_for('audits.reorganize_keys') }}" class="btn">Reorganize Keys</a>
+    <form method="POST" action="{{ url_for('audits.create_audit') }}" style="display: inline;">
+      <button type="submit" class="btn primary">Create New Audit</button>
+    </form>
+  </div>
+</div>
+
+<div class="card table-card">
+  {% if audits %}
+    <table>
+      <thead>
+        <tr>
+          <th>Audit Date</th>
+          <th>Created By</th>
+          <th>Status</th>
+          <th>Completed</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for audit in audits %}
+          <tr>
+            <td class="nowrap">{{ audit.audit_date.strftime('%Y-%m-%d') }}</td>
+            <td>User #{{ audit.created_by_user_id }}</td>
+            <td>
+              {% if audit.status == 'completed' %}
+                <span class="tag success">Completed</span>
+              {% elif audit.status == 'in_progress' %}
+                <span class="tag warning">In Progress</span>
+              {% else %}
+                <span class="tag">Pending</span>
+              {% endif %}
+            </td>
+            <td class="nowrap">
+              {% if audit.completed_at %}
+                {{ audit.completed_at.strftime('%Y-%m-%d %H:%M') }}
+              {% else %}
+                <span class="muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('audits.view_audit', audit_id=audit.id) }}" class="btn small">View</a>
+              <a href="{{ url_for('audits.print_audit', audit_id=audit.id) }}" class="btn small" target="_blank">Print</a>
+              {% if audit.status != 'completed' %}
+                <a href="{{ url_for('audits.input_results', audit_id=audit.id) }}" class="btn small primary">Input Results</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state">
+      No audits created yet.
+      <br><br>
+      <form method="POST" action="{{ url_for('audits.create_audit') }}">
+        <button type="submit" class="btn primary">Create First Audit</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
