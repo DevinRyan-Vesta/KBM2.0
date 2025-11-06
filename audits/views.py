@@ -1,7 +1,8 @@
 # audits/views.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response
 from flask_login import login_required, current_user
-from utilities.tenant_helpers import tenant_required, tenant_query, tenant_add, tenant_commit, tenant_rollback
+from middleware.tenant_middleware import tenant_required
+from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback
 from utilities.database import Audit, AuditItem, Item, db, utc_now, log_activity
 from datetime import datetime
 import csv
