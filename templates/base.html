@@ -803,6 +803,9 @@
               <a href="{{ url_for('inventory.receipt_lookup') }}" class="{% if request.endpoint == 'inventory.receipt_lookup' %}active{% endif %}">
                 <span class="nav-icon">🧾</span> Receipts
               </a>
+              <a href="{{ url_for('audits.list_audits') }}" class="{% if request.endpoint and request.endpoint.startswith('audits.') %}active{% endif %}">
+                <span class="nav-icon">📋</span> Audits
+              </a>
               <a href="{{ url_for('main.reports') }}" class="{% if request.endpoint == 'main.reports' %}active{% endif %}">
                 <span class="nav-icon">📊</span> Reports
               </a>
