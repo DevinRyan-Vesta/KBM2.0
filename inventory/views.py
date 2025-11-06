@@ -1372,6 +1372,12 @@ def delete_key(item_id: int):
         "status": key.status,
     }
 
+    # Delete related checkout records first (for existing databases without CASCADE)
+    from utilities.database import ItemCheckout
+    checkouts = tenant_query(ItemCheckout).filter_by(item_id=item_id).all()
+    for checkout in checkouts:
+        tenant_delete(checkout)
+
     tenant_delete(key)
     log_activity(
         "key_deleted",
@@ -1748,6 +1754,12 @@ def delete_sign(item_id: int):
         "piece_type": sign.piece_type,
         "status": sign.status,
     }
+
+    # Delete related checkout records first (for existing databases without CASCADE)
+    from utilities.database import ItemCheckout
+    checkouts = tenant_query(ItemCheckout).filter_by(item_id=item_id).all()
+    for checkout in checkouts:
+        tenant_delete(checkout)
 
     tenant_delete(sign)
     log_activity(
