@@ -683,6 +683,28 @@
           </form>
         {% endif %}
 
+        <!-- QR Code and Labels -->
+        <div style="border-top: 1px solid var(--color-border); margin: 16px 0; padding-top: 16px; width: 100%; grid-column: 1 / -1;"></div>
+
+        <a class="btn" href="{{ url_for('inventory.generate_qr_code', item_id=item.id) }}" target="_blank" title="View QR code for this item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+          </svg>
+          View QR Code
+        </a>
+
+        <a class="btn" href="{{ url_for('inventory.generate_label', item_id=item.id) }}" download title="Download printable label with QR code">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          Print Label
+        </a>
+
         {% if viewer_role == 'admin' %}
           <button class="btn js-edit-action" type="button"
             data-item-id="{{ item.id }}"

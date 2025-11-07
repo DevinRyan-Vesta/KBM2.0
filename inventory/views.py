@@ -2679,3 +2679,129 @@ def item_details(item_id):
         property_units_map=property_units_map,
         item_type_lower=item_type_lower,
     )
+
+
+# ============================================================================
+# BARCODE / QR CODE ROUTES
+# ============================================================================
+
+@inventory_bp.route("/item/<int:item_id>/qrcode", methods=["GET"])
+@login_required
+@tenant_required
+def generate_qr_code(item_id):
+    """Generate QR code for an item."""
+    from utilities.barcode_utils import barcode_generator
+    from flask import send_file, request
+
+    # Get item
+    item = tenant_query(Item).filter(Item.id == item_id).first()
+    if not item:
+        abort(404)
+
+    # Generate QR code
+    qr_buffer = barcode_generator.generate_qr_code(
+        item_id=item.id,
+        item_type=item.type,
+        label=item.label,
+        custom_id=item.custom_id
+    )
+
+    return send_file(
+        qr_buffer,
+        mimetype='image/png',
+        as_attachment=False,
+        download_name=f"{item.label}_qr.png"
+    )
+
+
+@inventory_bp.route("/item/<int:item_id>/label", methods=["GET"])
+@login_required
+@tenant_required
+def generate_label(item_id):
+    """Generate printable label with QR code for an item."""
+    from utilities.barcode_utils import barcode_generator
+    from flask import send_file, request
+
+    # Get item
+    item = tenant_query(Item).filter(Item.id == item_id).first()
+    if not item:
+        abort(404)
+
+    # Get format from query string (default to PDF)
+    format_type = request.args.get('format', 'pdf').lower()
+
+    if format_type == 'pdf':
+        # Generate PDF label
+        pdf_buffer = barcode_generator.create_single_label_pdf(
+            item_id=item.id,
+            item_type=item.type,
+            label=item.label,
+            custom_id=item.custom_id
+        )
+
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f"{item.label}_label.pdf"
+        )
+    else:
+        # Generate PNG label
+        label_buffer = barcode_generator.create_label_image(
+            item_id=item.id,
+            item_type=item.type,
+            label=item.label,
+            custom_id=item.custom_id
+        )
+
+        return send_file(
+            label_buffer,
+            mimetype='image/png',
+            as_attachment=True,
+            download_name=f"{item.label}_label.png"
+        )
+
+
+@inventory_bp.route("/labels/batch", methods=["POST"])
+@login_required
+@tenant_required
+def generate_batch_labels():
+    """Generate batch labels for multiple items."""
+    from utilities.barcode_utils import barcode_generator
+    from flask import send_file, request
+
+    # Get item IDs from form
+    item_ids_str = request.form.get('item_ids', '')
+    if not item_ids_str:
+        return jsonify({"success": False, "error": "No items selected"}), 400
+
+    item_ids = [int(id.strip()) for id in item_ids_str.split(',') if id.strip().isdigit()]
+
+    if not item_ids:
+        return jsonify({"success": False, "error": "Invalid item IDs"}), 400
+
+    # Get items
+    items = tenant_query(Item).filter(Item.id.in_(item_ids)).all()
+
+    if not items:
+        return jsonify({"success": False, "error": "No items found"}), 404
+
+    # Prepare item data
+    item_data = []
+    for item in items:
+        item_data.append({
+            'id': item.id,
+            'type': item.type,
+            'label': item.label,
+            'custom_id': item.custom_id
+        })
+
+    # Generate PDF with labels
+    pdf_buffer = barcode_generator.create_labels_pdf(item_data, columns=2, rows=4)
+
+    return send_file(
+        pdf_buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f"item_labels_{len(items)}_items.pdf"
+    )

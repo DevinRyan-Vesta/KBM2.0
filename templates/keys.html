@@ -200,6 +200,7 @@
   <span id="bulk-count">0 selected</span>
   <select id="bulk-action" class="form-control" style="max-width: 200px;">
     <option value="">-- Select Action --</option>
+    <option value="print-labels">Print Labels</option>
     <option value="delete">Delete Selected</option>
     <option value="change-status">Change Status</option>
     <option value="assign">Assign To...</option>
@@ -1096,7 +1097,29 @@
       return;
     }
 
-    if (action === 'delete') {
+    if (action === 'print-labels') {
+      // Create a form to submit the item IDs for batch label generation
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/inventory/labels/batch';
+      form.target = '_blank';
+
+      const itemIdsInput = document.createElement('input');
+      itemIdsInput.type = 'hidden';
+      itemIdsInput.name = 'item_ids';
+      itemIdsInput.value = selectedIds.join(',');
+      form.appendChild(itemIdsInput);
+
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'csrf_token';
+      csrfInput.value = getCsrfToken();
+      form.appendChild(csrfInput);
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+    } else if (action === 'delete') {
       if (!confirm(`Are you sure you want to delete ${selectedIds.length} item(s)? This cannot be undone.`)) {
         return;
       }
