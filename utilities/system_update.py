@@ -141,15 +141,48 @@ class SystemUpdateManager:
         # Configure git to trust the directory
         self.run_command(['git', 'config', '--global', 'safe.directory', str(self.repo_path)])
 
-        # Try to fix .git/FETCH_HEAD permissions if it exists
-        fetch_head = self.repo_path / '.git' / 'FETCH_HEAD'
-        if fetch_head.exists():
+        # Try to fix permissions on critical .git directories
+        git_dir = self.repo_path / '.git'
+        if git_dir.exists():
             try:
-                # Try to make it writable
-                import stat
-                fetch_head.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
-            except:
+                # Try to make entire .git directory writable recursively
+                import subprocess
+                subprocess.run(['chmod', '-R', 'u+w', str(git_dir)],
+                             capture_output=True,
+                             check=False)
+
+                # Also try to make it group writable for good measure
+                subprocess.run(['chmod', '-R', 'g+w', str(git_dir)],
+                             capture_output=True,
+                             check=False)
+            except Exception as e:
+                # If chmod fails, that's okay - we'll try to continue anyway
                 pass
+
+            # Specifically target critical files/dirs that git needs to write to
+            critical_paths = [
+                git_dir / 'FETCH_HEAD',
+                git_dir / 'HEAD',
+                git_dir / 'index',
+                git_dir / 'objects',
+                git_dir / 'refs',
+                git_dir / 'logs',
+            ]
+
+            for path in critical_paths:
+                if path.exists():
+                    try:
+                        import stat
+                        if path.is_dir():
+                            # For directories, try to make them and all contents writable
+                            subprocess.run(['chmod', '-R', '775', str(path)],
+                                         capture_output=True,
+                                         check=False)
+                        else:
+                            # For files, just make them writable
+                            path.chmod(0o664)
+                    except:
+                        pass
 
         return True, "Git permissions configured"
 
