@@ -38,9 +38,9 @@ HIGH PRIORITY - Missing Core Features
 
 [ ] Receipts page search/autocomplete not returning results after completing actions
 
-[ ] No import or export on signs page
+[✓] No import or export on signs page - FIXED
 
-[ ] No export or Import on reports page
+[✓] No export on reports page (key reports section) - FIXED
 
 [ ] No export or Import on receipts page
 
