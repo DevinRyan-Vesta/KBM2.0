@@ -92,6 +92,21 @@ LOCKBOX_FIELDS = {
     'property_unit_label': {'required': False, 'name': 'Property Unit Label'},
 }
 
+SIGN_FIELDS = {
+    'label': {'required': True, 'name': 'Label'},
+    'sign_subtype': {'required': False, 'name': 'Sign Type (Piece/Assembled Unit)'},
+    'piece_type': {'required': False, 'name': 'Piece Type'},
+    'rider_text': {'required': False, 'name': 'Rider Text'},
+    'material': {'required': False, 'name': 'Material'},
+    'condition': {'required': False, 'name': 'Condition'},
+    'location': {'required': False, 'name': 'Storage Location'},
+    'address': {'required': False, 'name': 'Property Address'},
+    'status': {'required': False, 'name': 'Status', 'default': 'available'},
+    'assigned_to': {'required': False, 'name': 'Assigned To'},
+    'property_name': {'required': False, 'name': 'Property Name'},
+    'property_unit_label': {'required': False, 'name': 'Property Unit Label'},
+}
+
 
 @inventory_bp.route("/keys/import", methods=["GET", "POST"])
 @login_required
@@ -526,4 +541,207 @@ def import_lockboxes_process():
         fields=LOCKBOX_FIELDS,
         mapping=mapping,
         item_type="Lockboxes"
+    )
+
+
+@inventory_bp.route("/signs/import", methods=["GET", "POST"])
+@login_required
+@tenant_required
+def import_signs():
+    """Import signs from CSV/Excel file"""
+    if request.method == "POST":
+        # Check if file was uploaded
+        if 'file' not in request.files:
+            flash("No file uploaded", "error")
+            return redirect(request.url)
+
+        file = request.files['file']
+        if file.filename == '':
+            flash("No file selected", "error")
+            return redirect(request.url)
+
+        if not allowed_file(file.filename):
+            flash("Invalid file type. Please upload a CSV or Excel file.", "error")
+            return redirect(request.url)
+
+        try:
+            # Parse file based on extension
+            filename = secure_filename(file.filename)
+            file_ext = filename.rsplit('.', 1)[1].lower()
+
+            if file_ext == 'csv':
+                file_content = file.read().decode('utf-8')
+                headers, rows = parse_csv_file(file_content)
+            else:  # Excel
+                file_bytes = file.read()
+                headers, rows = parse_excel_file(file_bytes)
+
+            if not headers or not rows:
+                flash("File is empty or could not be parsed", "error")
+                return redirect(request.url)
+
+            # Store in session
+            session['import_data'] = {
+                'headers': headers,
+                'rows': rows[:1000],  # Limit to first 1000 rows
+                'total_rows': len(rows)
+            }
+
+            return redirect(url_for('inventory.import_signs_map'))
+
+        except Exception as e:
+            flash(f"Error parsing file: {str(e)}", "error")
+            return redirect(request.url)
+
+    return render_template("import_upload.html", item_type="Signs")
+
+
+@inventory_bp.route("/signs/import/map", methods=["GET", "POST"])
+@login_required
+@tenant_required
+def import_signs_map():
+    """Map CSV/Excel columns to sign fields"""
+    import_data = session.get('import_data')
+    if not import_data:
+        flash("No import data found. Please upload a file first.", "error")
+        return redirect(url_for('inventory.import_signs'))
+
+    if request.method == "POST":
+        # Get column mapping from form
+        mapping = {}
+        for field_name in SIGN_FIELDS.keys():
+            column = request.form.get(f'map_{field_name}')
+            if column and column != '':
+                mapping[field_name] = column
+
+        # Validate required fields
+        for field_name, config in SIGN_FIELDS.items():
+            if config['required'] and field_name not in mapping:
+                flash(f"Please map the required field: {config['name']}", "error")
+                return redirect(url_for('inventory.import_signs_map'))
+
+        session['import_mapping'] = mapping
+        return redirect(url_for('inventory.import_signs_process'))
+
+    return render_template(
+        "import_map.html",
+        import_data=import_data,
+        fields=SIGN_FIELDS,
+        item_type="Signs"
+    )
+
+
+@inventory_bp.route("/signs/import/process", methods=["GET", "POST"])
+@login_required
+@tenant_required
+def import_signs_process():
+    """Preview and process sign import"""
+    import_data = session.get('import_data')
+    mapping = session.get('import_mapping')
+
+    if not import_data or not mapping:
+        flash("Missing import data. Please start the import process again.", "error")
+        return redirect(url_for('inventory.import_signs'))
+
+    if request.method == "POST":
+        # Perform the actual import
+        created_count = 0
+        skipped_count = 0
+        errors = []
+
+        try:
+            for idx, row in enumerate(import_data['rows']):
+                # Get label (required)
+                label_column = mapping.get('label')
+                label = str(row.get(label_column, '')).strip() if label_column else ''
+
+                if not label:
+                    skipped_count += 1
+                    continue
+
+                # Build item data
+                item_data = {'label': label}
+
+                for field_name, config in SIGN_FIELDS.items():
+                    if field_name == 'label':
+                        continue
+
+                    column = mapping.get(field_name)
+                    if not column:
+                        # Use default if available
+                        if 'default' in config:
+                            item_data[field_name] = config['default']
+                        continue
+
+                    value = str(row.get(column, '')).strip() if row.get(column) is not None else ''
+                    if value:
+                        item_data[field_name] = value
+                    elif 'default' in config:
+                        item_data[field_name] = config['default']
+
+                # Handle property and unit mapping
+                property_obj = None
+                property_unit_obj = None
+
+                property_name = item_data.pop('property_name', None)
+                if property_name:
+                    property_obj = tenant_query(Property).filter(
+                        db.func.lower(Property.name) == property_name.lower()
+                    ).first()
+
+                property_unit_label = item_data.pop('property_unit_label', None)
+                if property_obj and property_unit_label:
+                    property_unit_obj = tenant_query(PropertyUnit).filter(
+                        PropertyUnit.property_id == property_obj.id,
+                        db.func.lower(PropertyUnit.label) == property_unit_label.lower()
+                    ).first()
+
+                # Create sign
+                new_sign = Item(
+                    type='Sign',
+                    **item_data
+                )
+
+                if property_obj:
+                    new_sign.property_id = property_obj.id
+                if property_unit_obj:
+                    new_sign.property_unit_id = property_unit_obj.id
+
+                # Generate custom ID
+                new_sign.custom_id = Item.generate_custom_id('Sign', item_data.get('sign_subtype'))
+
+                tenant_add(new_sign)
+                created_count += 1
+
+            tenant_commit()
+            flash(f"Successfully imported {created_count} signs. Skipped {skipped_count} rows.", "success")
+
+            # Clear session data
+            session.pop('import_data', None)
+            session.pop('import_mapping', None)
+
+            return redirect(url_for('inventory.list_signs'))
+
+        except Exception as e:
+            tenant_rollback()
+            flash(f"Database error: {str(e)}", "error")
+            return redirect(url_for('inventory.import_signs'))
+
+    # Show preview
+    preview_rows = import_data['rows'][:10]
+    preview_data = []
+
+    for row in preview_rows:
+        preview_item = {}
+        for field_name, column in mapping.items():
+            preview_item[field_name] = row.get(column, '')
+        preview_data.append(preview_item)
+
+    return render_template(
+        "import_preview.html",
+        preview_data=preview_data,
+        total_rows=import_data['total_rows'],
+        fields=SIGN_FIELDS,
+        mapping=mapping,
+        item_type="Signs"
     )

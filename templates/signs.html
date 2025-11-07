@@ -149,6 +149,8 @@
         <a class="btn small" href="{{ url_for('inventory.list_signs') }}">Clear</a>
       {% endif %}
     </form>
+    <a class="btn small" href="{{ url_for('inventory.import_signs') }}">Import</a>
+    <button type="button" class="btn small" onclick="showExportMenu(event, 'signs')">Export ▾</button>
     <a class="btn primary" href="{{ url_for('inventory.build_sign') }}">Build Sign</a>
     <a class="btn primary" href="{{ url_for('inventory.add_sign') }}">Add Sign/Piece</a>
   </div>

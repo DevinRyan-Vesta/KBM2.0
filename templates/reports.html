@@ -354,6 +354,16 @@
         <span class="count-badge {{ 'alert' if all_keys_low|length > 0 else '' }}">
           {{ all_keys_low|length }} keys
         </span>
+        {% if all_keys_low %}
+        <div class="report-export-btn">
+          <button type="button" class="btn small" onclick="toggleReportExport(event, 'low-keys')">Export ▾</button>
+          <div class="report-export-dropdown" id="export-low-keys">
+            <a href="/exports/reports/low-keys?format=csv">Export as CSV</a>
+            <a href="/exports/reports/low-keys?format=excel">Export as Excel</a>
+            <a href="/exports/reports/low-keys?format=pdf">Export as PDF</a>
+          </div>
+        </div>
+        {% endif %}
       </div>
       {% if all_keys_low %}
         <div class="table-card">
@@ -407,6 +417,16 @@
         <span class="count-badge {{ 'alert' if keys_no_available|length > 0 else 'success' }}">
           {{ keys_no_available|length }} keys
         </span>
+        {% if keys_no_available %}
+        <div class="report-export-btn">
+          <button type="button" class="btn small" onclick="toggleReportExport(event, 'checked-out-keys')">Export ▾</button>
+          <div class="report-export-dropdown" id="export-checked-out-keys">
+            <a href="/exports/reports/checked-out-keys?format=csv">Export as CSV</a>
+            <a href="/exports/reports/checked-out-keys?format=excel">Export as Excel</a>
+            <a href="/exports/reports/checked-out-keys?format=pdf">Export as PDF</a>
+          </div>
+        </div>
+        {% endif %}
       </div>
       {% if keys_no_available %}
         <div class="table-card">
