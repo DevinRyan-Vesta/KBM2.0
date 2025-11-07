@@ -50,9 +50,9 @@ HIGH PRIORITY - Missing Core Features
 MEDIUM PRIORITY - User Experience
 ========================================
 
-[ ] Bulk Operations - Select multiple items and perform bulk actions (delete, edit, assign, change status)
+[✓] Bulk Operations - Select multiple items and perform bulk actions (delete, edit, assign, change status) - FIXED
 
-[ ] Advanced Filtering - Add filters to list pages (filter by property, status, date range, assigned user)
+[✓] Advanced Filtering - Add filters to list pages (filter by property, status, date range, assigned user) - FIXED
 
 [ ] Global Search - Search across all modules from one place
 
@@ -317,6 +317,56 @@ Scripts Created (can be re-run if needed):
    - Contact.user_id now has proper ForeignKey constraint
    - ItemCheckout and AuditItem CASCADE deletes work for new databases
 
+11. ADVANCED FILTERING AND BULK OPERATIONS (November 2025)
+   Files Modified:
+   - inventory/views.py (lines 60-100, 705-745, 1499-1580): Added filter parameters and bulk operation routes
+   - templates/keys.html: Added filter UI, bulk toolbar, checkboxes, and JavaScript
+   - templates/lockboxes.html: Added filter UI, bulk toolbar, checkboxes, and JavaScript
+   - templates/signs.html: Added filter UI, bulk toolbar, checkboxes, and JavaScript
+
+   What was added:
+   - Advanced filtering: Filter by status, property, and assignment (assigned/unassigned)
+   - Collapsible filter UI with "Filters" button in toolbar
+   - Bulk delete operation (admin/owner permission required)
+   - Bulk status change operation
+   - Bulk assign/unassign operation
+   - Select all checkbox in table header
+   - Bulk action toolbar showing item count
+   - Confirmation dialogs for destructive actions
+   - Complete activity logging for all bulk operations
+
+   Backend Routes Added:
+   - /inventory/bulk/delete (POST) - Delete multiple items at once
+   - /inventory/bulk/update_status (POST) - Change status for multiple items
+   - /inventory/bulk/assign (POST) - Assign/unassign multiple items
+
+   Frontend Features:
+   - Filter form with status dropdown (all statuses from database + predefined)
+   - Property dropdown (all properties with addresses)
+   - Assignment filter (all/assigned/unassigned)
+   - Clear Filters button (appears when filters active)
+   - Checkbox column in all inventory tables
+   - Bulk toolbar (appears when items selected)
+   - Select all functionality (header checkbox + toolbar checkbox)
+   - Real-time selected item count
+   - CSRF token integration for security
+   - Error handling and user feedback with alerts
+
+   Technical Details:
+   - Filters preserve search query when applying
+   - Filters use GET parameters for bookmarkable URLs
+   - Bulk operations use POST with CSRF protection
+   - Bulk operations return JSON responses with success/error
+   - All operations include activity logging
+   - Manual cleanup of foreign key references in bulk delete
+   - Permission checks prevent non-admins from bulk deleting
+   - JavaScript uses async/await for clean async code
+   - Checkbox state management with updateBulkToolbar()
+   - Filter toggle preserves filter state
+
+   Script Created:
+   - add_filters_bulk_ops.py: Automated script to apply filter and bulk UI consistently across templates
+
 ========================================
 TESTING RECOMMENDATIONS
 ========================================
@@ -345,3 +395,22 @@ TESTING RECOMMENDATIONS
     - Login as app admin - verify admin navigation
     - Check active state highlighting
     - Verify no 404 errors on navigation links
+12. Test advanced filtering:
+    - Test status filter on keys, lockboxes, and signs
+    - Test property filter on all item types
+    - Test assignment filter (all/assigned/unassigned)
+    - Test combining multiple filters
+    - Verify filters preserve search query
+    - Test "Clear Filters" button
+    - Verify collapsible filter UI
+13. Test bulk operations:
+    - Select multiple items using checkboxes
+    - Test "Select All" checkbox functionality
+    - Test bulk delete (verify permission required for non-admins)
+    - Test bulk status change
+    - Test bulk assign and unassign
+    - Verify bulk toolbar appears/disappears correctly
+    - Verify selected item count updates
+    - Test cancel button clears selection
+    - Verify activity logs for bulk operations
+    - Test bulk operations across pages/filters

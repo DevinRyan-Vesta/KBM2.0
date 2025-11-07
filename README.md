@@ -367,6 +367,8 @@ Proprietary - All Rights Reserved
 ## 📋 Recent Updates
 
 **November 6, 2025:**
+- ✅ **Advanced Filtering** - Filter keys, lockboxes, and signs by status, property, and assignment
+- ✅ **Bulk Operations** - Select multiple items for bulk delete, status change, or assign/unassign
 - ✅ **Signs Import/Export** - Full import and export functionality for signs
 - ✅ **Reports Export Complete** - All report sections now have export buttons
 - ✅ **CSV Template Downloads** - Download pre-filled templates with examples for importing
