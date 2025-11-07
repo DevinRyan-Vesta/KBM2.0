@@ -149,7 +149,7 @@ class SystemUpdateManager:
         """
         # Write a restart script to the filesystem that the host can execute
         # This script will be triggered from the host and will survive container shutdown
-        build_flag = "--build" if build else "--no-build"
+        build_flag = "--build" if build else ""
 
         # Create log file for restart output
         log_file = "/workspace/restart_output.log"
