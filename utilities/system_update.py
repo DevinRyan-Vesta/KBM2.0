@@ -179,32 +179,52 @@ exit $exit_code
             # Make it executable
             os.chmod(script_path, 0o755)
 
-            # Trigger the script to run on the host in the background using docker run
-            # The at command or nohup won't work from inside container, so we use docker run
-            # to spawn a docker container on the host that will execute the script
-            # Must use docker:latest (not alpine) because it has docker compose CLI
-            # Note: We use -d (detached) so this returns immediately
-            trigger_cmd = [
-                "docker", "run", "--rm", "-d",
-                "-v", "/var/run/docker.sock:/var/run/docker.sock",
-                "-v", "/volume1/KBM/KBM2.0:/workspace",
-                "-w", "/workspace",
-                "docker:latest",
-                "sh", "/workspace/restart_scheduled.sh"
-            ]
+            # Try multiple approaches to restart the container
+            # Approach 1: Try docker compose restart from within container (if docker socket is mounted)
+            try:
+                restart_result = subprocess.run(
+                    [docker_cmd.split()[0], docker_cmd.split()[1], "-f", docker_cmd.split()[3],
+                     "-p", docker_cmd.split()[5], "restart"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if restart_result.returncode == 0:
+                    return True, "Container restart initiated successfully. The application will reload in a few seconds."
+            except Exception as e:
+                print(f"Direct restart failed: {e}")
 
-            result = subprocess.run(
-                trigger_cmd,
-                cwd=self.repo_path,
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            # Approach 2: Use docker run to trigger restart script
+            try:
+                trigger_cmd = [
+                    "docker", "run", "--rm", "-d",
+                    "-v", "/var/run/docker.sock:/var/run/docker.sock",
+                    "-v", "/volume1/KBM/KBM2.0:/workspace",
+                    "-w", "/workspace",
+                    "docker:latest",
+                    "sh", "/workspace/restart_scheduled.sh"
+                ]
 
-            if result.returncode == 0:
-                return True, "Container restart scheduled in 10 seconds. Check restart_output.log for details."
-            else:
-                return False, f"Failed to schedule restart: {result.stderr}"
+                result = subprocess.run(
+                    trigger_cmd,
+                    cwd=self.repo_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+
+                if result.returncode == 0:
+                    return True, "Container restart scheduled in 10 seconds. Check restart_output.log for details."
+            except Exception as e:
+                print(f"Docker run trigger failed: {e}")
+
+            # Approach 3: Create marker file for manual restart
+            marker_file = os.path.join(self.repo_path, "RESTART_REQUIRED.txt")
+            with open(marker_file, 'w') as f:
+                f.write(f"Restart required after update at {subprocess.check_output(['date'], text=True).strip()}\n")
+                f.write(f"\nTo restart, run:\n{docker_cmd}\n")
+
+            return True, "Update complete. Restart script created. Please run: " + docker_cmd
 
         except Exception as e:
             return False, f"Failed to schedule restart: {str(e)}"

@@ -1,4 +1,71 @@
-{% extends "base.html" %}
+#!/usr/bin/env python3
+"""
+Fix issues with filter and bulk operations implementation:
+1. Add dark mode select styling to base.html
+2. Completely rebuild lockboxes.html from scratch based on working keys.html
+3. Fix any issues in signs.html
+4. Remove duplicate elements
+"""
+
+import re
+
+def add_dark_mode_select_css():
+    """Add global dark mode CSS for select elements to base.html"""
+    file_path = 'templates/base.html'
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # CSS for select elements in dark mode
+    select_css = """
+    /* Dark mode select element styling */
+    select,
+    select option {
+      background: var(--color-surface);
+      color: var(--color-text);
+      border: 1px solid var(--color-border);
+    }
+
+    select:focus,
+    select:active {
+      background: var(--color-surface);
+      color: var(--color-text);
+      outline-color: var(--color-accent);
+    }
+    """
+
+    # Find the closing </style> tag in the header and insert before it
+    if '</style>' in content:
+        # Find the last </style> in the head section
+        parts = content.split('</head>')
+        if len(parts) >= 2:
+            head_part = parts[0]
+            rest = '</head>' + parts[1]
+
+            # Insert CSS before last </style> in head
+            head_part = head_part.replace('</style>', select_css + '\n  </style>')
+            content = head_part + rest
+
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    print(f"[OK] Added dark mode select CSS to {file_path}")
+
+
+def rebuild_lockboxes_template():
+    """Completely rebuild lockboxes.html based on keys.html pattern"""
+    # Read the working keys.html as a template
+    with open('templates/keys.html', 'r', encoding='utf-8') as f:
+        keys_content = f.read()
+
+    # Read the original lockboxes.html to preserve any lockbox-specific content
+    with open('templates/lockboxes.html', 'r', encoding='utf-8') as f:
+        original = f.read()
+
+    # Extract the lockbox-specific table rows structure from original
+    # We'll rebuild the file from keys.html structure but customize for lockboxes
+
+    lockboxes_template = '''{% extends "base.html" %}
 {% block title %}Lockboxes - KBM{% endblock %}
 
 {% block content %}
@@ -462,3 +529,62 @@
 </script>
 
 {% endblock %}
+'''
+
+    with open('templates/lockboxes.html', 'w', encoding='utf-8') as f:
+        f.write(lockboxes_template)
+
+    print(f"[OK] Completely rebuilt templates/lockboxes.html")
+
+
+def fix_signs_checkboxes():
+    """Fix signs.html - add missing checkboxes if not present"""
+    file_path = 'templates/signs.html'
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Check if checkboxes are missing from table header
+    if '<th class="select-col">' not in content or 'th-select-all' not in content:
+        # Need to add checkbox column header
+        content = re.sub(
+            r'<thead>\s*<tr>\s*<th>Label',
+            '<thead>\n        <tr>\n          <th class="select-col"><input type="checkbox" id="th-select-all" onclick="toggleSelectAll(this)" style="margin: 0;"></th>\n          <th>Label',
+            content
+        )
+
+    # Check if checkboxes are in table rows
+    if 'class="item-checkbox"' not in content:
+        # Add checkbox column to rows
+        content = re.sub(
+            r'<tr data-item-id="{{ sign\.id }}" data-item-label="{{ sign\.label }}">',
+            '''<tr data-item-id="{{ sign.id }}" data-item-label="{{ sign.label }}">
+            <td class="select-col">
+              <input type="checkbox" class="item-checkbox" value="{{ sign.id }}" onchange="updateBulkToolbar()" style="margin: 0;">
+            </td>''',
+            content
+        )
+
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    print(f"[OK] Fixed checkboxes in {file_path}")
+
+
+if __name__ == '__main__':
+    print("Fixing filter and bulk operations issues...")
+    print("\n1. Adding dark mode select CSS...")
+    add_dark_mode_select_css()
+
+    print("\n2. Rebuilding lockboxes template...")
+    rebuild_lockboxes_template()
+
+    print("\n3. Fixing signs template checkboxes...")
+    fix_signs_checkboxes()
+
+    print("\n[SUCCESS] All fixes applied!")
+    print("\nPlease review the changes and test:")
+    print("- Dark mode select elements should now be readable")
+    print("- Lockboxes page should have correct layout")
+    print("- No duplicate buttons")
+    print("- Bulk operations should work")

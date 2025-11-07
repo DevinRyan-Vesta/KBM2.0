@@ -746,7 +746,23 @@
           max-width: 100%;
         }
       }
-    </style>
+    
+    /* Dark mode select element styling */
+    select,
+    select option {
+      background: var(--color-surface);
+      color: var(--color-text);
+      border: 1px solid var(--color-border);
+    }
+
+    select:focus,
+    select:active {
+      background: var(--color-surface);
+      color: var(--color-text);
+      outline-color: var(--color-accent);
+    }
+    
+  </style>
     {% block head %}{% endblock %}
   </head>
   <body class="dark">
