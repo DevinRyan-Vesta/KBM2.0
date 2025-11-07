@@ -46,9 +46,14 @@ python app_multitenant.py
 
 1. **[PRE_DEPLOYMENT_CHECKLIST.md](PRE_DEPLOYMENT_CHECKLIST.md)** - Security overview and readiness checklist ⚠️ READ FIRST
 2. **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Complete step-by-step deployment instructions
-3. **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Technical architecture and code documentation
-4. **[USER_QUICKSTART_GUIDE.md](USER_QUICKSTART_GUIDE.md)** - End-user manual and feature guide
-5. **[SECURITY_FIXES_APPLIED.md](SECURITY_FIXES_APPLIED.md)** - Security hardening summary
+3. **[NAS_DEPLOYMENT.md](NAS_DEPLOYMENT.md)** - NAS-specific deployment guide
+4. **[CLOUDFLARE_TUNNEL_SETUP.md](CLOUDFLARE_TUNNEL_SETUP.md)** - Cloudflare Tunnel setup (replaces traditional SSL)
+5. **[SYSTEM_UPDATES_GUIDE.md](SYSTEM_UPDATES_GUIDE.md)** - Web-based system update interface
+6. **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Technical architecture and code documentation
+7. **[USER_QUICKSTART_GUIDE.md](USER_QUICKSTART_GUIDE.md)** - End-user manual and feature guide
+8. **[DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md)** - Development process and guidelines
+9. **[BACKUP_GUIDE.md](BACKUP_GUIDE.md)** - Backup and restoration procedures
+10. **[ToDo.txt](ToDo.txt)** - Project tracking and fix history
 
 ---
 
@@ -63,8 +68,9 @@ All critical security items have been addressed:
 - ✅ Secure session cookies (HttpOnly, Secure, SameSite)
 - ✅ Comprehensive .gitignore (prevents credential leaks)
 - ✅ Production environment files configured
+- ✅ Cloudflare Tunnel (DDoS protection, no exposed ports)
 
-See [SECURITY_FIXES_APPLIED.md](SECURITY_FIXES_APPLIED.md) for details.
+See [ToDo.txt](ToDo.txt) REFERENCE section for complete fix history.
 
 ---
 
@@ -232,14 +238,14 @@ Visit `http://localhost:5000`
 
 ## 🚀 Deployment
 
-See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for complete instructions covering:
+See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) and [NAS_DEPLOYMENT.md](NAS_DEPLOYMENT.md) for complete instructions covering:
 
-- Docker deployment
-- Traditional server deployment
-- Cloud platforms (AWS, GCP, Azure)
+- Docker deployment on NAS (Synology)
+- Cloudflare Tunnel setup (replaces traditional SSL)
+- System Updates UI (web-based updates)
 - Nginx configuration
-- SSL setup
 - Backups and monitoring
+- Container management
 
 ---
 
@@ -352,8 +358,24 @@ Proprietary - All Rights Reserved
 
 **Version**: 2.0
 **Status**: Production Ready
-**Last Updated**: 2025-10-20
+**Last Updated**: November 6, 2025
 **Security Review**: Completed ✅
+**Deployment**: Active (Cloudflare Tunnel + NAS Docker)
+
+---
+
+## 📋 Recent Updates
+
+**November 2025:**
+- ✅ Fixed critical deletion bugs (lockboxes, keys, signs)
+- ✅ Added audit deletion functionality
+- ✅ Fixed contact view errors
+- ✅ Improved System Updates UI container restart
+- ✅ Enhanced dark mode compatibility
+- ✅ App admin 404 redirect improvements
+- ✅ Cleaned up temporary scripts and documentation
+
+See [ToDo.txt](ToDo.txt) for complete change history.
 
 ---
 
