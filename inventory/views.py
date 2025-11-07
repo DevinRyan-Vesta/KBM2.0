@@ -59,8 +59,13 @@ def _get_redirect_url(default_url: str) -> str:
 @tenant_required
 def list_lockboxes():
     q = (request.args.get("q") or "").strip()
+    filter_status = (request.args.get("status") or "").strip()
+    filter_property = (request.args.get("property") or "").strip()
+    filter_assigned = (request.args.get("assigned") or "").strip()
+
     query = tenant_query(Item).filter(Item.type == "Lockbox")
 
+    # Text search
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -74,6 +79,25 @@ def list_lockboxes():
                 Item.assigned_to.ilike(like),
             )
         )
+
+    # Status filter
+    if filter_status:
+        query = query.filter(Item.status.ilike(filter_status))
+
+    # Property filter
+    if filter_property:
+        try:
+            prop_id = int(filter_property)
+            query = query.filter(Item.property_id == prop_id)
+        except ValueError:
+            pass
+
+    # Assigned filter
+    if filter_assigned:
+        if filter_assigned.lower() == "unassigned":
+            query = query.filter(db.or_(Item.assigned_to.is_(None), Item.assigned_to == ""))
+        elif filter_assigned.lower() == "assigned":
+            query = query.filter(Item.assigned_to.isnot(None), Item.assigned_to != "")
 
     lockboxes = query.order_by(Item.id.desc()).all()
     dynamic_statuses = {(lb.status or "").lower() for lb in lockboxes if lb.status}
@@ -107,10 +131,225 @@ def list_lockboxes():
         "lockboxes.html",
         lockboxes=lockboxes,
         q=q,
+        filter_status=filter_status,
+        filter_property=filter_property,
+        filter_assigned=filter_assigned,
         status_options=status_choices,
         property_select_options=property_select_options,
         property_map=property_map,
     )
+
+
+# --- Bulk Operations ---
+@inventory_bp.route("/bulk/delete", methods=["POST"])
+@login_required
+@tenant_required
+def bulk_delete():
+    """Delete multiple items at once"""
+    item_ids_str = request.form.get("item_ids", "")
+    item_type = request.form.get("item_type", "").lower()
+
+    if not item_ids_str:
+        return jsonify({"success": False, "error": "No items selected"}), 400
+
+    try:
+        item_ids = [int(id.strip()) for id in item_ids_str.split(",") if id.strip()]
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid item IDs"}), 400
+
+    if not item_ids:
+        return jsonify({"success": False, "error": "No valid items selected"}), 400
+
+    # Check permission
+    if current_user.role.lower() not in ["admin", "owner"]:
+        return jsonify({"success": False, "error": "Permission denied"}), 403
+
+    deleted_count = 0
+    errors = []
+
+    for item_id in item_ids:
+        try:
+            item = get_tenant_session().get(Item, item_id)
+            if not item:
+                errors.append(f"Item {item_id} not found")
+                continue
+
+            label = item.label or f"Item {item_id}"
+
+            # Delete related records manually (for databases without CASCADE)
+            session = get_tenant_session()
+            session.query(ItemCheckout).filter(ItemCheckout.item_id == item_id).delete()
+
+            from utilities.database import AuditItem
+            session.query(AuditItem).filter(AuditItem.item_id == item_id).delete()
+
+            # Clear master key references
+            session.query(Item).filter(Item.master_key_id == item_id).update({"master_key_id": None})
+
+            # Clear parent sign references
+            session.query(Item).filter(Item.parent_sign_id == item_id).update({"parent_sign_id": None})
+
+            # Delete the item
+            tenant_delete(item)
+
+            # Log the deletion
+            log_activity(
+                f"{item.type.lower()}_deleted",
+                user=current_user,
+                target_type="Item",
+                target_id=item_id,
+                summary=f"Bulk deleted {item.type.lower()} {label}",
+                meta={"label": label, "type": item.type},
+                commit=False,
+            )
+
+            deleted_count += 1
+        except Exception as e:
+            errors.append(f"Error deleting item {item_id}: {str(e)}")
+            continue
+
+    try:
+        tenant_commit()
+    except Exception as e:
+        tenant_rollback()
+        return jsonify({"success": False, "error": f"Failed to commit changes: {str(e)}"}), 500
+
+    message = f"Successfully deleted {deleted_count} item(s)"
+    if errors:
+        message += f". {len(errors)} error(s): " + "; ".join(errors[:3])
+
+    return jsonify({"success": True, "message": message, "deleted_count": deleted_count})
+
+
+@inventory_bp.route("/bulk/update_status", methods=["POST"])
+@login_required
+@tenant_required
+def bulk_update_status():
+    """Update status for multiple items at once"""
+    item_ids_str = request.form.get("item_ids", "")
+    new_status = request.form.get("status", "").strip()
+
+    if not item_ids_str:
+        return jsonify({"success": False, "error": "No items selected"}), 400
+
+    if not new_status:
+        return jsonify({"success": False, "error": "No status specified"}), 400
+
+    try:
+        item_ids = [int(id.strip()) for id in item_ids_str.split(",") if id.strip()]
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid item IDs"}), 400
+
+    if not item_ids:
+        return jsonify({"success": False, "error": "No valid items selected"}), 400
+
+    updated_count = 0
+    errors = []
+
+    for item_id in item_ids:
+        try:
+            item = get_tenant_session().get(Item, item_id)
+            if not item:
+                errors.append(f"Item {item_id} not found")
+                continue
+
+            old_status = item.status
+            item.status = new_status
+
+            log_activity(
+                f"{item.type.lower()}_status_changed",
+                user=current_user,
+                target_type="Item",
+                target_id=item_id,
+                summary=f"Bulk changed {item.type.lower()} {item.label} status from {old_status} to {new_status}",
+                meta={"label": item.label, "old_status": old_status, "new_status": new_status},
+                commit=False,
+            )
+
+            updated_count += 1
+        except Exception as e:
+            errors.append(f"Error updating item {item_id}: {str(e)}")
+            continue
+
+    try:
+        tenant_commit()
+    except Exception as e:
+        tenant_rollback()
+        return jsonify({"success": False, "error": f"Failed to commit changes: {str(e)}"}), 500
+
+    message = f"Successfully updated {updated_count} item(s) to status '{new_status}'"
+    if errors:
+        message += f". {len(errors)} error(s): " + "; ".join(errors[:3])
+
+    return jsonify({"success": True, "message": message, "updated_count": updated_count})
+
+
+@inventory_bp.route("/bulk/assign", methods=["POST"])
+@login_required
+@tenant_required
+def bulk_assign():
+    """Assign multiple items to a person at once"""
+    item_ids_str = request.form.get("item_ids", "")
+    assigned_to = request.form.get("assigned_to", "").strip()
+
+    if not item_ids_str:
+        return jsonify({"success": False, "error": "No items selected"}), 400
+
+    try:
+        item_ids = [int(id.strip()) for id in item_ids_str.split(",") if id.strip()]
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid item IDs"}), 400
+
+    if not item_ids:
+        return jsonify({"success": False, "error": "No valid items selected"}), 400
+
+    updated_count = 0
+    errors = []
+
+    for item_id in item_ids:
+        try:
+            item = get_tenant_session().get(Item, item_id)
+            if not item:
+                errors.append(f"Item {item_id} not found")
+                continue
+
+            old_assigned = item.assigned_to
+            item.assigned_to = assigned_to if assigned_to else None
+            item.status = "assigned" if assigned_to else "available"
+
+            action_desc = f"assigned to {assigned_to}" if assigned_to else "unassigned"
+
+            log_activity(
+                f"{item.type.lower()}_assigned",
+                user=current_user,
+                target_type="Item",
+                target_id=item_id,
+                summary=f"Bulk {action_desc} {item.type.lower()} {item.label}",
+                meta={"label": item.label, "old_assigned": old_assigned, "new_assigned": assigned_to},
+                commit=False,
+            )
+
+            updated_count += 1
+        except Exception as e:
+            errors.append(f"Error assigning item {item_id}: {str(e)}")
+            continue
+
+    try:
+        tenant_commit()
+    except Exception as e:
+        tenant_rollback()
+        return jsonify({"success": False, "error": f"Failed to commit changes: {str(e)}"}), 500
+
+    if assigned_to:
+        message = f"Successfully assigned {updated_count} item(s) to '{assigned_to}'"
+    else:
+        message = f"Successfully unassigned {updated_count} item(s)"
+
+    if errors:
+        message += f". {len(errors)} error(s): " + "; ".join(errors[:3])
+
+    return jsonify({"success": True, "message": message, "updated_count": updated_count})
+
 
 # --- Add (separate screen) ---
 @inventory_bp.route("/lockboxes/new", methods=["GET", "POST"])
@@ -677,8 +916,13 @@ def delete_lockbox(item_id: int):
 @tenant_required
 def list_keys():
     q = (request.args.get("q") or "").strip()
+    filter_status = (request.args.get("status") or "").strip()
+    filter_property = (request.args.get("property") or "").strip()
+    filter_assigned = (request.args.get("assigned") or "").strip()
+
     query = tenant_query(Item).filter(Item.type == "Key")
 
+    # Text search
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -691,6 +935,25 @@ def list_keys():
                 Item.assigned_to.ilike(like),
             )
         )
+
+    # Status filter
+    if filter_status:
+        query = query.filter(Item.status.ilike(filter_status))
+
+    # Property filter
+    if filter_property:
+        try:
+            prop_id = int(filter_property)
+            query = query.filter(Item.property_id == prop_id)
+        except ValueError:
+            pass
+
+    # Assigned filter
+    if filter_assigned:
+        if filter_assigned.lower() == "unassigned":
+            query = query.filter(db.or_(Item.assigned_to.is_(None), Item.assigned_to == ""))
+        elif filter_assigned.lower() == "assigned":
+            query = query.filter(Item.assigned_to.isnot(None), Item.assigned_to != "")
 
     keys = query.order_by(Item.id.desc()).all()
     dynamic_statuses = {(k.status or "").lower() for k in keys if k.status}
@@ -739,6 +1002,9 @@ def list_keys():
         "keys.html",
         keys=keys,
         q=q,
+        filter_status=filter_status,
+        filter_property=filter_property,
+        filter_assigned=filter_assigned,
         status_options=status_choices,
         property_select_options=property_select_options,
         property_map=property_map,
@@ -1444,8 +1710,13 @@ def delete_key(item_id: int):
 @tenant_required
 def list_signs():
     q = (request.args.get("q") or "").strip()
+    filter_status = (request.args.get("status") or "").strip()
+    filter_property = (request.args.get("property") or "").strip()
+    filter_assigned = (request.args.get("assigned") or "").strip()
+
     query = tenant_query(Item).filter(Item.type == "Sign")
 
+    # Text search
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -1462,6 +1733,25 @@ def list_signs():
             )
         )
 
+    # Status filter
+    if filter_status:
+        query = query.filter(Item.status.ilike(filter_status))
+
+    # Property filter
+    if filter_property:
+        try:
+            prop_id = int(filter_property)
+            query = query.filter(Item.property_id == prop_id)
+        except ValueError:
+            pass
+
+    # Assigned filter
+    if filter_assigned:
+        if filter_assigned.lower() == "unassigned":
+            query = query.filter(db.or_(Item.assigned_to.is_(None), Item.assigned_to == ""))
+        elif filter_assigned.lower() == "assigned":
+            query = query.filter(Item.assigned_to.isnot(None), Item.assigned_to != "")
+
     signs = query.order_by(Item.id.desc()).all()
     dynamic_statuses = {(s.status or "").lower() for s in signs if s.status}
     status_choices = sorted(set(SIGN_STATUS_OPTIONS).union(dynamic_statuses))
@@ -1474,11 +1764,28 @@ def list_signs():
         Item.status == "available"
     ).all()
 
+    # Get properties for filter
+    properties = tenant_query(Property).order_by(Property.name.asc()).all()
+
+    def _property_display(prop: Property) -> str:
+        address_bits = [prop.address_line1, prop.city, prop.state]
+        address = ", ".join([bit for bit in address_bits if bit])
+        return f"{prop.name} - {address}" if address else prop.name
+
+    property_select_options = [["", "-- Select Property --"]]
+    for prop in properties:
+        display = _property_display(prop)
+        property_select_options.append([str(prop.id), display])
+
     return render_template(
         "signs.html",
         signs=signs,
         q=q,
+        filter_status=filter_status,
+        filter_property=filter_property,
+        filter_assigned=filter_assigned,
         status_options=status_choices,
+        property_select_options=property_select_options,
         piece_types=SIGN_PIECE_TYPES,
         condition_options=SIGN_CONDITION_OPTIONS,
         available_pieces=available_pieces,

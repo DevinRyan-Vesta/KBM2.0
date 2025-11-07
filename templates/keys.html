@@ -134,11 +134,58 @@
       {% endif %}
     </form>
     <div class="btn-group">
+      <button type="button" class="btn small" onclick="toggleFilters()">Filters ▾</button>
       <button type="button" class="btn small" onclick="showExportMenu(event, 'keys')">Export ▾</button>
       <a class="btn small" href="{{ url_for('inventory.import_keys') }}">Import</a>
       <a class="btn primary" href="{{ url_for('inventory.add_key') }}">Add Key</a>
     </div>
   </div>
+</div>
+
+<!-- Advanced Filters -->
+<div id="advanced-filters" class="card" style="display: {% if filter_status or filter_property or filter_assigned %}block{% else %}none{% endif %}; margin-bottom: 20px;">
+  <form method="get" action="{{ url_for('inventory.list_keys') }}" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+    <input type="hidden" name="q" value="{{ q or '' }}">
+
+    <div class="form-field" style="margin: 0; flex: 1; min-width: 180px;">
+      <label for="filter-status" style="font-size: 13px; margin-bottom: 4px;">Status</label>
+      <select name="status" id="filter-status" style="width: 100%;">
+        <option value="">All Statuses</option>
+        {% for status in status_options %}
+        <option value="{{ status }}" {% if filter_status and filter_status.lower() == status.lower() %}selected{% endif %}>
+          {{ status.replace('_', ' ').title() }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-field" style="margin: 0; flex: 1; min-width: 200px;">
+      <label for="filter-property" style="font-size: 13px; margin-bottom: 4px;">Property</label>
+      <select name="property" id="filter-property" style="width: 100%;">
+        {% for prop in property_select_options %}
+        <option value="{{ prop[0] }}" {% if filter_property and filter_property == prop[0] %}selected{% endif %}>
+          {{ prop[1] }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-field" style="margin: 0; flex: 1; min-width: 160px;">
+      <label for="filter-assigned" style="font-size: 13px; margin-bottom: 4px;">Assignment</label>
+      <select name="assigned" id="filter-assigned" style="width: 100%;">
+        <option value="">All Items</option>
+        <option value="assigned" {% if filter_assigned == 'assigned' %}selected{% endif %}>Assigned</option>
+        <option value="unassigned" {% if filter_assigned == 'unassigned' %}selected{% endif %}>Unassigned</option>
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button type="submit" class="btn small primary">Apply Filters</button>
+      {% if filter_status or filter_property or filter_assigned %}
+      <a href="{{ url_for('inventory.list_keys', q=q or '') }}" class="btn small ghost">Clear Filters</a>
+      {% endif %}
+    </div>
+  </form>
 </div>
 
 <div id="export-menu" class="dropdown-menu" style="display: none;">
@@ -147,12 +194,27 @@
   <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
 </div>
 
+<!-- Bulk Actions Toolbar -->
+<div class="bulkbar" id="bulk-toolbar">
+  <input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" style="margin: 0;">
+  <span id="bulk-count">0 selected</span>
+  <select id="bulk-action" class="form-control" style="max-width: 200px;">
+    <option value="">-- Select Action --</option>
+    <option value="delete">Delete Selected</option>
+    <option value="change-status">Change Status</option>
+    <option value="assign">Assign To...</option>
+  </select>
+  <button type="button" class="btn small primary" onclick="executeBulkAction()">Execute</button>
+  <button type="button" class="btn small ghost" onclick="clearSelection()">Cancel</button>
+</div>
+
 <div class="card table-card">
   {% set viewer_role = (current_user.role or '').lower() if current_user.is_authenticated else '' %}
   {% if keys %}
     <table>
       <thead>
         <tr>
+          <th class="select-col"><input type="checkbox" id="th-select-all" onclick="toggleSelectAll(this)" style="margin: 0;"></th>
           <th>Label</th>
           <th>Location / Property</th>
           <th>Key Box Location</th>
@@ -169,7 +231,10 @@
           {% set total = key.total_copies or 0 %}
           {% set checked_out = key.copies_checked_out or 0 %}
           {% set available = total - checked_out %}
-          <tr>
+          <tr data-item-id="{{ key.id }}" data-item-label="{{ key.label }}">
+            <td class="select-col">
+              <input type="checkbox" class="item-checkbox" value="{{ key.id }}" onchange="updateBulkToolbar()" style="margin: 0;">
+            </td>
             <td>
               <div><strong><a href="{{ url_for('inventory.item_details', item_id=key.id) }}" style="color: inherit; text-decoration: none;">{{ key.label }}</a></strong></div>
               <div class="muted">{{ key.custom_id or '-' }}</div>
@@ -954,10 +1019,177 @@
   function exportData(event, format) {
     event.preventDefault();
     if (!exportMenuData) return;
-    
+
     const url = `/exports/items/${exportMenuData}?format=${format}`;
     window.location.href = url;
     closeExportMenu();
+  }
+
+  // === Filter and Bulk Operations ===
+
+  function toggleFilters() {
+    const filtersDiv = document.getElementById('advanced-filters');
+    if (filtersDiv.style.display === 'none' || filtersDiv.style.display === '') {
+      filtersDiv.style.display = 'block';
+    } else {
+      filtersDiv.style.display = 'none';
+    }
+  }
+
+  function getSelectedItems() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+  }
+
+  function updateBulkToolbar() {
+    const selectedIds = getSelectedItems();
+    const toolbar = document.getElementById('bulk-toolbar');
+    const countSpan = document.getElementById('bulk-count');
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    const thSelectAll = document.getElementById('th-select-all');
+
+    if (selectedIds.length > 0) {
+      toolbar.classList.add('show');
+      countSpan.textContent = `${selectedIds.length} selected`;
+    } else {
+      toolbar.classList.remove('show');
+      countSpan.textContent = '0 selected';
+    }
+
+    // Update select-all checkbox state
+    const allCheckboxes = document.querySelectorAll('.item-checkbox');
+    const allChecked = allCheckboxes.length > 0 && selectedIds.length === allCheckboxes.length;
+    if (selectAllCheckbox) selectAllCheckbox.checked = allChecked;
+    if (thSelectAll) thSelectAll.checked = allChecked;
+  }
+
+  function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = checkbox.checked;
+    });
+    updateBulkToolbar();
+  }
+
+  function clearSelection() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = false;
+    });
+    updateBulkToolbar();
+  }
+
+  function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  }
+
+  async function executeBulkAction() {
+    const selectedIds = getSelectedItems();
+    if (selectedIds.length === 0) {
+      alert('Please select at least one item.');
+      return;
+    }
+
+    const action = document.getElementById('bulk-action').value;
+    if (!action) {
+      alert('Please select an action.');
+      return;
+    }
+
+    if (action === 'delete') {
+      if (!confirm(`Are you sure you want to delete ${selectedIds.length} item(s)? This cannot be undone.`)) {
+        return;
+      }
+      await bulkDelete(selectedIds);
+    } else if (action === 'change-status') {
+      const newStatus = prompt('Enter new status (available, assigned, checked_out):');
+      if (newStatus) {
+        await bulkUpdateStatus(selectedIds, newStatus);
+      }
+    } else if (action === 'assign') {
+      const assignTo = prompt('Enter person to assign to (leave blank to unassign):');
+      if (assignTo !== null) {
+        await bulkAssign(selectedIds, assignTo);
+      }
+    }
+  }
+
+  async function bulkDelete(itemIds) {
+    try {
+      const response = await fetch('/inventory/bulk/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: new URLSearchParams({
+          item_ids: itemIds.join(','),
+          item_type: 'key'
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(data.message);
+        window.location.reload();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      alert('Error performing bulk delete: ' + error);
+    }
+  }
+
+  async function bulkUpdateStatus(itemIds, newStatus) {
+    try {
+      const response = await fetch('/inventory/bulk/update_status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: new URLSearchParams({
+          item_ids: itemIds.join(','),
+          status: newStatus
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(data.message);
+        window.location.reload();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      alert('Error performing bulk status update: ' + error);
+    }
+  }
+
+  async function bulkAssign(itemIds, assignTo) {
+    try {
+      const response = await fetch('/inventory/bulk/assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: new URLSearchParams({
+          item_ids: itemIds.join(','),
+          assigned_to: assignTo
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(data.message);
+        window.location.reload();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      alert('Error performing bulk assign: ' + error);
+    }
   }
 </script>
 
