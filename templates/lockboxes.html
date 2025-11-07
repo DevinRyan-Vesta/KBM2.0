@@ -457,7 +457,7 @@
     statusOptions: {{ status_options | tojson }},
     propertyOptions: {{ property_select_options | tojson }},
     propertyMap: {{ property_map | tojson }},
-    activeCheckoutsUrl: "{{ url_for('inventory.active_checkouts_lockbox', item_id=0) }}".replace('/0', '')
+    activeCheckoutsUrl: null
   };
 </script>
 
