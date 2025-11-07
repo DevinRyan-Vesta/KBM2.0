@@ -623,43 +623,51 @@ def delete_lockbox(item_id: int):
         "status": lb.status,
     }
 
-    # Delete related records first (for existing databases without CASCADE)
-    from utilities.database import ItemCheckout, AuditItem
+    try:
+        # Delete related records first (for existing databases without CASCADE)
+        from utilities.database import ItemCheckout, AuditItem
 
-    # Delete checkout records
-    checkouts = tenant_query(ItemCheckout).filter_by(item_id=item_id).all()
-    for checkout in checkouts:
-        tenant_delete(checkout)
+        # Delete checkout records
+        checkouts = tenant_query(ItemCheckout).filter_by(item_id=item_id).all()
+        for checkout in checkouts:
+            tenant_delete(checkout)
 
-    # Delete audit item records
-    audit_items = tenant_query(AuditItem).filter_by(item_id=item_id).all()
-    for audit_item in audit_items:
-        tenant_delete(audit_item)
+        # Delete audit item records
+        audit_items = tenant_query(AuditItem).filter_by(item_id=item_id).all()
+        for audit_item in audit_items:
+            tenant_delete(audit_item)
 
-    # Clear master_key_id for any items that reference this item
-    child_items = tenant_query(Item).filter_by(master_key_id=item_id).all()
-    for child in child_items:
-        child.master_key_id = None
+        # Clear master_key_id for any items that reference this item
+        child_items = tenant_query(Item).filter_by(master_key_id=item_id).all()
+        for child in child_items:
+            child.master_key_id = None
 
-    # Clear parent_sign_id for any sign pieces that reference this item
-    sign_pieces = tenant_query(Item).filter_by(parent_sign_id=item_id).all()
-    for piece in sign_pieces:
-        piece.parent_sign_id = None
-        piece.status = "available"
+        # Clear parent_sign_id for any sign pieces that reference this item
+        sign_pieces = tenant_query(Item).filter_by(parent_sign_id=item_id).all()
+        for piece in sign_pieces:
+            piece.parent_sign_id = None
+            piece.status = "available"
 
-    tenant_delete(lb)
-    log_activity(
-        "lockbox_deleted",
-        user=current_user,
-        target_type="Item",
-        target_id=item_id,
-        summary=f"Removed lockbox {info['label']}",
-        meta=info,
-        commit=False,
-    )
-    tenant_commit()
-    flash(f"Lockbox {info['label']} removed.", "success")
-    return redirect(url_for("inventory.list_lockboxes"))
+        tenant_delete(lb)
+        log_activity(
+            "lockbox_deleted",
+            user=current_user,
+            target_type="Item",
+            target_id=item_id,
+            summary=f"Removed lockbox {info['label']}",
+            meta=info,
+            commit=False,
+        )
+        tenant_commit()
+        flash(f"Lockbox {info['label']} removed.", "success")
+        return redirect(url_for("inventory.list_lockboxes"))
+    except Exception as e:
+        tenant_rollback()
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error deleting lockbox {item_id}: {error_details}")
+        flash(f"Error deleting lockbox: {str(e)}", "error")
+        return redirect(url_for("inventory.item_details", item_id=item_id))
 
 
 # ==================== KEY MANAGEMENT ROUTES ====================
