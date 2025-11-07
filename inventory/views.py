@@ -641,6 +641,12 @@ def delete_lockbox(item_id: int):
     for child in child_items:
         child.master_key_id = None
 
+    # Clear parent_sign_id for any sign pieces that reference this item
+    sign_pieces = tenant_query(Item).filter_by(parent_sign_id=item_id).all()
+    for piece in sign_pieces:
+        piece.parent_sign_id = None
+        piece.status = "available"
+
     tenant_delete(lb)
     log_activity(
         "lockbox_deleted",
@@ -1402,6 +1408,12 @@ def delete_key(item_id: int):
     for child in child_items:
         child.master_key_id = None
 
+    # Clear parent_sign_id for any sign pieces that reference this item
+    sign_pieces = tenant_query(Item).filter_by(parent_sign_id=item_id).all()
+    for piece in sign_pieces:
+        piece.parent_sign_id = None
+        piece.status = "available"
+
     tenant_delete(key)
     log_activity(
         "key_deleted",
@@ -1796,6 +1808,12 @@ def delete_sign(item_id: int):
     child_items = tenant_query(Item).filter_by(master_key_id=item_id).all()
     for child in child_items:
         child.master_key_id = None
+
+    # Clear parent_sign_id for any sign pieces that reference this item
+    sign_pieces = tenant_query(Item).filter_by(parent_sign_id=item_id).all()
+    for piece in sign_pieces:
+        piece.parent_sign_id = None
+        piece.status = "available"
 
     tenant_delete(sign)
     log_activity(
