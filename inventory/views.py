@@ -623,11 +623,18 @@ def delete_lockbox(item_id: int):
         "status": lb.status,
     }
 
-    # Delete related checkout records first (for existing databases without CASCADE)
-    from utilities.database import ItemCheckout
+    # Delete related records first (for existing databases without CASCADE)
+    from utilities.database import ItemCheckout, AuditItem
+
+    # Delete checkout records
     checkouts = tenant_query(ItemCheckout).filter_by(item_id=item_id).all()
     for checkout in checkouts:
         tenant_delete(checkout)
+
+    # Delete audit item records
+    audit_items = tenant_query(AuditItem).filter_by(item_id=item_id).all()
+    for audit_item in audit_items:
+        tenant_delete(audit_item)
 
     tenant_delete(lb)
     log_activity(
@@ -1372,11 +1379,18 @@ def delete_key(item_id: int):
         "status": key.status,
     }
 
-    # Delete related checkout records first (for existing databases without CASCADE)
-    from utilities.database import ItemCheckout
+    # Delete related records first (for existing databases without CASCADE)
+    from utilities.database import ItemCheckout, AuditItem
+
+    # Delete checkout records
     checkouts = tenant_query(ItemCheckout).filter_by(item_id=item_id).all()
     for checkout in checkouts:
         tenant_delete(checkout)
+
+    # Delete audit item records
+    audit_items = tenant_query(AuditItem).filter_by(item_id=item_id).all()
+    for audit_item in audit_items:
+        tenant_delete(audit_item)
 
     tenant_delete(key)
     log_activity(
@@ -1755,11 +1769,18 @@ def delete_sign(item_id: int):
         "status": sign.status,
     }
 
-    # Delete related checkout records first (for existing databases without CASCADE)
-    from utilities.database import ItemCheckout
+    # Delete related records first (for existing databases without CASCADE)
+    from utilities.database import ItemCheckout, AuditItem
+
+    # Delete checkout records
     checkouts = tenant_query(ItemCheckout).filter_by(item_id=item_id).all()
     for checkout in checkouts:
         tenant_delete(checkout)
+
+    # Delete audit item records
+    audit_items = tenant_query(AuditItem).filter_by(item_id=item_id).all()
+    for audit_item in audit_items:
+        tenant_delete(audit_item)
 
     tenant_delete(sign)
     log_activity(

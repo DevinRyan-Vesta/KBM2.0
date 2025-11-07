@@ -329,8 +329,9 @@ exit $exit_code
                 return results
 
         # Step 4: Restart containers
-        # Always rebuild when updating to pick up code changes
-        success, message = self.restart_containers(build=True)
+        # Don't rebuild - code changes are live via volume mounts
+        # Only rebuild if explicitly requested via rebuild parameter
+        success, message = self.restart_containers(build=False)
         results["restart"] = {
             "status": "success" if success else "failed",
             "message": message
