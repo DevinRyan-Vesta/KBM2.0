@@ -1,4 +1,13 @@
 services:
+  # Permission fixer service - runs once on startup to fix .git permissions
+  git-permissions:
+    image: alpine:latest
+    container_name: git-permissions-fixer
+    volumes:
+      - ./.git:/git
+    command: sh -c "chmod -R 777 /git && echo 'Git permissions fixed'"
+    restart: "no"
+
   python-app:
     build:
       context: .
@@ -9,6 +18,9 @@ services:
       - .env
     expose:
       - "8000"  # Internal port only, not exposed to host
+    depends_on:
+      git-permissions:
+        condition: service_completed_successfully
     volumes:
       - ./.git:/app/.git                 # Mount git directory for updates (writable for fetch)
       - ./compose.yaml:/app/compose.yaml:ro  # Mount compose file for docker compose commands
