@@ -133,12 +133,51 @@ class SystemUpdateManager:
             "branch": branch
         }
 
+    def _fix_git_permissions(self) -> Tuple[bool, str]:
+        """
+        Fix git permissions issues by configuring git to skip permission checks.
+        This is needed when .git directory is mounted from host with different ownership.
+        """
+        # Configure git to trust the directory
+        self.run_command(['git', 'config', '--global', 'safe.directory', str(self.repo_path)])
+
+        # Try to fix .git/FETCH_HEAD permissions if it exists
+        fetch_head = self.repo_path / '.git' / 'FETCH_HEAD'
+        if fetch_head.exists():
+            try:
+                # Try to make it writable
+                import stat
+                fetch_head.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH)
+            except:
+                pass
+
+        return True, "Git permissions configured"
+
     def check_for_updates(self) -> Dict[str, any]:
         """Check if updates are available from remote."""
+        # Fix git permissions first
+        self._fix_git_permissions()
+
         # Fetch latest from remote
         success, fetch_output = self.run_command(['git', 'fetch', 'origin'], timeout=60)
         if not success:
-            return {"error": f"Failed to fetch from remote: {fetch_output}"}
+            # If fetch fails due to permissions, try to fix and retry
+            if "Permission denied" in fetch_output or "FETCH_HEAD" in fetch_output:
+                # Try to fix permissions on .git directory
+                try:
+                    git_dir = self.repo_path / '.git'
+                    if git_dir.exists():
+                        import subprocess
+                        # Try to change ownership (may fail, that's okay)
+                        subprocess.run(['chmod', '-R', 'u+w', str(git_dir)], capture_output=True)
+
+                        # Retry fetch
+                        success, fetch_output = self.run_command(['git', 'fetch', 'origin'], timeout=60)
+                except:
+                    pass
+
+            if not success:
+                return {"error": f"Failed to fetch from remote: {fetch_output}"}
 
         # Get current branch
         current_version = self.get_current_version()
@@ -170,6 +209,9 @@ class SystemUpdateManager:
 
     def pull_updates(self) -> Tuple[bool, str]:
         """Pull latest code from git."""
+        # Fix git permissions first
+        self._fix_git_permissions()
+
         # Pull from current branch
         current_version = self.get_current_version()
         branch = current_version.get("branch", "main")
@@ -177,7 +219,21 @@ class SystemUpdateManager:
         success, output = self.run_command(['git', 'pull', 'origin', branch], timeout=120)
 
         if not success:
-            return False, f"Failed to pull updates: {output}"
+            # If pull fails due to permissions, try to fix and retry
+            if "Permission denied" in output or "FETCH_HEAD" in output:
+                try:
+                    git_dir = self.repo_path / '.git'
+                    if git_dir.exists():
+                        import subprocess
+                        subprocess.run(['chmod', '-R', 'u+w', str(git_dir)], capture_output=True)
+
+                        # Retry pull
+                        success, output = self.run_command(['git', 'pull', 'origin', branch], timeout=120)
+                except:
+                    pass
+
+            if not success:
+                return False, f"Failed to pull updates: {output}"
 
         return True, output
 

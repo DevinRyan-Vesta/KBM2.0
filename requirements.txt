@@ -24,3 +24,4 @@ reportlab==4.2.5
 Pillow==10.4.0
 python-barcode==0.16.1
 limits==3.6.0
+qrcode==7.4.2
