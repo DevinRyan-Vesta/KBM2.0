@@ -18,28 +18,92 @@ Notes:
 [✓] Import option is missing from lockboxes - FIXED
 [✓] Export on lockboxes page doesn't work - FIXED
 [✓] Update Navigation, The Nav Bar is getting a little cluttered - FIXED
+[✓] No export on Activity log - FIXED
+[✓] No export or Import on contacts page - FIXED
+[✓] No export or Import on Properties page - FIXED
+[✓] Need to finish SSL, I ran out of time to do so - FIXED (Cloudflare Tunnel)
 
 === TODO ===
+
+========================================
+BUG FIXES (Highest Priority)
+========================================
+
+[✓] Viewing Users gives an error page - FIXED
+
+[✓] Deleting a lockbox doesn't work and gives an error page - FIXED
+
+[✓] Import examples not readable in dark mode - FIXED
+
+[✓] App admin 404 pages should redirect to admin dashboard - FIXED
+
+[✓] Admins should be able to delete audits - FIXED
+
+[✓] Clicking View on a contact gives "Something Went Wrong" error - FIXED
+
+[✓] System update UI doesn't properly restart containers - FIXED
+
+========================================
+HIGH PRIORITY - Missing Core Features
+========================================
 
 [ ] Receipts page search/autocomplete not returning results after completing actions
 
 [ ] No import or export on signs page
 
-[ ] No export on Activity log
-
-[ ] No export or Import on contacts page
-
-[ ] No export or Import on Properties page
-
 [ ] No export or Import on reports page
 
 [ ] No export or Import on receipts page
 
-[ ] Need to finish SSL, I ran out of time to do so
+[ ] Smart Locks Import/Export functionality
 
+========================================
+MEDIUM PRIORITY - User Experience
+========================================
 
+[ ] Bulk Operations - Select multiple items and perform bulk actions (delete, edit, assign, change status)
 
+[ ] Advanced Filtering - Add filters to list pages (filter by property, status, date range, assigned user)
+
+[ ] Global Search - Search across all modules from one place
+
+[ ] Dashboard Analytics - Visual charts showing inventory usage, checkout patterns, availability trends
+
+[ ] Calendar View - Visual calendar for viewing checkouts, reservations, and expected returns
+
+[ ] Barcode/QR Code Generation - Generate printable barcodes/QR codes for quick item lookup and checkout
+
+[ ] Photo Uploads - Attach photos to items, properties, and units for better identification
+
+========================================
+MEDIUM PRIORITY - Notifications & Automation
+========================================
+
+[ ] Email Notifications - Send emails for checkouts, checkins, overdue items
+
+[ ] Overdue Reminders - Automated reminders for items past their expected return date
+
+[ ] Report Scheduling - Auto-generate and email reports on schedule (daily/weekly/monthly)
+
+[ ] In-App Notifications - Notification bell showing recent activity and alerts
+
+========================================
+MEDIUM PRIORITY - Data Management
+========================================
+
+[ ] Item Checkout History - View full checkout history for each item
+
+[ ] Contact Activity History - See all items a contact has checked out over time
+
+[ ] Audit Trail Improvements - More detailed logging of all changes (who changed what, when)
+
+[ ] Data Validation Improvements - Better client-side validation with helpful error messages
+
+[ ] Duplicate Detection - Warn when creating items/contacts that might be duplicates
+
+========================================
 LONG TERM
+========================================
 
 [ ] PDF Export formatting improvements (works but could be better)
 
@@ -50,6 +114,40 @@ LONG TERM
 [ ] Customization for reports and exports
 
 [ ] Modal to preview exports
+
+[ ] Two-Factor Authentication (2FA) - Extra security layer for user accounts
+
+[ ] Self-Service Password Reset - Let users reset passwords without admin help
+
+[ ] Session Timeout Configuration - Configurable auto-logout for inactive sessions
+
+[ ] Login Attempt Limiting - Lock accounts after failed login attempts
+
+[ ] Role-Based Permissions - More granular permissions (read-only users, checkout-only users)
+
+[ ] Better Mobile Responsiveness - Optimize for phone/tablet use
+
+[ ] Loading States - Show spinners/progress indicators during operations
+
+[ ] Confirmation Dialogs - Ask "Are you sure?" before deleting items
+
+[ ] Toast Notifications - Non-intrusive success/error messages that auto-dismiss
+
+[ ] Keyboard Shortcuts - Speed up common actions for power users
+
+[ ] Export Format Customization - Let users choose which columns to include in exports
+
+[ ] Unit Tests - Automated testing for core functionality
+
+[ ] API Endpoints - RESTful API for integrations with other systems
+
+[ ] Performance Optimization - Caching, query optimization for larger datasets
+
+[ ] Backup Monitoring - Dashboard showing backup status and history
+
+[ ] User Documentation - In-app help, tooltips, user manual
+
+[ ] Property/Unit Hierarchy Visualization - Tree view or visual representation of properties and their units
 
 
 ========================================
@@ -182,6 +280,35 @@ Scripts Created (can be re-run if needed):
 - fix_receipts_indentation.py
 - add_activity_logging.py
 - add_company_name_editing.py
+
+10. CRITICAL BUG FIXES (December 2024)
+   Files Modified:
+   - auth/views_multitenant.py (lines 46, 51): Added "owner" role support
+   - utilities/database.py (lines 257, 277, 283, 285, 300): Added User-Contact relationships and CASCADE constraints
+   - templates/import_upload.html (line 25): Dark mode CSS variables
+   - templates/properties/import_upload.html (line 25): Dark mode CSS variables
+   - templates/properties/import_units_upload.html (line 26): Dark mode CSS variables
+   - app_multitenant.py (lines 2, 5, 166-167): App admin 404 redirect
+   - audits/views.py (lines 322-352): Delete audit functionality
+   - templates/audits/list.html (lines 67-71): Delete audit button
+   - inventory/views.py (lines 627-637, 1383-1393, 1773-1783): Manual cleanup of ItemCheckout and AuditItem records
+   - utilities/system_update.py (line 334): Fixed container restart to not rebuild unnecessarily
+
+   What was fixed:
+   - Owner role can now access admin functions (viewing users, etc.)
+   - Contact view page works (added missing User-Contact relationship)
+   - Import examples readable in dark mode (CSS variables instead of hardcoded colors)
+   - App admins on root domain redirect to dashboard on 404 instead of seeing error page
+   - Admins can delete audits with confirmation dialog
+   - Lockbox/key/sign deletion works (manual cleanup of related records for existing databases)
+   - System updates properly restart containers without unnecessary rebuilds
+
+   Technical Details:
+   - Added bidirectional relationship between User and Contact models
+   - Contact.user_id now has proper ForeignKey constraint
+   - ItemCheckout and AuditItem CASCADE deletes work for new databases
+   - Manual cleanup ensures compatibility with existing database schemas
+   - System updates use --force-recreate without --build flag (code is live via volume mounts)
 
 ========================================
 TESTING RECOMMENDATIONS
