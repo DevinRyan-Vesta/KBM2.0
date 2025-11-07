@@ -149,15 +149,21 @@ class SystemUpdateManager:
         """
         # Write a restart script to the filesystem that the host can execute
         # This script will be triggered from the host and will survive container shutdown
-        build_flag = "--build" if build else ""
 
         # Create log file for restart output
         log_file = "/workspace/restart_output.log"
+
+        # Build the docker compose command properly
+        if build:
+            docker_cmd = "docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d --build --force-recreate"
+        else:
+            docker_cmd = "docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d --force-recreate"
+
         restart_script_content = f"""#!/bin/sh
 echo "=== Container Restart Started at $(date) ===" > {log_file}
 sleep 10
-echo "Executing: docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} --force-recreate" >> {log_file}
-docker compose -f /volume1/KBM/KBM2.0/compose.yaml -p kbm20 up -d {build_flag} --force-recreate >> {log_file} 2>&1
+echo "Executing: {docker_cmd}" >> {log_file}
+{docker_cmd} >> {log_file} 2>&1
 exit_code=$?
 echo "Exit code: $exit_code" >> {log_file}
 echo "=== Container Restart Completed at $(date) ===" >> {log_file}

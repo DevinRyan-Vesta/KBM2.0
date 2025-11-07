@@ -612,3 +612,192 @@ def export_long_term_checkouts():
     else:
         return Response('Invalid format', status=400)
 
+
+@exports_bp.route("/templates/<item_type>", methods=["GET"])
+@login_required
+@tenant_required
+def download_import_template(item_type: str):
+    """Download CSV template with examples for importing items"""
+
+    # Define templates with example data
+    templates = {
+        'keys': {
+            'filename': 'keys_import_template.csv',
+            'data': [
+                {
+                    'Label': 'KEY-101',
+                    'Key Hook Number': 'H-01',
+                    'Key Code': 'SC1',
+                    'Total Copies': '6',
+                    'Location': 'Key Box A',
+                    'Address': '123 Main St',
+                    'Status': 'available',
+                    'Assigned To': '',
+                    'Property Name': 'Sunset Apartments',
+                    'Property Unit Label': 'Apt 101'
+                },
+                {
+                    'Label': 'KEY-102',
+                    'Key Hook Number': 'H-02',
+                    'Key Code': 'WR5',
+                    'Total Copies': '4',
+                    'Location': 'Key Box A',
+                    'Address': '456 Oak Ave',
+                    'Status': 'assigned',
+                    'Assigned To': 'John Smith',
+                    'Property Name': 'Oak Street Complex',
+                    'Property Unit Label': 'Unit 201'
+                },
+                {
+                    'Label': 'Example - Status Options',
+                    'Key Hook Number': 'available',
+                    'Key Code': 'assigned',
+                    'Total Copies': 'checked_out',
+                    'Location': 'maintenance',
+                    'Address': 'retired',
+                    'Status': '',
+                    'Assigned To': '',
+                    'Property Name': '',
+                    'Property Unit Label': ''
+                }
+            ]
+        },
+        'lockboxes': {
+            'filename': 'lockboxes_import_template.csv',
+            'data': [
+                {
+                    'Label': 'LB-001',
+                    'Current Code': '1234',
+                    'Previous Code': '5678',
+                    'Supra ID': 'S-12345',
+                    'Location': 'Storage Room A',
+                    'Address': '123 Main St',
+                    'Status': 'available',
+                    'Assigned To': '',
+                    'Property Name': 'Sunset Apartments',
+                    'Property Unit Label': 'Apt 101'
+                },
+                {
+                    'Label': 'LB-002',
+                    'Current Code': '5678',
+                    'Previous Code': '9012',
+                    'Supra ID': 'S-67890',
+                    'Location': 'Storage Room B',
+                    'Address': '456 Oak Ave',
+                    'Status': 'assigned',
+                    'Assigned To': 'Jane Doe',
+                    'Property Name': 'Oak Street Complex',
+                    'Property Unit Label': 'Unit 201'
+                },
+                {
+                    'Label': 'Example - Status Options',
+                    'Current Code': 'available',
+                    'Previous Code': 'assigned',
+                    'Supra ID': 'checked_out',
+                    'Location': 'maintenance',
+                    'Address': 'retired',
+                    'Status': '',
+                    'Assigned To': '',
+                    'Property Name': '',
+                    'Property Unit Label': ''
+                }
+            ]
+        },
+        'signs': {
+            'filename': 'signs_import_template.csv',
+            'data': [
+                {
+                    'Label': 'For Sale Sign #1',
+                    'Sign Type': 'Assembled Unit',
+                    'Piece Type': 'Sign',
+                    'Rider Text': '',
+                    'Material': 'Aluminum',
+                    'Condition': 'Excellent',
+                    'Storage Location': 'Storage Room A',
+                    'Property Address': '123 Main St',
+                    'Status': 'available',
+                    'Assigned To': '',
+                    'Property Name': '',
+                    'Property Unit Label': ''
+                },
+                {
+                    'Label': 'Name Rider #1',
+                    'Sign Type': 'Piece',
+                    'Piece Type': 'Name Rider',
+                    'Rider Text': 'John Smith - Realtor',
+                    'Material': 'Metal',
+                    'Condition': 'Good',
+                    'Storage Location': 'Storage Room B',
+                    'Property Address': '',
+                    'Status': 'available',
+                    'Assigned To': '',
+                    'Property Name': '',
+                    'Property Unit Label': ''
+                },
+                {
+                    'Label': 'Example - Sign Type Options',
+                    'Sign Type': 'Piece OR Assembled Unit',
+                    'Piece Type': '',
+                    'Rider Text': '',
+                    'Material': '',
+                    'Condition': '',
+                    'Storage Location': '',
+                    'Property Address': '',
+                    'Status': '',
+                    'Assigned To': '',
+                    'Property Name': '',
+                    'Property Unit Label': ''
+                },
+                {
+                    'Label': 'Example - Piece Type Options',
+                    'Sign Type': '',
+                    'Piece Type': 'Frame, Sign, Name Rider, Status Rider, Bonus Rider',
+                    'Rider Text': '',
+                    'Material': '',
+                    'Condition': '',
+                    'Storage Location': '',
+                    'Property Address': '',
+                    'Status': '',
+                    'Assigned To': '',
+                    'Property Name': '',
+                    'Property Unit Label': ''
+                },
+                {
+                    'Label': 'Example - Condition Options',
+                    'Sign Type': '',
+                    'Piece Type': '',
+                    'Rider Text': '',
+                    'Material': '',
+                    'Condition': 'Excellent, Good, Fair, Poor, Needs Repair',
+                    'Storage Location': '',
+                    'Property Address': '',
+                    'Status': '',
+                    'Assigned To': '',
+                    'Property Name': '',
+                    'Property Unit Label': ''
+                },
+                {
+                    'Label': 'Example - Status Options',
+                    'Sign Type': '',
+                    'Piece Type': '',
+                    'Rider Text': '',
+                    'Material': '',
+                    'Condition': '',
+                    'Storage Location': 'available',
+                    'Property Address': 'assigned',
+                    'Status': 'checked_out, maintenance, retired',
+                    'Assigned To': '',
+                    'Property Name': '',
+                    'Property Unit Label': ''
+                }
+            ]
+        }
+    }
+
+    # Validate item type
+    if item_type not in templates:
+        return Response('Invalid item type', status=400)
+
+    template = templates[item_type]
+    return generate_csv(template['data'], template['filename'])
+

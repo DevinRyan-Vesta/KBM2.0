@@ -17,14 +17,48 @@
           <li>The file should contain a header row with column names</li>
           <li>You'll be able to map your columns to database fields in the next step</li>
           <li>Required field: <strong>Label</strong></li>
+          {% if item_type == 'Keys' %}
           <li>Optional fields: Key Hook Number, Key Code, Total Copies, Location, Address, Status, Assigned To, Property Name, Property Unit Label</li>
+          {% elif item_type == 'Lockboxes' %}
+          <li>Optional fields: Current Code, Previous Code, Supra ID, Location, Address, Status, Assigned To, Property Name, Property Unit Label</li>
+          {% elif item_type == 'Signs' %}
+          <li>Optional fields: Sign Type, Piece Type, Rider Text, Material, Condition, Storage Location, Property Address, Status, Assigned To, Property Name, Property Unit Label</li>
+          {% endif %}
         </ul>
 
         <div style="margin-top: 15px;">
           <strong>Sample CSV format:</strong>
+          {% if item_type == 'Keys' %}
           <pre style="background: var(--color-card); border: 1px solid var(--color-border); padding: 10px; border-radius: 4px; overflow-x: auto; color: var(--color-text);">Label,Key Hook Number,Total Copies,Address
 KEY-101,H-01,3,123 Main St
 KEY-102,H-02,2,456 Oak Ave</pre>
+          {% elif item_type == 'Lockboxes' %}
+          <pre style="background: var(--color-card); border: 1px solid var(--color-border); padding: 10px; border-radius: 4px; overflow-x: auto; color: var(--color-text);">Label,Current Code,Supra ID,Address
+LB-001,1234,S-12345,123 Main St
+LB-002,5678,S-67890,456 Oak Ave</pre>
+          {% elif item_type == 'Signs' %}
+          <pre style="background: var(--color-card); border: 1px solid var(--color-border); padding: 10px; border-radius: 4px; overflow-x: auto; color: var(--color-text);">Label,Sign Type,Piece Type,Material,Condition
+For Sale Sign #1,Assembled Unit,Sign,Aluminum,Excellent
+Rider Piece #1,Piece,Name Rider,Metal,Good</pre>
+          {% endif %}
+        </div>
+
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--color-border);">
+          <strong>Need a template?</strong>
+          <p class="muted" style="margin: 8px 0;">Download a CSV template with example data and all valid options:</p>
+          {% if item_type == 'Keys' %}
+          <a href="{{ url_for('exports.download_import_template', item_type='keys') }}" class="btn small primary" download>
+            Download Keys Template
+          </a>
+          {% elif item_type == 'Lockboxes' %}
+          <a href="{{ url_for('exports.download_import_template', item_type='lockboxes') }}" class="btn small primary" download>
+            Download Lockboxes Template
+          </a>
+          {% elif item_type == 'Signs' %}
+          <a href="{{ url_for('exports.download_import_template', item_type='signs') }}" class="btn small primary" download>
+            Download Signs Template
+          </a>
+          {% endif %}
         </div>
       </div>
 
@@ -36,7 +70,15 @@ KEY-102,H-02,2,456 Oak Ave</pre>
 
       <div class="toolbar spaced">
         <button type="submit" class="btn primary">Upload & Continue</button>
+        {% if item_type == 'Keys' %}
         <a class="btn ghost" href="{{ url_for('inventory.list_keys') }}">Cancel</a>
+        {% elif item_type == 'Lockboxes' %}
+        <a class="btn ghost" href="{{ url_for('inventory.list_lockboxes') }}">Cancel</a>
+        {% elif item_type == 'Signs' %}
+        <a class="btn ghost" href="{{ url_for('inventory.list_signs') }}">Cancel</a>
+        {% else %}
+        <a class="btn ghost" href="{{ url_for('main.home') }}">Cancel</a>
+        {% endif %}
       </div>
     </form>
   </div>
