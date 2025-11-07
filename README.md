@@ -366,14 +366,20 @@ Proprietary - All Rights Reserved
 
 ## 📋 Recent Updates
 
-**November 2025:**
+**November 6, 2025:**
+- ✅ **Signs Import/Export** - Full import and export functionality for signs
+- ✅ **Reports Export Complete** - All report sections now have export buttons
+- ✅ **CSV Template Downloads** - Download pre-filled templates with examples for importing
+- ✅ **System Update Restart Fix** - Improved container restart reliability
+- ✅ **Import Template Improvements** - Dynamic content based on item type
+- ✅ **Major Cleanup** - Removed 30 obsolete files (scripts and docs)
+
+**Earlier November 2025:**
 - ✅ Fixed critical deletion bugs (lockboxes, keys, signs)
 - ✅ Added audit deletion functionality
 - ✅ Fixed contact view errors
-- ✅ Improved System Updates UI container restart
 - ✅ Enhanced dark mode compatibility
 - ✅ App admin 404 redirect improvements
-- ✅ Cleaned up temporary scripts and documentation
 
 See [ToDo.txt](ToDo.txt) for complete change history.
 
