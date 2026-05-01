@@ -45,6 +45,7 @@ services:
       - ./main:/app/main
       - ./exports:/app/exports
       - ./search:/app/search
+      - ./settings:/app/settings
       - ./utilities:/app/utilities
       - ./middleware:/app/middleware
     networks:
