@@ -70,8 +70,11 @@ else
 	sed -i "s|^INTERNAL_API_SECRET=.*|INTERNAL_API_SECRET=${INTERNAL_API_SECRET}|" .env
 	sed -i "s|^DOCKER_GID=.*|DOCKER_GID=${DOCKER_GID}|" .env
 
-	chmod 600 .env
-	log "Wrote .env (mode 600) — review BASE_DOMAIN / SERVER_NAME / ACME_EMAIL before starting"
+	# 644 (not 600): the .env is mounted into the python-app container, where the
+	# non-root appuser must read it. /opt/kbm is owned by root on a single-purpose
+	# VPS, so the file isn't exposed to other unprivileged users.
+	chmod 644 .env
+	log "Wrote .env (mode 644) — review BASE_DOMAIN / SERVER_NAME / ACME_EMAIL before starting"
 fi
 
 # Always make sure DOCKER_GID matches the host (might differ if VPS was rebuilt)
