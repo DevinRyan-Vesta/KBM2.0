@@ -294,7 +294,9 @@
       // Check if response is OK before parsing JSON
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+        // Strip Flask's HTML error-page wrapper to show just the message.
+        const cleaned = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 300);
+        throw new Error(`Server error (${response.status}): ${cleaned}`);
       }
 
       const result = await response.json();
@@ -398,7 +400,9 @@
       // Check if response is OK before parsing JSON
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
+        // Strip Flask's HTML error-page wrapper to show just the message.
+        const cleaned = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 300);
+        throw new Error(`Server error (${response.status}): ${cleaned}`);
       }
 
       const data = await response.json();

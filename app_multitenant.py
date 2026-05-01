@@ -201,6 +201,12 @@ def create_app():
             return None
 
     # 10a) CSRF Protection
+    # Tie token lifetime to the session, not Flask-WTF's default 1-hour cap.
+    # Without this, a page that's been open for >1h will fail any POST with
+    # "CSRF token expired" even though the user is still logged in. The
+    # tokens are still per-session and signed, so this doesn't weaken the
+    # protection — it just removes the redundant clock.
+    app.config.setdefault("WTF_CSRF_TIME_LIMIT", None)
     csrf.init_app(app)
 
     # 10b) Rate Limiting
