@@ -50,6 +50,20 @@ def create_app():
     # 1) Load config
     app.config.from_object(get_config())
 
+    # Session idle timeout. Sessions are marked permanent on login (see
+    # auth.views_multitenant), and Flask's SESSION_REFRESH_EACH_REQUEST is
+    # True by default — together that gives us sliding-window idle timeout:
+    # the cookie's expiry is reset on every request, so active users never
+    # get bumped while idle ones do.
+    #
+    # Default 30 minutes. Override via PERMANENT_SESSION_LIFETIME env var
+    # (in seconds) to make it longer/shorter per deployment.
+    try:
+        app.config["PERMANENT_SESSION_LIFETIME"] = int(os.getenv("PERMANENT_SESSION_LIFETIME", "1800"))
+    except ValueError:
+        app.config["PERMANENT_SESSION_LIFETIME"] = 1800
+    app.config.setdefault("SESSION_REFRESH_EACH_REQUEST", True)
+
     # 2) Set up master database path (use Docker volume mount)
     master_base_dir = Path("master_db")
     master_base_dir.mkdir(parents=True, exist_ok=True)

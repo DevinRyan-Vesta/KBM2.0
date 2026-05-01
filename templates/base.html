@@ -1383,6 +1383,65 @@
         }
       })();
 
+      // ----------------------------------------------------------------
+      //  Idle session timeout (client-side warning + redirect)
+      // ----------------------------------------------------------------
+      // Server-side, sessions are sliding-window: every request resets the
+      // cookie expiry, and PERMANENT_SESSION_LIFETIME (default 30 min) is
+      // the idle ceiling. This script mirrors that on the client so the
+      // user gets a heads-up toast a few minutes before timeout, then a
+      // graceful redirect to logout when it actually fires — instead of
+      // their next click silently 401-ing.
+      {% if current_user.is_authenticated %}
+      (function () {
+        const TIMEOUT_SEC = {{ config.get('PERMANENT_SESSION_LIFETIME', 1800) }};
+        if (TIMEOUT_SEC <= 0) return;
+
+        const TIMEOUT_MS = TIMEOUT_SEC * 1000;
+        // Warn 5 min before timeout, or 20% before, whichever is shorter.
+        const WARN_BEFORE_MS = Math.min(5 * 60 * 1000, TIMEOUT_MS * 0.2);
+        const WARN_AT_MS = Math.max(TIMEOUT_MS - WARN_BEFORE_MS, TIMEOUT_MS / 2);
+        const LOGOUT_URL = '{{ url_for("auth.logout") }}';
+
+        let lastActivity = Date.now();
+        let warnedToastEl = null;
+
+        function recordActivity() {
+          lastActivity = Date.now();
+          if (warnedToastEl) {
+            warnedToastEl.click();  // dismisses via the toast click handler
+            warnedToastEl = null;
+          }
+        }
+
+        // Anything that suggests the user is still around resets the timer.
+        // Use passive listeners to keep scroll smooth on touch devices.
+        ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(function (evt) {
+          document.addEventListener(evt, recordActivity, { passive: true });
+        });
+
+        function tick() {
+          const idleMs = Date.now() - lastActivity;
+          if (idleMs >= TIMEOUT_MS) {
+            // Hard logout. The server-side session may still be just-barely
+            // alive, but the cookie is about to be rejected; bouncing through
+            // /auth/logout cleanly clears state.
+            window.location.href = LOGOUT_URL;
+            return;
+          }
+          if (idleMs >= WARN_AT_MS && !warnedToastEl && typeof window.toast === 'function') {
+            const minsLeft = Math.max(1, Math.ceil((TIMEOUT_MS - idleMs) / 60000));
+            warnedToastEl = window.toast(
+              `Logging out in ${minsLeft} min due to inactivity. Click anywhere to stay.`,
+              { type: 'warning', duration: 0 }
+            );
+          }
+        }
+        // Check every 30 seconds — minimal overhead, fine resolution.
+        setInterval(tick, 30000);
+      })();
+      {% endif %}
+
       // ---- Global search autocomplete ----
       (function () {
         const form = document.getElementById('global-search');
