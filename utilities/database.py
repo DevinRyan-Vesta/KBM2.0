@@ -491,10 +491,28 @@ class TenantSettings(db.Model):
         }
 
 
+_TENANT_SETTINGS_DEFAULTS = {
+    "email_notifications_enabled": True,
+    "notify_on_checkout": True,
+    "notify_on_checkin": True,
+    "notify_on_overdue": True,
+    "overdue_grace_days": 0,
+    "low_keys_threshold": 4,
+    "default_checkout_days": 7,
+}
+
+
 def get_tenant_settings():
     """Return the current tenant's TenantSettings row, creating it if missing.
-    Caller must be in a tenant request context."""
-    from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit
+
+    Also defensively backfills any field that's None — this happens when a
+    migration adds a NOT NULL column to a table on SQLite older than 3.20
+    (the DEFAULT clause isn't always applied to existing rows there) or
+    when row state predates a column entirely.
+
+    Caller must be in a tenant request context.
+    """
+    from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback
 
     settings = tenant_query(TenantSettings).first()
     if settings is None:
@@ -504,9 +522,22 @@ def get_tenant_settings():
             tenant_commit()
         except Exception:
             # Race-safe: if a concurrent request inserted one, fetch that.
-            from utilities.tenant_helpers import tenant_rollback
             tenant_rollback()
             settings = tenant_query(TenantSettings).first()
+
+    # Backfill any None columns with hardcoded defaults so the UI always has
+    # something to display. Idempotent — only commits if anything changed.
+    changed = False
+    for field, default in _TENANT_SETTINGS_DEFAULTS.items():
+        if getattr(settings, field, None) is None:
+            setattr(settings, field, default)
+            changed = True
+    if changed:
+        try:
+            tenant_commit()
+        except Exception:
+            tenant_rollback()
+
     return settings
 
 

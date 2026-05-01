@@ -37,6 +37,35 @@
     padding-left: 12px;
     border-left: 2px solid var(--color-border);
   }
+  .saved-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+  .saved-value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--color-muted);
+    margin-left: 8px;
+  }
+  .saved-value.has-value {
+    color: var(--color-text);
+  }
+  /* Make number input value clearly visible against dark background */
+  .number-field input[type="number"] {
+    color: var(--color-text);
+    background: rgba(148, 163, 184, 0.06);
+    font-size: 16px;
+    font-weight: 600;
+  }
 </style>
 {% endblock %}
 
@@ -57,10 +86,13 @@
     <div class="divider"></div>
 
     <div class="form-field number-field">
-      <label for="low_keys_threshold">Low-key threshold</label>
+      <label for="low_keys_threshold">
+        Low-key threshold
+        <span class="saved-value has-value">currently {{ settings.low_keys_threshold | default(4) }}</span>
+      </label>
       <input type="number" id="low_keys_threshold" name="low_keys_threshold"
              min="0" max="999" step="1"
-             value="{{ settings.low_keys_threshold }}">
+             value="{{ settings.low_keys_threshold | default(4) }}">
       <p class="field-help">
         Keys with fewer than this many total copies show up in the "low keys"
         report and dashboard widgets. Common values: 3 (urgent only) to 6
@@ -77,10 +109,13 @@
     <div class="divider"></div>
 
     <div class="form-field number-field">
-      <label for="default_checkout_days">Default checkout duration (days)</label>
+      <label for="default_checkout_days">
+        Default checkout duration (days)
+        <span class="saved-value has-value">currently {{ settings.default_checkout_days | default(7) }}</span>
+      </label>
       <input type="number" id="default_checkout_days" name="default_checkout_days"
              min="0" max="365" step="1"
-             value="{{ settings.default_checkout_days }}">
+             value="{{ settings.default_checkout_days | default(7) }}">
       <p class="field-help">
         When checking out or assigning a key, the "expected return" field is
         pre-filled with today + this many days. Set to 0 to leave it blank.
@@ -88,10 +123,13 @@
     </div>
 
     <div class="form-field number-field" style="margin-top: 14px;">
-      <label for="overdue_grace_days">Overdue reminder grace period (days)</label>
+      <label for="overdue_grace_days">
+        Overdue reminder grace period (days)
+        <span class="saved-value has-value">currently {{ settings.overdue_grace_days | default(0) }}</span>
+      </label>
       <input type="number" id="overdue_grace_days" name="overdue_grace_days"
              min="0" max="365" step="1"
-             value="{{ settings.overdue_grace_days }}">
+             value="{{ settings.overdue_grace_days | default(0) }}">
       <p class="field-help">
         Wait this many days after the expected return date before sending the
         first overdue reminder email. 0 = remind starting the day after due.
@@ -111,6 +149,7 @@
              {% if settings.email_notifications_enabled %}checked{% endif %}>
       <label for="email_notifications_enabled">
         <strong>Master switch:</strong> send any email notifications at all
+        {% if settings.email_notifications_enabled %}<span class="saved-tag">on</span>{% else %}<span class="saved-tag" style="background: rgba(148,163,184,0.18); color: var(--color-muted);">off</span>{% endif %}
       </label>
     </div>
     <p class="field-help">
@@ -123,17 +162,26 @@
       <div class="checkbox-row">
         <input type="checkbox" id="notify_on_checkout" name="notify_on_checkout"
                {% if settings.notify_on_checkout %}checked{% endif %}>
-        <label for="notify_on_checkout">Send "item issued" emails on checkout / assign</label>
+        <label for="notify_on_checkout">
+          Send "item issued" emails on checkout / assign
+          {% if settings.notify_on_checkout %}<span class="saved-tag">on</span>{% else %}<span class="saved-tag" style="background: rgba(148,163,184,0.18); color: var(--color-muted);">off</span>{% endif %}
+        </label>
       </div>
       <div class="checkbox-row">
         <input type="checkbox" id="notify_on_checkin" name="notify_on_checkin"
                {% if settings.notify_on_checkin %}checked{% endif %}>
-        <label for="notify_on_checkin">Send "return confirmed" emails on check-in</label>
+        <label for="notify_on_checkin">
+          Send "return confirmed" emails on check-in
+          {% if settings.notify_on_checkin %}<span class="saved-tag">on</span>{% else %}<span class="saved-tag" style="background: rgba(148,163,184,0.18); color: var(--color-muted);">off</span>{% endif %}
+        </label>
       </div>
       <div class="checkbox-row">
         <input type="checkbox" id="notify_on_overdue" name="notify_on_overdue"
                {% if settings.notify_on_overdue %}checked{% endif %}>
-        <label for="notify_on_overdue">Send overdue reminders (daily cron)</label>
+        <label for="notify_on_overdue">
+          Send overdue reminders (daily cron)
+          {% if settings.notify_on_overdue %}<span class="saved-tag">on</span>{% else %}<span class="saved-tag" style="background: rgba(148,163,184,0.18); color: var(--color-muted);">off</span>{% endif %}
+        </label>
       </div>
     </div>
   </div>
@@ -146,14 +194,20 @@
     <div class="divider"></div>
 
     <div class="form-field">
-      <label for="receipt_header">Receipt Header</label>
+      <label for="receipt_header">
+        Receipt Header
+        {% if settings.receipt_header %}<span class="saved-tag">set</span>{% else %}<span class="saved-value">not set</span>{% endif %}
+      </label>
       <textarea id="receipt_header" name="receipt_header" rows="4"
                 placeholder="e.g. company name, address, phone, hours">{{ settings.receipt_header or '' }}</textarea>
       <p class="field-help">Shown above the "CHECKOUT RECEIPT" title on printed receipts. Leave blank to omit.</p>
     </div>
 
     <div class="form-field" style="margin-top: 14px;">
-      <label for="receipt_footer">Receipt Footer</label>
+      <label for="receipt_footer">
+        Receipt Footer
+        {% if settings.receipt_footer %}<span class="saved-tag">set</span>{% else %}<span class="saved-value">not set</span>{% endif %}
+      </label>
       <textarea id="receipt_footer" name="receipt_footer" rows="4"
                 placeholder="e.g. return policy, contact info, thank-you message">{{ settings.receipt_footer or '' }}</textarea>
       <p class="field-help">Shown below the standard "please return in good condition" line.</p>
