@@ -22,11 +22,13 @@ from datetime import datetime
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from datetime import timedelta  # noqa: E402
+
 from app_multitenant import create_app  # noqa: E402
 from utilities.master_database import Account  # noqa: E402
 from utilities.tenant_manager import tenant_manager  # noqa: E402
 from utilities.tenant_helpers import tenant_query  # noqa: E402
-from utilities.database import ItemCheckout  # noqa: E402
+from utilities.database import ItemCheckout, get_tenant_settings  # noqa: E402
 from utilities.email import is_configured, notify_overdue  # noqa: E402
 
 log = logging.getLogger("kbm.overdue")
@@ -50,12 +52,17 @@ def run_for_tenant(account: Account) -> tuple[int, int]:
         log.warning("Skipping %s: tenant DB file missing", account.subdomain)
         return 0, 0
 
+    # Apply the tenant's overdue grace period so we don't pester people the
+    # day after their expected return. Default 0 = remind starting day after.
+    grace_days = max(0, get_tenant_settings().overdue_grace_days or 0)
+    cutoff = now - timedelta(days=grace_days)
+
     overdue = (
         tenant_query(ItemCheckout)
         .filter(
             ItemCheckout.is_active.is_(True),
             ItemCheckout.expected_return_date.isnot(None),
-            ItemCheckout.expected_return_date < now,
+            ItemCheckout.expected_return_date < cutoff,
         )
         .all()
     )

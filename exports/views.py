@@ -430,9 +430,11 @@ def export_low_keys():
     """Export low key inventory report"""
     format_type = request.args.get("format", "csv").lower()
 
+    from utilities.database import get_tenant_settings
+    threshold = get_tenant_settings().low_keys_threshold
     keys = tenant_query(Item).filter(
         Item.type == "Key",
-        Item.total_copies < 4
+        Item.total_copies < threshold
     ).order_by(Item.total_copies.asc(), Item.label.asc()).all()
 
     data = []

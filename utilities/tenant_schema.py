@@ -108,6 +108,15 @@ TENANT_UPGRADES: list[Callable] = [
         '"created_at" DATETIME NOT NULL, '
         '"updated_at" DATETIME NOT NULL'
     ),
+    # Expanded settings columns added after the table was originally
+    # created. Per-event email flags + a few numeric thresholds that
+    # used to be hardcoded.
+    add_column_if_missing("tenant_settings", "notify_on_checkout", "BOOLEAN NOT NULL DEFAULT 1"),
+    add_column_if_missing("tenant_settings", "notify_on_checkin", "BOOLEAN NOT NULL DEFAULT 1"),
+    add_column_if_missing("tenant_settings", "notify_on_overdue", "BOOLEAN NOT NULL DEFAULT 1"),
+    add_column_if_missing("tenant_settings", "overdue_grace_days", "INTEGER NOT NULL DEFAULT 0"),
+    add_column_if_missing("tenant_settings", "low_keys_threshold", "INTEGER NOT NULL DEFAULT 4"),
+    add_column_if_missing("tenant_settings", "default_checkout_days", "INTEGER NOT NULL DEFAULT 7"),
 ]
 
 

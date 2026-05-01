@@ -34,6 +34,21 @@ def settings_page():
     return render_template("settings.html", settings=settings)
 
 
+def _form_int(name: str, default: int, *, minimum: int = 0, maximum: int | None = None) -> int:
+    """Parse a form value as int, clamped to [minimum, maximum]. Falls back
+    to `default` on missing / invalid input so a typo can't break the page."""
+    raw = (request.form.get(name) or "").strip()
+    try:
+        value = int(raw) if raw else default
+    except ValueError:
+        value = default
+    if value < minimum:
+        value = minimum
+    if maximum is not None and value > maximum:
+        value = maximum
+    return value
+
+
 @settings_bp.post("/")
 @login_required
 @tenant_required
@@ -41,8 +56,17 @@ def save_settings():
     _require_tenant_admin()
     settings = get_tenant_settings()
 
-    # Checkbox: present in form when checked, absent when unchecked.
+    # Email — master switch + per-event flags. Unchecked checkboxes don't
+    # appear in form data, so we read each as truthy/false from presence.
     settings.email_notifications_enabled = bool(request.form.get("email_notifications_enabled"))
+    settings.notify_on_checkout = bool(request.form.get("notify_on_checkout"))
+    settings.notify_on_checkin = bool(request.form.get("notify_on_checkin"))
+    settings.notify_on_overdue = bool(request.form.get("notify_on_overdue"))
+
+    # Numeric thresholds (clamped to sane ranges so a typo can't crash queries).
+    settings.overdue_grace_days = _form_int("overdue_grace_days", default=0, minimum=0, maximum=365)
+    settings.low_keys_threshold = _form_int("low_keys_threshold", default=4, minimum=0, maximum=999)
+    settings.default_checkout_days = _form_int("default_checkout_days", default=7, minimum=0, maximum=365)
 
     # Optional free-text fields
     header = (request.form.get("receipt_header") or "").strip()

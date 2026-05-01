@@ -356,8 +356,11 @@ def delete_audit(audit_id: int):
 @login_required
 @tenant_required
 def low_copy_report():
-    """Show keys with less than 6 total copies"""
-    threshold = request.args.get("threshold", 6, type=int)
+    """Show keys below the tenant's configured low-keys threshold.
+    The threshold can be overridden for a single render via ?threshold=N."""
+    from utilities.database import get_tenant_settings
+    default_threshold = get_tenant_settings().low_keys_threshold
+    threshold = request.args.get("threshold", default_threshold, type=int)
 
     keys = (
         tenant_query(Item)
