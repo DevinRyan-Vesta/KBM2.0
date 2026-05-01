@@ -49,10 +49,10 @@ RUN install -m 0755 -d /etc/apt/keyrings \
     && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user and docker group for socket access
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
-    && addgroup --gid 121 docker \
-    && adduser appuser docker
+# Create a non-root user. Access to the host's docker socket is granted at
+# runtime via `group_add` in compose.yaml (configured per host's docker GID),
+# so we no longer hardcode a docker group GID here.
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 WORKDIR /app
 

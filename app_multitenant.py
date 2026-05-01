@@ -141,6 +141,46 @@ def create_app():
     def health():
         return {"ok": True, "multi_tenant": True}, 200
 
+    # 9a) Caddy on-demand TLS validation endpoint.
+    # Caddy calls this before issuing a Let's Encrypt cert for a subdomain.
+    # Returns 200 if the requested host maps to an active tenant (or is the
+    # configured root domain), 404 otherwise. A shared secret prevents abuse
+    # if the endpoint is ever exposed beyond the internal docker network.
+    @app.get("/_internal/check-domain")
+    def _check_domain():
+        from utilities.master_database import Account
+        from flask import request as _req
+
+        expected_secret = os.getenv("INTERNAL_API_SECRET", "")
+        provided = _req.args.get("secret", "") or _req.headers.get("X-Internal-Secret", "")
+        if not expected_secret or provided != expected_secret:
+            return {"ok": False, "reason": "unauthorized"}, 403
+
+        domain = (_req.args.get("domain", "") or "").lower().strip()
+        if not domain:
+            return {"ok": False, "reason": "missing-domain"}, 400
+
+        base = (os.getenv("BASE_DOMAIN", "") or "").lower().split(":")[0]
+        if not base:
+            return {"ok": False, "reason": "base-domain-not-configured"}, 500
+
+        if domain == base:
+            return {"ok": True, "kind": "root"}, 200
+
+        suffix = f".{base}"
+        if not domain.endswith(suffix):
+            return {"ok": False, "reason": "wrong-base-domain"}, 404
+
+        subdomain = domain[: -len(suffix)]
+        if not subdomain or "." in subdomain:
+            return {"ok": False, "reason": "invalid-subdomain"}, 404
+
+        account = Account.query.filter_by(subdomain=subdomain).first()
+        if not account or account.status != "active":
+            return {"ok": False, "reason": "no-such-tenant"}, 404
+
+        return {"ok": True, "kind": "tenant", "subdomain": subdomain}, 200
+
     # 10) Login manager
     login_manager.init_app(app)
 
