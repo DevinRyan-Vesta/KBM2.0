@@ -371,8 +371,7 @@ def restart_system():
     """
     from utilities.system_update import update_manager
 
-    # Use build=False for manual restart (no rebuild, just restart)
-    success, message = update_manager.restart_containers(build=False)
+    success, message = update_manager.restart_containers(rebuild=False)
     return jsonify({"success": success, "message": message})
 
 
