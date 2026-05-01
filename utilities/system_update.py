@@ -319,48 +319,62 @@ class SystemUpdateManager:
         return "Auto-stashed dirty working tree."
 
     def pull_updates(self) -> Tuple[bool, str]:
-        """Pull latest code from git.
+        """Bring local repo to origin/<branch> via fetch + hard reset.
 
-        Auto-stashes any dirty working-tree files first so the pull can
-        proceed even if some file looks modified to the in-container git
-        (typically a line-ending or file-mode phantom diff that doesn't
-        appear from the host's git).
+        Why hard reset instead of `git pull`:
+          - `git pull` runs a merge under the hood. The merge step refuses
+            to proceed when the working tree differs from HEAD on any path
+            the incoming commit touches. We've seen recurring "phantom diff"
+            failures here — `git diff --quiet` reports clean (so our auto
+            stash skips), but the merge still complains. Likely a
+            line-endings / mtime-cache mismatch only the merge code notices.
+          - The system updater's intent is "make this VPS match origin/main",
+            not "merge upstream into local edits". Hard reset matches that
+            intent and bypasses the whole merge.
+
+        Safety net: we still stash anything dirty BEFORE resetting, so if
+        an operator did genuinely edit a file on the host, their changes
+        end up in `git stash list` instead of being silently destroyed.
         """
-        # Fix git permissions first
+        # Fix git permissions first (chown sidecar + fallback chmod).
         self._fix_git_permissions()
 
-        # Pull from current branch
         current_version = self.get_current_version()
         branch = current_version.get("branch", "main")
 
-        # Stash anything dirty so `git pull` doesn't refuse the merge.
+        # Belt: stash anything tracked-and-dirty so it's recoverable later.
         stash_msg = self._auto_stash()
 
-        success, output = self.run_command(['git', 'pull', 'origin', branch], timeout=120)
-
-        if not success:
-            # If pull fails due to permissions, try to fix and retry
-            if "Permission denied" in output or "FETCH_HEAD" in output:
-                try:
-                    git_dir = self.repo_path / '.git'
-                    if git_dir.exists():
-                        import subprocess
-                        subprocess.run(['chmod', '-R', 'u+w', str(git_dir)], capture_output=True)
-
-                        # Retry pull
-                        success, output = self.run_command(['git', 'pull', 'origin', branch], timeout=120)
-                except:
-                    pass
-
-            if not success:
-                msg = f"Failed to pull updates: {output}"
+        # Fetch the latest objects from origin.
+        ok, fetch_output = self.run_command(['git', 'fetch', 'origin', branch], timeout=120)
+        if not ok:
+            # One retry after another permissions fix, mirroring the old
+            # behavior — git fetch is the most common spot to hit perms.
+            self._fix_git_permissions()
+            ok, fetch_output = self.run_command(['git', 'fetch', 'origin', branch], timeout=120)
+            if not ok:
+                msg = f"Failed to fetch updates: {fetch_output}"
                 if stash_msg:
-                    msg += f"\n(Note: {stash_msg} — recover with `git stash list` / `git stash apply`.)"
+                    msg += f"\n(Note: {stash_msg} — recover with `git stash list`.)"
                 return False, msg
 
+        # Suspenders: hard-reset to the freshly-fetched ref. This bypasses
+        # the merge entirely so phantom diffs in the working tree can't
+        # block us.
+        ok, reset_output = self.run_command(
+            ['git', 'reset', '--hard', f'origin/{branch}'], timeout=60,
+        )
+        if not ok:
+            msg = f"Failed to reset to origin/{branch}: {reset_output}"
+            if stash_msg:
+                msg += f"\n(Note: {stash_msg} — recover with `git stash list`.)"
+            return False, msg
+
+        # Compose a friendly message for the UI.
+        message = reset_output or "Updated."
         if stash_msg:
-            output = f"{output}\n{stash_msg} — recover with `git stash list` / `git stash apply`."
-        return True, output
+            message = f"{message}\n{stash_msg} — recover with `git stash list` / `git stash apply`."
+        return True, message
 
     def restart_containers(self, rebuild: bool = False) -> Tuple[bool, str]:
         """
