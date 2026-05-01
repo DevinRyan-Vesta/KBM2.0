@@ -8,6 +8,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    margin-bottom: 8px;
   }
   .checkbox-row input[type="checkbox"] {
     width: 18px;
@@ -27,6 +28,15 @@
     color: var(--color-muted);
     margin-top: 4px;
   }
+  .number-field input[type="number"] {
+    max-width: 140px;
+  }
+  .sub-checkboxes {
+    margin-top: 10px;
+    margin-left: 28px;
+    padding-left: 12px;
+    border-left: 2px solid var(--color-border);
+  }
 </style>
 {% endblock %}
 
@@ -39,36 +49,111 @@
 <form method="post" action="{{ url_for('settings.save_settings') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
+  <!-- ============================================================ -->
+  <!-- Inventory                                                    -->
+  <!-- ============================================================ -->
+  <div class="card settings-section">
+    <h2>Inventory</h2>
+    <div class="divider"></div>
+
+    <div class="form-field number-field">
+      <label for="low_keys_threshold">Low-key threshold</label>
+      <input type="number" id="low_keys_threshold" name="low_keys_threshold"
+             min="0" max="999" step="1"
+             value="{{ settings.low_keys_threshold }}">
+      <p class="field-help">
+        Keys with fewer than this many total copies show up in the "low keys"
+        report and dashboard widgets. Common values: 3 (urgent only) to 6
+        (early warning).
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Checkouts & returns                                          -->
+  <!-- ============================================================ -->
+  <div class="card settings-section">
+    <h2>Checkouts &amp; Returns</h2>
+    <div class="divider"></div>
+
+    <div class="form-field number-field">
+      <label for="default_checkout_days">Default checkout duration (days)</label>
+      <input type="number" id="default_checkout_days" name="default_checkout_days"
+             min="0" max="365" step="1"
+             value="{{ settings.default_checkout_days }}">
+      <p class="field-help">
+        When checking out or assigning a key, the "expected return" field is
+        pre-filled with today + this many days. Set to 0 to leave it blank.
+      </p>
+    </div>
+
+    <div class="form-field number-field" style="margin-top: 14px;">
+      <label for="overdue_grace_days">Overdue reminder grace period (days)</label>
+      <input type="number" id="overdue_grace_days" name="overdue_grace_days"
+             min="0" max="365" step="1"
+             value="{{ settings.overdue_grace_days }}">
+      <p class="field-help">
+        Wait this many days after the expected return date before sending the
+        first overdue reminder email. 0 = remind starting the day after due.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Email notifications                                          -->
+  <!-- ============================================================ -->
   <div class="card settings-section">
     <h2>Email Notifications</h2>
     <div class="divider"></div>
+
     <div class="checkbox-row">
       <input type="checkbox" id="email_notifications_enabled" name="email_notifications_enabled"
              {% if settings.email_notifications_enabled %}checked{% endif %}>
-      <label for="email_notifications_enabled">Send email notifications for checkouts, returns, and overdue items</label>
+      <label for="email_notifications_enabled">
+        <strong>Master switch:</strong> send any email notifications at all
+      </label>
     </div>
     <p class="field-help">
-      Emails go to the contact assigned to a checkout (if their email is on file). Requires SMTP to be
-      configured at the server level — when SMTP isn't set up, this toggle has no effect.
+      When off, no emails are sent regardless of the per-event toggles below.
+      Requires SMTP to be configured at the server level — when SMTP isn't set
+      up, none of these have any effect.
     </p>
-  </div>
 
-  <div class="card settings-section">
-    <h2>Receipt Header</h2>
-    <div class="divider"></div>
-    <div class="form-field">
-      <label for="receipt_header">Text to display at the top of printed checkout receipts</label>
-      <textarea id="receipt_header" name="receipt_header" rows="4"
-                placeholder="e.g. company name, address, phone, hours">{{ settings.receipt_header or '' }}</textarea>
-      <p class="field-help">Shown above the "CHECKOUT RECEIPT" title. Leave blank to omit.</p>
+    <div class="sub-checkboxes">
+      <div class="checkbox-row">
+        <input type="checkbox" id="notify_on_checkout" name="notify_on_checkout"
+               {% if settings.notify_on_checkout %}checked{% endif %}>
+        <label for="notify_on_checkout">Send "item issued" emails on checkout / assign</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="notify_on_checkin" name="notify_on_checkin"
+               {% if settings.notify_on_checkin %}checked{% endif %}>
+        <label for="notify_on_checkin">Send "return confirmed" emails on check-in</label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="notify_on_overdue" name="notify_on_overdue"
+               {% if settings.notify_on_overdue %}checked{% endif %}>
+        <label for="notify_on_overdue">Send overdue reminders (daily cron)</label>
+      </div>
     </div>
   </div>
 
+  <!-- ============================================================ -->
+  <!-- Receipts                                                     -->
+  <!-- ============================================================ -->
   <div class="card settings-section">
-    <h2>Receipt Footer</h2>
+    <h2>Receipts</h2>
     <div class="divider"></div>
+
     <div class="form-field">
-      <label for="receipt_footer">Text to display at the bottom of printed checkout receipts</label>
+      <label for="receipt_header">Receipt Header</label>
+      <textarea id="receipt_header" name="receipt_header" rows="4"
+                placeholder="e.g. company name, address, phone, hours">{{ settings.receipt_header or '' }}</textarea>
+      <p class="field-help">Shown above the "CHECKOUT RECEIPT" title on printed receipts. Leave blank to omit.</p>
+    </div>
+
+    <div class="form-field" style="margin-top: 14px;">
+      <label for="receipt_footer">Receipt Footer</label>
       <textarea id="receipt_footer" name="receipt_footer" rows="4"
                 placeholder="e.g. return policy, contact info, thank-you message">{{ settings.receipt_footer or '' }}</textarea>
       <p class="field-help">Shown below the standard "please return in good condition" line.</p>

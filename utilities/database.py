@@ -447,9 +447,26 @@ class TenantSettings(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    # Email notifications — when False, the notify_* helpers in
-    # utilities.email skip sending for this tenant even if SMTP is configured.
+    # Email notifications — master switch. When False, the notify_* helpers
+    # in utilities.email skip sending for this tenant even if SMTP is
+    # configured. Per-event flags below give finer control.
     email_notifications_enabled = db.Column(db.Boolean, nullable=False, default=True)
+    notify_on_checkout = db.Column(db.Boolean, nullable=False, default=True)
+    notify_on_checkin = db.Column(db.Boolean, nullable=False, default=True)
+    notify_on_overdue = db.Column(db.Boolean, nullable=False, default=True)
+
+    # Days past expected_return_date before the daily overdue cron sends
+    # the first reminder. Default 0 = remind starting the day after due.
+    overdue_grace_days = db.Column(db.Integer, nullable=False, default=0)
+
+    # Threshold for the "low keys" reports/dashboard widgets — keys with
+    # fewer than this many total copies are flagged.
+    low_keys_threshold = db.Column(db.Integer, nullable=False, default=4)
+
+    # When checking out / assigning a key, the form's "expected return"
+    # field gets pre-filled with today + this many days. Set to 0 to leave
+    # the field blank by default.
+    default_checkout_days = db.Column(db.Integer, nullable=False, default=7)
 
     # Free-text strings displayed at the top/bottom of printable receipts.
     # Use these for company contact info, return policy, hours, etc.
@@ -463,6 +480,12 @@ class TenantSettings(db.Model):
         return {
             "id": self.id,
             "email_notifications_enabled": self.email_notifications_enabled,
+            "notify_on_checkout": self.notify_on_checkout,
+            "notify_on_checkin": self.notify_on_checkin,
+            "notify_on_overdue": self.notify_on_overdue,
+            "overdue_grace_days": self.overdue_grace_days,
+            "low_keys_threshold": self.low_keys_threshold,
+            "default_checkout_days": self.default_checkout_days,
             "receipt_header": self.receipt_header,
             "receipt_footer": self.receipt_footer,
         }

@@ -446,6 +446,24 @@
 <script>
   const statusOptions = {{ status_options_lower | tojson }};
 
+  // Tenant's configured default checkout duration. Pulled from tenant_settings
+  // via the global context processor — falls back to 7 if no settings row
+  // (which only happens before the first /settings visit creates one).
+  const DEFAULT_CHECKOUT_DAYS = {{ tenant_settings.default_checkout_days if tenant_settings else 7 }};
+
+  /** Return today + DEFAULT_CHECKOUT_DAYS as a YYYY-MM-DD string suitable for
+   *  pre-filling <input type="date">. Returns '' (blank field) when the
+   *  setting is 0. */
+  function defaultReturnDate() {
+    if (!DEFAULT_CHECKOUT_DAYS || DEFAULT_CHECKOUT_DAYS <= 0) return '';
+    const d = new Date();
+    d.setDate(d.getDate() + DEFAULT_CHECKOUT_DAYS);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
   function submitAction(url, payload) {
     const form = document.createElement('form');
     form.method = 'post';
@@ -675,7 +693,7 @@
       openModal('checkout', [
         { name: 'copies', label: 'Number of Copies', type: 'number', required: true, defaultValue: '1', help: `${available} copies available` },
         { name: 'purpose', label: 'Purpose', placeholder: 'Optional' },
-        { name: 'expected_return_date', label: 'Expected Return Date', type: 'date', placeholder: 'Optional' },
+        { name: 'expected_return_date', label: 'Expected Return Date', type: 'date', placeholder: 'Optional', defaultValue: defaultReturnDate() },
       ], (formData) => {
         const copies = parseInt(formData.get('copies')) || 0;
         if (copies < 1 || copies > available) {
@@ -819,7 +837,7 @@
         { name: 'copies', label: 'Number of Copies', type: 'number', required: true, defaultValue: '1', help: `${available} copies available` },
         { name: 'assigned_to', label: 'Assigned To', placeholder: 'Start typing to search contacts...', autocomplete: 'contacts' },
         { name: 'assignment_type', label: 'Assignment Type', widget: 'select', required: true, options: ['tenant', 'contractor', 'property'] },
-        { name: 'expected_return_date', label: 'Expected Return Date (Contractors)', type: 'date', placeholder: 'Required for contractors' },
+        { name: 'expected_return_date', label: 'Expected Return Date (Contractors)', type: 'date', placeholder: 'Required for contractors', defaultValue: defaultReturnDate() },
         { name: 'property_id', label: 'Property', widget: 'select', options: propertyOptions, defaultValue: defaultPropertyId, help: 'Only required when assignment type is Property' },
         { name: 'property_unit_id', label: 'Property Unit', widget: 'select', options: defaultUnitOptions, defaultValue: defaultPropertyUnitId },
       ], (formData) => {

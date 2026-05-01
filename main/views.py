@@ -46,10 +46,12 @@ def home():
         Item.type == "Key"
     ).scalar() or 0
 
-    # Keys with less than 6 copies
+    # Keys below the tenant's configured low-keys threshold (Settings page).
+    from utilities.database import get_tenant_settings
+    low_keys_threshold = get_tenant_settings().low_keys_threshold
     keys_low_copies = session.query(Item).filter(
         Item.type == "Key",
-        Item.total_copies < 6
+        Item.total_copies < low_keys_threshold
     ).order_by(Item.total_copies.asc()).limit(10).all()
 
     # Sign stats
@@ -158,10 +160,12 @@ def reports():
         )
     ).order_by(Item.last_action_at.asc()).all()
 
-    # All keys with less than 6 copies
+    # All keys below the tenant's configured low-keys threshold.
+    from utilities.database import get_tenant_settings
+    low_keys_threshold = get_tenant_settings().low_keys_threshold
     all_keys_low = session.query(Item).filter(
         Item.type == "Key",
-        Item.total_copies < 6
+        Item.total_copies < low_keys_threshold
     ).order_by(Item.total_copies.asc()).all()
 
     # Keys with 0 available copies
