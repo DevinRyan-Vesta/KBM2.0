@@ -25,8 +25,11 @@ services:
       # Source mounts so the in-app system update can pull code without a rebuild.
       # IMPORTANT: when you add a new top-level Python file or blueprint package,
       # add it here too — otherwise `git pull` won't reach the running container.
-      - ./app_multitenant.py:/app/app_multitenant.py:ro
-      - ./config.py:/app/config.py:ro
+      # NOT read-only — the in-app updater runs `git pull` from inside the
+      # container and needs to be able to write to these files when they
+      # change upstream.
+      - ./app_multitenant.py:/app/app_multitenant.py
+      - ./config.py:/app/config.py
       - ./templates:/app/templates
       - ./static:/app/static
       - ./audits:/app/audits
