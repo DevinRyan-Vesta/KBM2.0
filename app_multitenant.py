@@ -4,10 +4,11 @@ from flask_migrate import Migrate
 from pathlib import Path
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from config import get_config
 import os
+# Limiter lives in utilities/extensions.py so blueprints can import it
+# without creating a circular import back to this module.
+from utilities.extensions import limiter
 
 # Master database (accounts, users)
 from utilities.master_database import master_db, MasterUser
@@ -40,13 +41,6 @@ login_manager = LoginManager()
 login_manager.login_view = "auth.login"
 
 csrf = CSRFProtect()
-
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://",
-    strategy="fixed-window"
-)
 
 
 def create_app():

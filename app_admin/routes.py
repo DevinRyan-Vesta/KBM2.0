@@ -145,43 +145,100 @@ def update_account_name(account_id):
     flash(f'Company name updated from "{old_name}" to "{new_name}"', 'success')
     return redirect(url_for('app_admin.view_account', account_id=account_id))
 
+def _purge_account(account: Account) -> tuple[bool, str]:
+    """Permanently delete an account, its tenant DB file, and its users.
+
+    Returns (success, message). Used by both single and bulk delete paths so
+    they share the exact same teardown logic.
+    """
+    subdomain = account.subdomain
+    company_name = account.company_name
+    try:
+        # Drop the tenant DB file (no-op if it's already gone).
+        tenant_manager.delete_tenant_database(account)
+        # Cascade on Account.users handles MasterUser deletion automatically.
+        # Cascade on Account.invitations handles invitations.
+        master_db.session.delete(account)
+        master_db.session.commit()
+        return True, f'Deleted "{company_name}" ({subdomain})'
+    except Exception as e:
+        master_db.session.rollback()
+        return False, f'Failed to delete "{company_name}" ({subdomain}): {e}'
+
+
 @app_admin_bp.route('/admin/accounts/<int:account_id>/delete', methods=['POST'])
 @login_required
 @app_admin_required
 @root_domain_only
 def delete_account(account_id):
-    """
-    Permanently delete an account and its database (use with extreme caution!).
+    """Permanently delete an account and its database.
+
+    The Danger-Zone form on the account detail page makes the operator type
+    the subdomain to confirm. The list-page Delete button skips that and
+    submits with `confirmed=quick`, since spam cleanup needs to be fast.
     """
     account = Account.query.get_or_404(account_id)
+    quick_confirm = request.form.get('confirmed') == 'quick'
 
-    # Require confirmation
-    confirmation = request.form.get('confirmation', '').strip()
-    if confirmation != account.subdomain:
-        flash('Incorrect confirmation. Account not deleted.', 'error')
-        return redirect(url_for('app_admin.view_account', account_id=account_id))
+    if not quick_confirm:
+        confirmation = request.form.get('confirmation', '').strip()
+        if confirmation != account.subdomain:
+            flash('Incorrect confirmation. Account not deleted.', 'error')
+            return redirect(url_for('app_admin.view_account', account_id=account_id))
 
-    subdomain = account.subdomain
-    company_name = account.company_name
+    ok, message = _purge_account(account)
+    flash(message, 'success' if ok else 'error')
+    return redirect(url_for('app_admin.list_accounts'))
 
+
+@app_admin_bp.route('/admin/accounts/bulk-delete', methods=['POST'])
+@login_required
+@app_admin_required
+@root_domain_only
+def bulk_delete_accounts():
+    """Delete several accounts at once. Used for clearing spam signups."""
+    raw_ids = request.form.getlist('account_ids')
     try:
-        # Delete tenant database file
-        tenant_manager.delete_tenant_database(account)
+        ids = [int(x) for x in raw_ids if str(x).strip().isdigit()]
+    except ValueError:
+        ids = []
 
-        # Delete all users in this account
-        MasterUser.query.filter_by(account_id=account.id).delete()
-
-        # Delete account record
-        master_db.session.delete(account)
-        master_db.session.commit()
-
-        flash(f'Account "{company_name}" ({subdomain}) has been permanently deleted.', 'success')
+    if not ids:
+        flash('No accounts selected.', 'error')
         return redirect(url_for('app_admin.list_accounts'))
 
-    except Exception as e:
-        master_db.session.rollback()
-        flash(f'Error deleting account: {str(e)}', 'error')
-        return redirect(url_for('app_admin.view_account', account_id=account_id))
+    accounts = Account.query.filter(Account.id.in_(ids)).all()
+
+    deleted = 0
+    failed = 0
+    for account in accounts:
+        ok, _msg = _purge_account(account)
+        if ok:
+            deleted += 1
+        else:
+            failed += 1
+
+    if deleted:
+        flash(f'Deleted {deleted} account{"" if deleted == 1 else "s"}.', 'success')
+    if failed:
+        flash(f'{failed} deletion{"" if failed == 1 else "s"} failed (see logs).', 'error')
+    return redirect(url_for('app_admin.list_accounts'))
+
+
+@app_admin_bp.route('/admin/accounts/<int:account_id>/approve', methods=['POST'])
+@login_required
+@app_admin_required
+@root_domain_only
+def approve_account(account_id):
+    """Move a pending signup to active so its users can log in."""
+    account = Account.query.get_or_404(account_id)
+    if account.status != 'pending':
+        flash(f'Account "{account.subdomain}" is not pending approval.', 'info')
+    else:
+        account.status = 'active'
+        master_db.session.commit()
+        flash(f'Approved "{account.company_name}" ({account.subdomain}).', 'success')
+    return redirect(url_for('app_admin.list_accounts'))
 
 
 @app_admin_bp.route('/admin/accounts/<int:account_id>/stats')
