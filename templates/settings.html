@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Settings - KBM{% endblock %}
+
+{% block head %}
+<style>
+  .settings-section + .settings-section { margin-top: 18px; }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+  .checkbox-row label {
+    font-size: 14px;
+    cursor: pointer;
+    margin: 0;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .field-help {
+    font-size: 13px;
+    color: var(--color-muted);
+    margin-top: 4px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Settings</h1>
+  <p class="muted">Tenant-wide configuration. Changes apply only to {{ tenant.company_name if tenant else 'this account' }}.</p>
+</div>
+
+<form method="post" action="{{ url_for('settings.save_settings') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+  <div class="card settings-section">
+    <h2>Email Notifications</h2>
+    <div class="divider"></div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="email_notifications_enabled" name="email_notifications_enabled"
+             {% if settings.email_notifications_enabled %}checked{% endif %}>
+      <label for="email_notifications_enabled">Send email notifications for checkouts, returns, and overdue items</label>
+    </div>
+    <p class="field-help">
+      Emails go to the contact assigned to a checkout (if their email is on file). Requires SMTP to be
+      configured at the server level — when SMTP isn't set up, this toggle has no effect.
+    </p>
+  </div>
+
+  <div class="card settings-section">
+    <h2>Receipt Header</h2>
+    <div class="divider"></div>
+    <div class="form-field">
+      <label for="receipt_header">Text to display at the top of printed checkout receipts</label>
+      <textarea id="receipt_header" name="receipt_header" rows="4"
+                placeholder="e.g. company name, address, phone, hours">{{ settings.receipt_header or '' }}</textarea>
+      <p class="field-help">Shown above the "CHECKOUT RECEIPT" title. Leave blank to omit.</p>
+    </div>
+  </div>
+
+  <div class="card settings-section">
+    <h2>Receipt Footer</h2>
+    <div class="divider"></div>
+    <div class="form-field">
+      <label for="receipt_footer">Text to display at the bottom of printed checkout receipts</label>
+      <textarea id="receipt_footer" name="receipt_footer" rows="4"
+                placeholder="e.g. return policy, contact info, thank-you message">{{ settings.receipt_footer or '' }}</textarea>
+      <p class="field-help">Shown below the standard "please return in good condition" line.</p>
+    </div>
+  </div>
+
+  <div class="toolbar spaced">
+    <button type="submit" class="btn primary">Save Changes</button>
+    <a href="{{ url_for('main.home') }}" class="btn ghost">Cancel</a>
+  </div>
+</form>
+{% endblock %}

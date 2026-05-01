@@ -98,6 +98,16 @@ TENANT_UPGRADES: list[Callable] = [
         '"uploaded_at" DATETIME NOT NULL, '
         '"uploaded_by_id" INTEGER'
     ),
+    # Per-tenant settings. Singleton table (one row per tenant DB).
+    create_table_if_missing(
+        "tenant_settings",
+        '"id" INTEGER NOT NULL PRIMARY KEY, '
+        '"email_notifications_enabled" BOOLEAN NOT NULL DEFAULT 1, '
+        '"receipt_header" TEXT, '
+        '"receipt_footer" TEXT, '
+        '"created_at" DATETIME NOT NULL, '
+        '"updated_at" DATETIME NOT NULL'
+    ),
 ]
 
 

@@ -184,9 +184,23 @@ def _resolve_recipient_email(checkout) -> Optional[str]:
     return lookup_contact_email(getattr(checkout, "checked_out_to", "") or "")
 
 
+def _tenant_emails_enabled() -> bool:
+    """Check the current tenant's settings to see if email notifications
+    are turned on. Defaults to True if anything goes wrong (fail-open is
+    consistent with the previous behavior of always sending)."""
+    try:
+        from utilities.database import get_tenant_settings
+        settings = get_tenant_settings()
+        return bool(settings.email_notifications_enabled)
+    except Exception:
+        return True
+
+
 def notify_checkout(checkout, *, tenant_name: Optional[str] = None) -> bool:
     """Send a 'you've been issued an item' email for the given ItemCheckout."""
     if not is_configured():
+        return False
+    if not _tenant_emails_enabled():
         return False
     item = checkout.item
     if item is None:
@@ -219,6 +233,8 @@ def notify_checkin(checkout, *, tenant_name: Optional[str] = None) -> bool:
     """Send a 'return confirmed' email for the given ItemCheckout."""
     if not is_configured():
         return False
+    if not _tenant_emails_enabled():
+        return False
     item = checkout.item
     if item is None:
         return False
@@ -247,6 +263,8 @@ def notify_checkin(checkout, *, tenant_name: Optional[str] = None) -> bool:
 def notify_overdue(checkout, days_overdue: int, *, tenant_name: Optional[str] = None) -> bool:
     """Send an 'item is overdue' reminder for the given ItemCheckout."""
     if not is_configured():
+        return False
+    if not _tenant_emails_enabled():
         return False
     item = checkout.item
     if item is None:
