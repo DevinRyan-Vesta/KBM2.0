@@ -240,14 +240,73 @@ class SystemUpdateManager:
             "current_version": current_version
         }
 
+    def _has_dirty_tracked_files(self) -> bool:
+        """Return True if any tracked file in the working tree differs from
+        the index. Untracked files are ignored."""
+        # `git diff --quiet` returns 1 when there are unstaged changes.
+        # We invoke it via run_command which only checks for returncode == 0.
+        success, _ = self.run_command(['git', 'diff', '--quiet'], timeout=15)
+        if not success:
+            return True
+        # Also check staged changes (rare for the updater but be safe).
+        success, _ = self.run_command(['git', 'diff', '--cached', '--quiet'], timeout=15)
+        return not success
+
+    def _auto_stash(self) -> Optional[str]:
+        """Stash any dirty working-tree changes so a pull can proceed.
+
+        Returns a human-readable description of what was stashed (so we can
+        surface it to the operator), or None if nothing was stashed.
+
+        We DON'T auto-pop after the pull. If the stash actually contained
+        real edits the operator wanted, popping post-pull could conflict
+        with the new code in subtle ways. Leaving the stash in place means
+        the operator can `git stash list` and `git stash apply` themselves.
+        """
+        if not self._has_dirty_tracked_files():
+            return None
+
+        # What's dirty? Capture short status before stashing for the message.
+        ok, status_output = self.run_command(['git', 'status', '--porcelain'], timeout=15)
+        files = []
+        if ok and status_output:
+            for line in status_output.splitlines():
+                # Porcelain v1: " M path/to/file" or "M  path/to/file" etc.
+                stripped = line[3:].strip() if len(line) > 3 else line.strip()
+                if stripped:
+                    files.append(stripped)
+
+        from datetime import datetime as _dt
+        message = f"system-update auto-stash {_dt.utcnow().isoformat(timespec='seconds')}Z"
+        ok, output = self.run_command(['git', 'stash', 'push', '-m', message], timeout=30)
+        if not ok:
+            # Couldn't stash for some reason — caller will see pull fail.
+            return None
+
+        if files:
+            preview = ', '.join(files[:5])
+            if len(files) > 5:
+                preview += f", +{len(files) - 5} more"
+            return f"Auto-stashed {len(files)} dirty file(s): {preview}"
+        return "Auto-stashed dirty working tree."
+
     def pull_updates(self) -> Tuple[bool, str]:
-        """Pull latest code from git."""
+        """Pull latest code from git.
+
+        Auto-stashes any dirty working-tree files first so the pull can
+        proceed even if some file looks modified to the in-container git
+        (typically a line-ending or file-mode phantom diff that doesn't
+        appear from the host's git).
+        """
         # Fix git permissions first
         self._fix_git_permissions()
 
         # Pull from current branch
         current_version = self.get_current_version()
         branch = current_version.get("branch", "main")
+
+        # Stash anything dirty so `git pull` doesn't refuse the merge.
+        stash_msg = self._auto_stash()
 
         success, output = self.run_command(['git', 'pull', 'origin', branch], timeout=120)
 
@@ -266,8 +325,13 @@ class SystemUpdateManager:
                     pass
 
             if not success:
-                return False, f"Failed to pull updates: {output}"
+                msg = f"Failed to pull updates: {output}"
+                if stash_msg:
+                    msg += f"\n(Note: {stash_msg} — recover with `git stash list` / `git stash apply`.)"
+                return False, msg
 
+        if stash_msg:
+            output = f"{output}\n{stash_msg} — recover with `git stash list` / `git stash apply`."
         return True, output
 
     def restart_containers(self, rebuild: bool = False) -> Tuple[bool, str]:

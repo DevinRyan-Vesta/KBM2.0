@@ -19,6 +19,7 @@ KBM2_data/
 instance/
 master_db/
 tenant_dbs/
+uploads/
 
 # Python
 __pycache__/
