@@ -214,7 +214,7 @@
             </td>
             <td>
               {% set st_lower = (lb.status or 'Unknown')|lower %}
-              <span class="tag {{ 'ok' if st_lower in ['available', 'assigned'] else 'warn' }}">
+              <span class="tag status-{{ st_lower.replace('_', '-') }}">
                 {{ (lb.status or 'Unknown').replace('_',' ')|title }}
               </span>
             </td>

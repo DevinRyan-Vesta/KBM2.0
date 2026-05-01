@@ -271,7 +271,7 @@
             <td>{{ sign.location or '-' }}</td>
             <td>
               {% set st_lower = (sign.status or 'Unknown')|lower %}
-              <span class="tag {{ 'ok' if st_lower in ['available', 'assigned'] else 'warn' }}">{{ (sign.status or 'Unknown').replace('_',' ')|title }}</span>
+              <span class="tag status-{{ st_lower.replace('_', '-') }}">{{ (sign.status or 'Unknown').replace('_',' ')|title }}</span>
             </td>
             <td>
               {{ sign.assigned_to or '-' }}

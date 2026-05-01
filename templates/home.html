@@ -252,7 +252,7 @@
           <td><strong>{{ item.label }}</strong></td>
           <td><span class="muted">{{ item.type }}</span></td>
           <td>
-            <span class="tag {{ 'ok' if item.status == 'assigned' else 'warn' }}">
+            <span class="tag status-{{ (item.status or 'unknown')|lower|replace('_', '-') }}">
               {{ item.status|replace('_', ' ')|title }}
             </span>
           </td>

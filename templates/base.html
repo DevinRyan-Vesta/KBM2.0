@@ -602,6 +602,85 @@
         color: var(--color-danger);
       }
 
+      /* Item status colors — distinct per state so "assigned" doesn't read
+         the same as "available" at a glance. Class is derived from the
+         status string (lowercase, underscores -> dashes), e.g.
+         `status-available`, `status-checked-out`, `status-maintenance`. */
+      .tag.status-available {
+        background: rgba(74, 222, 128, 0.18);
+        color: #4ade80;
+      }
+      body.light .tag.status-available {
+        background: rgba(21, 128, 61, 0.15);
+        color: #15803d;
+      }
+      .tag.status-assigned {
+        background: rgba(56, 189, 248, 0.18);
+        color: #38bdf8;
+      }
+      body.light .tag.status-assigned {
+        background: rgba(2, 132, 199, 0.15);
+        color: #075985;
+      }
+      .tag.status-checked-out {
+        background: rgba(251, 191, 36, 0.20);
+        color: #fbbf24;
+      }
+      body.light .tag.status-checked-out {
+        background: rgba(180, 83, 9, 0.15);
+        color: #92400e;
+      }
+      .tag.status-maintenance {
+        background: rgba(168, 85, 247, 0.18);
+        color: #c084fc;
+      }
+      body.light .tag.status-maintenance {
+        background: rgba(126, 34, 206, 0.15);
+        color: #6b21a8;
+      }
+      .tag.status-retired {
+        background: rgba(148, 163, 184, 0.18);
+        color: var(--color-muted);
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+      }
+
+      /* Attention indicators independent of status. Use these to flag a
+         number/value that needs attention (e.g. keys whose total copies
+         are below the tenant's low-keys threshold). They're meant to wrap
+         a count or inline value, not a status word. */
+      .tag.low-stock {
+        background: rgba(239, 68, 68, 0.18);
+        color: #f87171;
+      }
+      body.light .tag.low-stock {
+        background: rgba(185, 28, 28, 0.15);
+        color: #991b1b;
+      }
+      .num-low-stock {
+        color: #f87171;
+        font-weight: 700;
+      }
+      body.light .num-low-stock {
+        color: #b91c1c;
+      }
+      /* Small inline red indicator for "this row needs attention". Use as
+            <span class="low-dot" title="Total copies below threshold"></span>
+         next to the label or count. The browser-native title tooltip is
+         enough — no JS, no extra layout. */
+      .low-dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #ef4444;
+        margin-left: 6px;
+        vertical-align: middle;
+        cursor: help;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+      }
+      body.light .low-dot { background: #b91c1c; box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.18); }
+
       .toolbar {
         display: flex;
         gap: 12px;
