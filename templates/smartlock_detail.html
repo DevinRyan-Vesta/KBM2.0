@@ -1,11 +1,84 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}{{ smartlock.label }} - Smart Lock{% endblock %}
+
+{% block head %}
+<style>
+  .image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+    margin-top: 12px;
+  }
+  .image-tile {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+    display: flex;
+    flex-direction: column;
+  }
+  .image-tile a.thumb {
+    display: block;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: rgba(148, 163, 184, 0.06);
+  }
+  .image-tile a.thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.2s ease;
+  }
+  .image-tile a.thumb:hover img { transform: scale(1.04); }
+  .image-tile-meta {
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+  .image-tile-caption {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .image-tile-delete {
+    border: none;
+    background: none;
+    color: var(--color-danger);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0;
+  }
+  .image-tile-delete:hover { text-decoration: underline; }
+  .upload-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+    margin-top: 12px;
+  }
+  .upload-form .form-field { flex: 1 1 220px; }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <h1>{{ smartlock.label }}</h1>
   <div class="toolbar">
     <a class="btn" href="{{ url_for('smartlocks.list_smartlocks') }}">Back</a>
+    <a class="btn ghost" href="{{ url_for('smartlocks.edit_smartlock', lock_id=smartlock.id) }}">Edit</a>
+    <form method="post" action="{{ url_for('smartlocks.delete_smartlock', lock_id=smartlock.id) }}"
+          style="display: inline;"
+          onsubmit="return confirm('Delete this smart lock and all its images? This cannot be undone.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <button type="submit" class="btn danger">Delete</button>
+    </form>
   </div>
 </div>
 
@@ -53,5 +126,86 @@
     </div>
   {% endif %}
 </div>
-{% endblock %}
 
+{% if smartlock.model_number or smartlock.serial_number or smartlock.pairing_code or smartlock.qr_code_data %}
+<div class="card" style="margin-top: 18px;">
+  <h2>Manufacturer Details</h2>
+  <div class="info-grid">
+    {% if smartlock.model_number %}
+    <div class="info-item">
+      <div class="info-label">Model Number</div>
+      <div class="info-value"><code>{{ smartlock.model_number }}</code></div>
+    </div>
+    {% endif %}
+    {% if smartlock.serial_number %}
+    <div class="info-item">
+      <div class="info-label">Serial Number</div>
+      <div class="info-value"><code>{{ smartlock.serial_number }}</code></div>
+    </div>
+    {% endif %}
+    {% if smartlock.pairing_code %}
+    <div class="info-item">
+      <div class="info-label">Pairing Code</div>
+      <div class="info-value"><code>{{ smartlock.pairing_code }}</code></div>
+    </div>
+    {% endif %}
+    {% if smartlock.qr_code_data %}
+    <div class="info-item">
+      <div class="info-label">QR Code Data</div>
+      <div class="info-value" style="word-break: break-all;"><code>{{ smartlock.qr_code_data }}</code></div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top: 18px;">
+  <h2>Images
+    {% if smartlock.images %}<span class="muted text-small" style="font-weight: 400;">({{ smartlock.images|length }})</span>{% endif %}
+  </h2>
+
+  {% if smartlock.images %}
+    <div class="image-gallery">
+      {% for image in smartlock.images %}
+        <div class="image-tile">
+          <a class="thumb" href="{{ url_for('smartlocks.serve_smartlock_image', lock_id=smartlock.id, image_id=image.id) }}" target="_blank" rel="noopener">
+            <img src="{{ url_for('smartlocks.serve_smartlock_image', lock_id=smartlock.id, image_id=image.id) }}"
+                 alt="{{ image.caption or image.original_filename or 'Smart lock image' }}"
+                 loading="lazy">
+          </a>
+          <div class="image-tile-meta">
+            <span class="image-tile-caption" title="{{ image.caption or image.original_filename or '' }}">
+              {{ image.caption or image.original_filename or 'Image' }}
+            </span>
+            <form method="post" action="{{ url_for('smartlocks.delete_smartlock_image', lock_id=smartlock.id, image_id=image.id) }}"
+                  style="display: inline;"
+                  onsubmit="return confirm('Delete this image? Cannot be undone.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="image-tile-delete" title="Delete">×</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted text-small" style="margin: 8px 0 0;">No images yet — upload one below.</p>
+  {% endif %}
+
+  <form class="upload-form"
+        method="post"
+        action="{{ url_for('smartlocks.upload_smartlock_image', lock_id=smartlock.id) }}"
+        enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="form-field">
+      <label for="image">Image File</label>
+      <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/gif,image/webp" required>
+      <small class="muted">JPEG, PNG, GIF, or WebP. Max 10 MiB.</small>
+    </div>
+    <div class="form-field">
+      <label for="caption">Caption (optional)</label>
+      <input type="text" id="caption" name="caption" placeholder="e.g. Pairing sticker on manual">
+    </div>
+    <button type="submit" class="btn primary">Upload</button>
+  </form>
+</div>
+{% endblock %}

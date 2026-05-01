@@ -358,6 +358,15 @@ class SmartLock(db.Model):
     backup_code = db.Column(db.String(120), nullable=True)
     instructions = db.Column(db.Text, nullable=True)
     notes = db.Column(db.Text, nullable=True)
+
+    # Manufacturer / pairing details. All optional — useful for re-pairing
+    # locks like Schlage Encode where the pairing QR + code only live on the
+    # sticker inside the manual.
+    model_number = db.Column(db.String(120), nullable=True)
+    serial_number = db.Column(db.String(120), nullable=True)
+    pairing_code = db.Column(db.String(120), nullable=True)
+    qr_code_data = db.Column(db.Text, nullable=True)
+
     property_id = db.Column(db.Integer, db.ForeignKey("properties.id"), nullable=True, index=True)
     property_unit_id = db.Column(db.Integer, db.ForeignKey("property_units.id"), nullable=True, index=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
@@ -365,6 +374,12 @@ class SmartLock(db.Model):
 
     property = db.relationship("Property", back_populates="smart_locks")
     property_unit = db.relationship("PropertyUnit", back_populates="smart_locks")
+    images = db.relationship(
+        "SmartLockImage",
+        back_populates="smart_lock",
+        cascade="all, delete-orphan",
+        order_by="SmartLockImage.uploaded_at",
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -375,8 +390,49 @@ class SmartLock(db.Model):
             "backup_code": self.backup_code,
             "instructions": self.instructions,
             "notes": self.notes,
+            "model_number": self.model_number,
+            "serial_number": self.serial_number,
+            "pairing_code": self.pairing_code,
+            "qr_code_data": self.qr_code_data,
             "property_id": self.property_id,
             "property_unit_id": self.property_unit_id,
+        }
+
+
+class SmartLockImage(db.Model):
+    """A single uploaded image attached to a SmartLock — typically a photo of
+    the lock itself, the pairing-code sticker from the manual, etc."""
+    __tablename__ = "smart_lock_images"
+
+    id = db.Column(db.Integer, primary_key=True)
+    smart_lock_id = db.Column(
+        db.Integer,
+        db.ForeignKey("smart_locks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # filename stored on disk (UUID-prefixed to avoid collisions)
+    filename = db.Column(db.String(255), nullable=False)
+    # what the user uploaded — preserved for download
+    original_filename = db.Column(db.String(255), nullable=True)
+    caption = db.Column(db.String(255), nullable=True)
+    content_type = db.Column(db.String(120), nullable=True)
+    size_bytes = db.Column(db.Integer, nullable=True)
+    uploaded_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    uploaded_by_id = db.Column(db.Integer, nullable=True)
+
+    smart_lock = db.relationship("SmartLock", back_populates="images")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "smart_lock_id": self.smart_lock_id,
+            "filename": self.filename,
+            "original_filename": self.original_filename,
+            "caption": self.caption,
+            "content_type": self.content_type,
+            "size_bytes": self.size_bytes,
+            "uploaded_at": self.uploaded_at.isoformat() if self.uploaded_at else None,
         }
 
 

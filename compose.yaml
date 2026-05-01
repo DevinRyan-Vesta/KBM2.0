@@ -21,6 +21,7 @@ services:
       - ./master_db:/app/master_db
       - ./tenant_dbs:/app/tenant_dbs
       - ./backups:/app/backups
+      - ./uploads:/app/uploads
       - /var/run/docker.sock:/var/run/docker.sock
       # Source mounts so the in-app system update can pull code without a rebuild.
       # IMPORTANT: when you add a new top-level Python file or blueprint package,
