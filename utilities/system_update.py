@@ -147,58 +147,72 @@ class SystemUpdateManager:
             "branch": branch
         }
 
-    def _fix_git_permissions(self) -> Tuple[bool, str]:
+    def _fix_git_ownership_via_sidecar(self) -> Tuple[bool, str]:
+        """Self-heal `.git` ownership before a fetch/pull.
+
+        The repo on the host accumulates root-owned files whenever an operator
+        runs `git pull` directly from an SSH session (host user is usually
+        root on a single-purpose VPS). Subsequent in-container fetches —
+        running as the non-root appuser, UID 1000 — then fail with
+        "insufficient permission for adding an object" because git can't
+        write new pack files alongside the root-owned ones.
+
+        We can't chown from inside python-app (appuser is unprivileged), so
+        we spawn a tiny short-lived alpine container as root via the mounted
+        docker socket. It chowns the host's repo to UID 1000:1000, exits,
+        and the in-container fetch proceeds with predictable ownership.
+
+        Synchronous (we wait for the sidecar to exit). Sub-second in
+        practice. Best-effort: failures are logged and we continue, since
+        the chmod fallback below + appuser already owning some of the tree
+        often gets us through.
         """
-        Fix git permissions issues by configuring git to skip permission checks.
-        This is needed when .git directory is mounted from host with different ownership.
+        info = self._get_project_info()
+        host_working_dir = info.get('working_dir')
+        if not host_working_dir:
+            return False, "no working_dir on container labels — skipping ownership fix"
+
+        cmd = [
+            'docker', 'run', '--rm',
+            '-v', f'{host_working_dir}:/repo',
+            'alpine:latest',
+            'chown', '-R', '1000:1000', '/repo/.git',
+        ]
+        success, output = self.run_command(cmd, timeout=60)
+        if not success:
+            return False, f"chown sidecar failed: {output}"
+        return True, "ownership fixed via sidecar"
+
+    def _fix_git_permissions(self) -> Tuple[bool, str]:
+        """Make sure git can fetch + pull from inside the container.
+
+        Two layers:
+          1. Tell git to trust the directory (handles the "dubious ownership"
+             complaint when host & container UIDs differ).
+          2. Run an alpine sidecar as root to chown the repo back to appuser
+             (UID 1000) — heals any drift caused by host-side git ops.
+          3. As a fallback when the sidecar can't run (no docker socket,
+             etc.), chmod whatever appuser can reach inside .git.
         """
         # Configure git to trust the directory
         self.run_command(['git', 'config', '--global', 'safe.directory', str(self.repo_path)])
 
-        # Try to fix permissions on critical .git directories
+        # Primary fix: re-chown via privileged sidecar.
+        ok, message = self._fix_git_ownership_via_sidecar()
+        if ok:
+            return True, message
+
+        # Fallback path — best-effort chmod for files appuser already owns.
         git_dir = self.repo_path / '.git'
         if git_dir.exists():
             try:
-                # Try to make entire .git directory writable recursively
                 import subprocess
-                subprocess.run(['chmod', '-R', 'u+w', str(git_dir)],
-                             capture_output=True,
-                             check=False)
-
-                # Also try to make it group writable for good measure
-                subprocess.run(['chmod', '-R', 'g+w', str(git_dir)],
-                             capture_output=True,
-                             check=False)
-            except Exception as e:
-                # If chmod fails, that's okay - we'll try to continue anyway
+                subprocess.run(['chmod', '-R', 'u+w', str(git_dir)], capture_output=True, check=False)
+                subprocess.run(['chmod', '-R', 'g+w', str(git_dir)], capture_output=True, check=False)
+            except Exception:
                 pass
 
-            # Specifically target critical files/dirs that git needs to write to
-            critical_paths = [
-                git_dir / 'FETCH_HEAD',
-                git_dir / 'HEAD',
-                git_dir / 'index',
-                git_dir / 'objects',
-                git_dir / 'refs',
-                git_dir / 'logs',
-            ]
-
-            for path in critical_paths:
-                if path.exists():
-                    try:
-                        import stat
-                        if path.is_dir():
-                            # For directories, try to make them and all contents writable
-                            subprocess.run(['chmod', '-R', '775', str(path)],
-                                         capture_output=True,
-                                         check=False)
-                        else:
-                            # For files, just make them writable
-                            path.chmod(0o664)
-                    except:
-                        pass
-
-        return True, "Git permissions configured"
+        return True, f"sidecar chown skipped ({message}); applied chmod fallback"
 
     def check_for_updates(self) -> Dict[str, any]:
         """Check if updates are available from remote."""
