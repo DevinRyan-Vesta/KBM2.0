@@ -86,8 +86,8 @@
           <td><code>{{ key.custom_id or key.id }}</code></td>
           <td>{{ key.label }}</td>
           <td>
-            <span class="tag {% if key.status == 'available' %}ok{% elif key.status == 'checked_out' %}warn{% elif key.status == 'assigned' %}info{% endif %}">
-              {{ key.status.replace('_', ' ').title() }}
+            <span class="tag status-{{ (key.status or 'unknown')|lower|replace('_', '-') }}">
+              {{ (key.status or 'unknown').replace('_', ' ').title() }}
             </span>
           </td>
           <td>{{ key.location or '-' }}</td>

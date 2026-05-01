@@ -49,7 +49,22 @@
       </tbody>
     </table>
   {% else %}
-    <div class="empty-state">No smart lock codes recorded.</div>
+    <div class="empty-state">
+      {% if q %}
+        <h3>No matches</h3>
+        <p>No smart locks match "{{ q }}".</p>
+        <div class="toolbar">
+          <a class="btn ghost" href="{{ url_for('smartlocks.list_smartlocks') }}">Clear search</a>
+        </div>
+      {% else %}
+        <h3>No smart locks yet</h3>
+        <p>Track door locks and pairing codes — never lose a Schlage sticker again.</p>
+        <div class="toolbar">
+          <a class="btn primary" href="{{ url_for('smartlocks.create_smartlock') }}">Add your first smart lock</a>
+          <a class="btn ghost" href="{{ url_for('smartlocks.import_smartlocks') }}">Import from CSV</a>
+        </div>
+      {% endif %}
+    </div>
   {% endif %}
 </div>
 {% endblock %}

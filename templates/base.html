@@ -387,6 +387,16 @@
 
       @media (max-width: 720px) {
         .global-search { width: 180px; }
+
+        /* Stack toolbar buttons + searchbars vertically on small screens
+           so they don't overflow the page or get awkwardly wrapped. */
+        .toolbar { flex-direction: column; align-items: stretch; }
+        .toolbar > .btn,
+        .toolbar > a.btn,
+        .toolbar > button.btn { width: 100%; justify-content: center; }
+        .searchbar { width: 100%; }
+        .searchbar input { min-width: 0; flex: 1; }
+        .page-header { gap: 10px; }
       }
 
       .btn {
@@ -592,6 +602,85 @@
         color: var(--color-danger);
       }
 
+      /* Item status colors — distinct per state so "assigned" doesn't read
+         the same as "available" at a glance. Class is derived from the
+         status string (lowercase, underscores -> dashes), e.g.
+         `status-available`, `status-checked-out`, `status-maintenance`. */
+      .tag.status-available {
+        background: rgba(74, 222, 128, 0.18);
+        color: #4ade80;
+      }
+      body.light .tag.status-available {
+        background: rgba(21, 128, 61, 0.15);
+        color: #15803d;
+      }
+      .tag.status-assigned {
+        background: rgba(56, 189, 248, 0.18);
+        color: #38bdf8;
+      }
+      body.light .tag.status-assigned {
+        background: rgba(2, 132, 199, 0.15);
+        color: #075985;
+      }
+      .tag.status-checked-out {
+        background: rgba(251, 191, 36, 0.20);
+        color: #fbbf24;
+      }
+      body.light .tag.status-checked-out {
+        background: rgba(180, 83, 9, 0.15);
+        color: #92400e;
+      }
+      .tag.status-maintenance {
+        background: rgba(168, 85, 247, 0.18);
+        color: #c084fc;
+      }
+      body.light .tag.status-maintenance {
+        background: rgba(126, 34, 206, 0.15);
+        color: #6b21a8;
+      }
+      .tag.status-retired {
+        background: rgba(148, 163, 184, 0.18);
+        color: var(--color-muted);
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+      }
+
+      /* Attention indicators independent of status. Use these to flag a
+         number/value that needs attention (e.g. keys whose total copies
+         are below the tenant's low-keys threshold). They're meant to wrap
+         a count or inline value, not a status word. */
+      .tag.low-stock {
+        background: rgba(239, 68, 68, 0.18);
+        color: #f87171;
+      }
+      body.light .tag.low-stock {
+        background: rgba(185, 28, 28, 0.15);
+        color: #991b1b;
+      }
+      .num-low-stock {
+        color: #f87171;
+        font-weight: 700;
+      }
+      body.light .num-low-stock {
+        color: #b91c1c;
+      }
+      /* Small inline red indicator for "this row needs attention". Use as
+            <span class="low-dot" title="Total copies below threshold"></span>
+         next to the label or count. The browser-native title tooltip is
+         enough — no JS, no extra layout. */
+      .low-dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #ef4444;
+        margin-left: 6px;
+        vertical-align: middle;
+        cursor: help;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+      }
+      body.light .low-dot { background: #b91c1c; box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.18); }
+
       .toolbar {
         display: flex;
         gap: 12px;
@@ -699,6 +788,8 @@
         margin-bottom: 20px;
       }
 
+      /* Default flash style is the "error" / red treatment, since that's the
+         most common case (validation errors, etc.). Categories override. */
       .flash {
         padding: 14px 16px;
         border-radius: 12px;
@@ -706,30 +797,107 @@
         background: rgba(229, 57, 53, 0.1);
         color: #ffb4b4;
         font-size: 14px;
+        animation: flash-fade-in 0.2s ease;
       }
-
+      .flash.error {
+        border-color: rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.12);
+        color: #fecaca;
+      }
+      body.light .flash.error,
+      body.light .flash:not(.success):not(.info):not(.warning) {
+        border-color: rgba(185, 28, 28, 0.4);
+        background: rgba(254, 226, 226, 0.9);
+        color: #991b1b;
+      }
+      .flash.warning {
+        border-color: rgba(251, 191, 36, 0.35);
+        background: rgba(251, 191, 36, 0.12);
+        color: #fde68a;
+      }
+      body.light .flash.warning {
+        border-color: rgba(180, 83, 9, 0.4);
+        background: rgba(254, 243, 199, 0.9);
+        color: #92400e;
+      }
       .flash.success {
         border-color: rgba(74, 222, 128, 0.25);
         background: rgba(34, 197, 94, 0.12);
         color: #86efac;
       }
-
       body.light .flash.success {
         border-color: rgba(21, 128, 61, 0.3);
         background: rgba(21, 128, 61, 0.15);
         color: #15803d;
       }
-
       .flash.info {
         border-color: rgba(14, 165, 233, 0.25);
         background: rgba(14, 165, 233, 0.12);
         color: #7dd3fc;
       }
-
       body.light .flash.info {
         border-color: rgba(14, 116, 183, 0.3);
         background: rgba(14, 116, 183, 0.15);
         color: #0e74b7;
+      }
+      .flash.is-dismissing {
+        animation: flash-fade-out 0.4s ease forwards;
+      }
+      @keyframes flash-fade-in {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes flash-fade-out {
+        to { opacity: 0; transform: translateY(-6px); height: 0; padding-top: 0; padding-bottom: 0; margin: 0; border-width: 0; }
+      }
+
+      /* ------------------------------------------------------------ */
+      /*  Toast system — non-blocking, themed alternative to alert()   */
+      /* ------------------------------------------------------------ */
+      .toast-host {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 200;
+        pointer-events: none;
+      }
+      .toast {
+        pointer-events: auto;
+        min-width: 240px;
+        max-width: 360px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+        border: 1px solid var(--color-border);
+        background: var(--color-card);
+        color: var(--color-text);
+        animation: toast-in 0.18s ease;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .toast .toast-icon { font-size: 16px; line-height: 1.2; }
+      .toast .toast-msg  { flex: 1; }
+      .toast.is-dismissing { animation: toast-out 0.25s ease forwards; }
+      .toast.success { border-color: rgba(34, 197, 94, 0.45); }
+      .toast.success .toast-icon { color: #4ade80; }
+      .toast.error   { border-color: rgba(239, 68, 68, 0.45); }
+      .toast.error   .toast-icon { color: #f87171; }
+      .toast.warning { border-color: rgba(251, 191, 36, 0.45); }
+      .toast.warning .toast-icon { color: #fbbf24; }
+      .toast.info    { border-color: rgba(14, 165, 233, 0.45); }
+      .toast.info    .toast-icon { color: #38bdf8; }
+      @keyframes toast-in {
+        from { opacity: 0; transform: translateX(20px); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes toast-out {
+        to { opacity: 0; transform: translateX(20px); }
       }
 
       .empty-state {
@@ -740,6 +908,9 @@
         border-radius: 16px;
         background: rgba(148, 163, 184, 0.04);
       }
+      .empty-state h3 { margin: 0 0 6px; font-size: 16px; color: var(--color-text); }
+      .empty-state p  { margin: 0 0 14px; }
+      .empty-state .toolbar { justify-content: center; }
 
       /* Modal System */
       .modal-root {
@@ -1059,6 +1230,9 @@
       </div>
     </div>
 
+    <!-- Toast host — populated dynamically via window.toast() -->
+    <div class="toast-host" id="toast-host" aria-live="polite" aria-atomic="true"></div>
+
     <!-- Receipt Print Modal -->
     <div class="modal-root" id="receipt-modal">
       <div class="modal-backdrop" onclick="closeReceiptModal()"></div>
@@ -1140,6 +1314,74 @@
           showReceiptModal(receiptIdParam);
         }
       });
+
+      // ----------------------------------------------------------------
+      //  Toast helper + flash auto-dismiss
+      // ----------------------------------------------------------------
+      // Usage from any template:
+      //   toast('Saved');                       // info, default
+      //   toast('Saved', { type: 'success' });  // success / error / warning / info
+      //   toast('Heads up', { duration: 8000 });
+      //
+      // Designed as a non-blocking alternative to alert() — same one-call
+      // ergonomics, doesn't pause the page, themed.
+      (function () {
+        const TOAST_ICONS = { success: '✓', error: '✕', warning: '!', info: 'i' };
+        const host = function () { return document.getElementById('toast-host'); };
+
+        function dismiss(el) {
+          if (!el || el.classList.contains('is-dismissing')) return;
+          el.classList.add('is-dismissing');
+          el.addEventListener('animationend', () => el.remove(), { once: true });
+        }
+
+        window.toast = function (message, opts) {
+          opts = opts || {};
+          const type = opts.type || 'info';
+          const duration = opts.duration === 0 ? 0 : (opts.duration || 4500);
+          const root = host();
+          if (!root) { return; }
+          const el = document.createElement('div');
+          el.className = `toast ${type}`;
+          el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+          const icon = document.createElement('span');
+          icon.className = 'toast-icon';
+          icon.textContent = TOAST_ICONS[type] || '•';
+          const text = document.createElement('span');
+          text.className = 'toast-msg';
+          text.textContent = message;
+          el.appendChild(icon);
+          el.appendChild(text);
+          el.addEventListener('click', () => dismiss(el));
+          root.appendChild(el);
+          if (duration > 0) {
+            setTimeout(() => dismiss(el), duration);
+          }
+          return el;
+        };
+
+        // Server-rendered flash messages auto-dismiss after 6s. Click to
+        // dismiss earlier. Errors stick around longer (12s) since they
+        // usually carry actionable info.
+        function autoDismissFlashes() {
+          document.querySelectorAll('.flash-container .flash').forEach((flash) => {
+            const isError = flash.classList.contains('error') ||
+                            (!flash.classList.contains('success') &&
+                             !flash.classList.contains('info') &&
+                             !flash.classList.contains('warning'));
+            const ttl = isError ? 12000 : 6000;
+            flash.style.cursor = 'pointer';
+            flash.title = 'Click to dismiss';
+            flash.addEventListener('click', () => dismiss(flash));
+            setTimeout(() => dismiss(flash), ttl);
+          });
+        }
+        if (document.readyState === 'loading') {
+          window.addEventListener('DOMContentLoaded', autoDismissFlashes);
+        } else {
+          autoDismissFlashes();
+        }
+      })();
 
       // ---- Global search autocomplete ----
       (function () {

@@ -112,7 +112,14 @@
     </div>
   {% else %}
     <div class="card">
-      <div class="empty-state">No properties found.</div>
+      <div class="empty-state">
+        <h3>No properties yet</h3>
+        <p>Add the addresses you manage. Items can then be assigned to specific properties for clearer reporting.</p>
+        <div class="toolbar">
+          <a class="btn primary" href="{{ url_for('properties.create_property') }}">Add your first property</a>
+          <a class="btn ghost" href="{{ safe_url('properties.import_properties') }}">Import from CSV</a>
+        </div>
+      </div>
     </div>
   {% endfor %}
 </div>

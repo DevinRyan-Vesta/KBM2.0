@@ -293,7 +293,7 @@
 
 <div class="page-header">
   <h1>{{ item.label }}</h1>
-  <span class="tag {{ 'ok' if status_lower in ['available', 'assigned'] else 'warn' }}">
+  <span class="tag status-{{ status_lower.replace('_', '-') }}">
     {{ (item.status or 'Unknown').replace('_',' ')|title }}
   </span>
 </div>
@@ -566,8 +566,8 @@
             <td style="padding: 8px; border-bottom: 1px solid var(--color-border);"><code>{{ child.custom_id or child.id }}</code></td>
             <td style="padding: 8px; border-bottom: 1px solid var(--color-border);">{{ child.label }}</td>
             <td style="padding: 8px; border-bottom: 1px solid var(--color-border);">
-              <span class="tag {% if child.status == 'available' %}ok{% elif child.status == 'checked_out' %}warn{% elif child.status == 'assigned' %}info{% endif %}">
-                {{ child.status.replace('_', ' ').title() }}
+              <span class="tag status-{{ (child.status or 'unknown')|lower|replace('_', '-') }}">
+                {{ (child.status or 'unknown').replace('_', ' ').title() }}
               </span>
             </td>
             <td style="padding: 8px; border-bottom: 1px solid var(--color-border);">{{ child.location or '-' }}</td>

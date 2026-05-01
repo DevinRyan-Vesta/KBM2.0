@@ -161,7 +161,7 @@
                 <td><strong>{{ item.label }}</strong><br><span class="muted text-small">{{ item.custom_id or "-" }}</span></td>
                 <td><span class="muted">{{ item.type }}</span></td>
                 <td>
-                  <span class="tag {{ 'ok' if item.status == 'assigned' else 'warn' }}">
+                  <span class="tag status-{{ (item.status or 'unknown')|lower|replace('_', '-') }}">
                     {{ item.status|replace('_', ' ')|title }}
                   </span>
                 </td>
@@ -309,7 +309,7 @@
                 <td><strong>{{ item.label }}</strong><br><span class="muted text-small">{{ item.custom_id or "-" }}</span></td>
                 <td><span class="muted">{{ item.type }}</span></td>
                 <td>
-                  <span class="tag {{ 'ok' if item.status == 'assigned' else 'warn' }}">
+                  <span class="tag status-{{ (item.status or 'unknown')|lower|replace('_', '-') }}">
                     {{ item.status|replace('_', ' ')|title }}
                   </span>
                 </td>
@@ -394,7 +394,7 @@
                   <td class="muted">{{ key.copies_checked_out or 0 }}</td>
                   <td class="muted">{{ available }}</td>
                   <td>
-                    <span class="tag {{ 'ok' if key.status == 'available' else '' }}">
+                    <span class="tag status-{{ (key.status or 'unknown')|lower|replace('_', '-') }}">
                       {{ key.status|replace('_', ' ')|title }}
                     </span>
                   </td>

@@ -890,7 +890,9 @@
     resultsList.innerHTML = items.map(item => {
       const isKey = item.type === 'Key';
       const copiesInfo = isKey && item.checkout_quantity ? ` (${item.checkout_quantity} cop${item.checkout_quantity > 1 ? 'ies' : 'y'})` : '';
-      const statusBadge = item.status === 'checked_out' ? '<span class="tag warn">Checked Out</span>' : '<span class="tag ok">Assigned</span>';
+      const statusClass = 'status-' + (item.status || 'unknown').toLowerCase().replace(/_/g, '-');
+      const statusLabel = item.status === 'checked_out' ? 'Checked Out' : 'Assigned';
+      const statusBadge = `<span class="tag ${statusClass}">${statusLabel}</span>`;
 
       return `
         <div class="card" style="padding: 16px;">

@@ -120,7 +120,14 @@
       </tbody>
     </table>
   {% else %}
-    <div class="empty-state">No contacts found.</div>
+    <div class="empty-state">
+      <h3>No contacts yet</h3>
+      <p>Add tenants, contractors, agents, and staff. Contact email addresses are used for checkout / overdue notifications.</p>
+      <div class="toolbar">
+        <a class="btn primary" href="{{ url_for('contacts.create_contact') }}">Add your first contact</a>
+        <a class="btn ghost" href="{{ safe_url('contacts.import_contacts') }}">Import from CSV</a>
+      </div>
+    </div>
   {% endif %}
 </div>
 

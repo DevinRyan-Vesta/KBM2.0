@@ -44,9 +44,12 @@
     font-size: 12px;
     font-weight: 600;
   }
-  .copy-badge.full { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
-  .copy-badge.low { background: rgba(248, 113, 113, 0.18); color: var(--color-danger); }
+  .copy-badge.full   { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
+  .copy-badge.low    { background: rgba(248, 113, 113, 0.18); color: var(--color-danger); }
   .copy-badge.medium { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
+  body.light .copy-badge.full   { background: rgba(21, 128, 61, 0.15); color: #15803d; }
+  body.light .copy-badge.low    { background: rgba(185, 28, 28, 0.15); color: #991b1b; }
+  body.light .copy-badge.medium { background: rgba(180, 83, 9, 0.15); color: #92400e; }
 
   /* Autocomplete styles */
   .autocomplete-wrapper {
@@ -230,17 +233,22 @@
         </tr>
       </thead>
       <tbody>
+        {% set low_threshold = tenant_settings.low_keys_threshold if tenant_settings else 4 %}
         {% for key in keys %}
           {% set status_lower = (key.status or '')|lower %}
           {% set total = key.total_copies or 0 %}
           {% set checked_out = key.copies_checked_out or 0 %}
           {% set available = total - checked_out %}
+          {% set is_low = total < low_threshold %}
           <tr data-item-id="{{ key.id }}" data-item-label="{{ key.label }}">
             <td class="select-col">
               <input type="checkbox" class="item-checkbox" value="{{ key.id }}" onchange="updateBulkToolbar()" style="margin: 0;">
             </td>
             <td>
-              <div><strong><a href="{{ url_for('inventory.item_details', item_id=key.id) }}" style="color: inherit; text-decoration: none;">{{ key.label }}</a></strong></div>
+              <div>
+                <strong><a href="{{ url_for('inventory.item_details', item_id=key.id) }}" style="color: inherit; text-decoration: none;">{{ key.label }}</a></strong>
+                {% if is_low %}<span class="low-dot" title="Total copies below threshold ({{ total }} of {{ low_threshold }} minimum)" aria-label="Total copies below threshold"></span>{% endif %}
+              </div>
               <div class="muted">{{ key.custom_id or '-' }}</div>
             </td>
             <td>
@@ -261,7 +269,7 @@
             <td>{{ key.location or '-' }}<br><span class="muted text-small">Hook #{{ key.key_hook_number or '-' }}</span></td>
             <td>
               <div class="copy-info">
-                <span class="copy-badge {{ 'full' if total >= 6 else ('low' if total < 4 else 'medium') }}">
+                <span class="copy-badge {{ 'low' if is_low else ('medium' if total < low_threshold + 2 else 'full') }}">
                   {{ total }} total
                 </span>
                 <span class="muted text-small">{{ available }} avail</span>
@@ -269,7 +277,7 @@
             </td>
             <td>
               {% set st_lower = (key.status or 'Unknown')|lower %}
-              <span class="tag {{ 'ok' if st_lower in ['available', 'assigned'] else 'warn' }}">{{ (key.status or 'Unknown').replace('_',' ')|title }}</span>
+              <span class="tag status-{{ st_lower.replace('_', '-') }}">{{ (key.status or 'Unknown').replace('_',' ')|title }}</span>
             </td>
             <td>
               {{ key.assigned_to or '-' }}
@@ -359,7 +367,14 @@
       </tbody>
     </table>
   {% else %}
-    <div class="empty-state">No keys found.</div>
+    <div class="empty-state">
+      <h3>No keys yet</h3>
+      <p>Track keys, copies, and who has them.</p>
+      <div class="toolbar">
+        <a class="btn primary" href="{{ url_for('inventory.add_key') }}">Add your first key</a>
+        <a class="btn ghost" href="{{ url_for('inventory.import_keys') }}">Import from CSV</a>
+      </div>
+    </div>
   {% endif %}
 </div>
 
@@ -1177,6 +1192,18 @@
     }
   }
 
+  // Shared post-action handler. Shows a toast with the result, then reloads
+  // briefly later so the user has time to read it.
+  function handleBulkResult(data, operation) {
+    if (data && data.success) {
+      toast(data.message || `${operation} complete`, { type: 'success' });
+      setTimeout(() => window.location.reload(), 700);
+    } else {
+      const msg = (data && data.error) || `${operation} failed`;
+      toast('Error: ' + msg, { type: 'error', duration: 0 });
+    }
+  }
+
   async function bulkDelete(itemIds) {
     try {
       const response = await fetch('/inventory/bulk/delete', {
@@ -1190,16 +1217,9 @@
           item_type: 'key'
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk delete');
     } catch (error) {
-      alert('Error performing bulk delete: ' + error);
+      toast('Error performing bulk delete: ' + error, { type: 'error', duration: 0 });
     }
   }
 
@@ -1216,16 +1236,9 @@
           status: newStatus
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk status update');
     } catch (error) {
-      alert('Error performing bulk status update: ' + error);
+      toast('Error performing bulk status update: ' + error, { type: 'error', duration: 0 });
     }
   }
 
@@ -1242,16 +1255,9 @@
           assigned_to: assignTo
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk assign');
     } catch (error) {
-      alert('Error performing bulk assign: ' + error);
+      toast('Error performing bulk assign: ' + error, { type: 'error', duration: 0 });
     }
   }
 </script>
