@@ -94,19 +94,18 @@ fi
 APP_UID=1000
 APP_GID=1000
 
-log "Ensuring data directories exist and are owned by UID ${APP_UID}"
+log "Ensuring data directories exist"
 mkdir -p master_db tenant_dbs backups logs
-chown -R "${APP_UID}:${APP_GID}" master_db tenant_dbs backups logs
 
-# .git is bind-mounted so the in-app system-update feature can git pull.
-# appuser inside the container needs to be able to write new objects (every
-# fetch creates new files in .git/objects), so the simplest reliable fix is
-# to chown the directory to appuser. chmod alone doesn't survive — git
-# creates new files with default permissions on each operation, and "other"
-# write bits don't propagate.
-if [[ -d .git ]]; then
-	chown -R "${APP_UID}:${APP_GID}" .git
-fi
+# Chown the entire repo to appuser. This covers:
+#   - data dirs (master_db, tenant_dbs, backups, logs)
+#   - .git (so the in-app updater can `git fetch` / `git pull`)
+#   - source files (so `git pull` can replace them — git replaces files via
+#     atomic rename, which requires write access to the parent directory)
+# Doing the whole tree once is simpler than chasing each subdirectory,
+# and on a single-purpose VPS the host root user retains full access.
+log "Ensuring repo + data dirs are owned by UID ${APP_UID} (for in-container appuser)"
+chown -R "${APP_UID}:${APP_GID}" "${REPO_ROOT}"
 
 # ------------------------------------------------------------------------------
 # 5. Sanity-check the env values that need human input
