@@ -70,8 +70,11 @@ else
 	sed -i "s|^INTERNAL_API_SECRET=.*|INTERNAL_API_SECRET=${INTERNAL_API_SECRET}|" .env
 	sed -i "s|^DOCKER_GID=.*|DOCKER_GID=${DOCKER_GID}|" .env
 
-	chmod 600 .env
-	log "Wrote .env (mode 600) — review BASE_DOMAIN / SERVER_NAME / ACME_EMAIL before starting"
+	# 644 (not 600): the .env is mounted into the python-app container, where the
+	# non-root appuser must read it. /opt/kbm is owned by root on a single-purpose
+	# VPS, so the file isn't exposed to other unprivileged users.
+	chmod 644 .env
+	log "Wrote .env (mode 644) — review BASE_DOMAIN / SERVER_NAME / ACME_EMAIL before starting"
 fi
 
 # Always make sure DOCKER_GID matches the host (might differ if VPS was rebuilt)
@@ -86,8 +89,22 @@ fi
 # ------------------------------------------------------------------------------
 # 4. Required directories (gitignored, so won't exist on a fresh clone)
 # ------------------------------------------------------------------------------
-log "Ensuring data directories exist"
+# UID/GID match the non-root appuser baked into the Dockerfile. Bind-mounted
+# data dirs need to be owned by that UID so the container can write to them.
+APP_UID=1000
+APP_GID=1000
+
+log "Ensuring data directories exist and are owned by UID ${APP_UID}"
 mkdir -p master_db tenant_dbs backups logs
+chown -R "${APP_UID}:${APP_GID}" master_db tenant_dbs backups logs
+
+# .git is bind-mounted so the in-app system-update feature can git pull. It
+# needs to be writable by appuser too, but we can't blindly chown the whole
+# tree (would change git index ownership in confusing ways). Adding write
+# permissions for "other" is the lightest-touch fix on a single-purpose VPS.
+if [[ -d .git ]]; then
+	chmod -R o+rw .git
+fi
 
 # ------------------------------------------------------------------------------
 # 5. Sanity-check the env values that need human input
