@@ -33,6 +33,7 @@ from audits import audits_bp
 from smartlocks import smartlocks_bp
 from exports import exports_bp
 from search import search_bp
+from settings import settings_bp
 
 migrate_master = Migrate()
 migrate_tenant = Migrate()
@@ -101,6 +102,7 @@ def create_app():
     app.register_blueprint(exports_bp, url_prefix="/exports")
     app.register_blueprint(audits_bp, url_prefix="/audits")
     app.register_blueprint(search_bp)
+    app.register_blueprint(settings_bp, url_prefix="/settings")
 
     # 8) Debug helpers (DISABLED FOR SECURITY)
     # These routes are disabled for production security
@@ -234,10 +236,22 @@ def create_app():
         # Inject tenant information into all templates
         tenant = tenant_manager.get_current_tenant()
 
+        # Inject the tenant's settings (or None if we're not in a tenant
+        # context — root admin pages, signup, etc.) Templates can use
+        # `tenant_settings.receipt_header` etc. with safe `if` guards.
+        tenant_settings = None
+        if tenant is not None:
+            try:
+                from utilities.database import get_tenant_settings
+                tenant_settings = get_tenant_settings()
+            except Exception:
+                tenant_settings = None
+
         return dict(
             has_endpoint=has_endpoint,
             safe_url=safe_url,
             tenant=tenant,
+            tenant_settings=tenant_settings,
             is_root_domain=g.get('is_root_domain', False)
         )
 

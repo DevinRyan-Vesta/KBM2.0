@@ -436,6 +436,57 @@ class SmartLockImage(db.Model):
         }
 
 
+class TenantSettings(db.Model):
+    """Per-tenant configuration. There's exactly one row per tenant DB.
+
+    Stored in the tenant DB (not master) so each tenant owns its own
+    settings independently. Use `get_settings()` to load — it auto-creates
+    the row on first access.
+    """
+    __tablename__ = "tenant_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Email notifications — when False, the notify_* helpers in
+    # utilities.email skip sending for this tenant even if SMTP is configured.
+    email_notifications_enabled = db.Column(db.Boolean, nullable=False, default=True)
+
+    # Free-text strings displayed at the top/bottom of printable receipts.
+    # Use these for company contact info, return policy, hours, etc.
+    receipt_header = db.Column(db.Text, nullable=True)
+    receipt_footer = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "email_notifications_enabled": self.email_notifications_enabled,
+            "receipt_header": self.receipt_header,
+            "receipt_footer": self.receipt_footer,
+        }
+
+
+def get_tenant_settings():
+    """Return the current tenant's TenantSettings row, creating it if missing.
+    Caller must be in a tenant request context."""
+    from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit
+
+    settings = tenant_query(TenantSettings).first()
+    if settings is None:
+        settings = TenantSettings()
+        tenant_add(settings)
+        try:
+            tenant_commit()
+        except Exception:
+            # Race-safe: if a concurrent request inserted one, fetch that.
+            from utilities.tenant_helpers import tenant_rollback
+            tenant_rollback()
+            settings = tenant_query(TenantSettings).first()
+    return settings
+
+
 class ActivityLog(db.Model):
     __tablename__ = "activity_logs"
 

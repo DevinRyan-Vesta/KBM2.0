@@ -984,7 +984,7 @@
                 <span class="nav-icon">🔐</span> Smart Locks
               </a>
             </div>
-            {% if current_user.is_authenticated and (current_user.role or '').lower() == 'admin' %}
+            {% if current_user.is_authenticated and (current_user.role or '').lower() in ['admin', 'owner'] %}
             <div class="nav-section">
               <div class="nav-section-label">Administration</div>
               <a href="{{ url_for('auth.list_users') }}" class="{% if request.endpoint and request.endpoint.startswith('auth.list_users') %}active{% endif %}">
@@ -992,6 +992,9 @@
               </a>
               <a href="{{ url_for('auth.activity_logs') }}" class="{% if request.endpoint == 'auth.activity_logs' %}active{% endif %}">
                 <span class="nav-icon">📋</span> Activity Logs
+              </a>
+              <a href="{{ url_for('settings.settings_page') }}" class="{% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}">
+                <span class="nav-icon">⚙️</span> Settings
               </a>
             </div>
             {% endif %}

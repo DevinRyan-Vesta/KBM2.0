@@ -152,8 +152,13 @@
 
 <div class="receipt-container" id="receipt">
   <div class="receipt-header">
+    {% if tenant_settings and tenant_settings.receipt_header %}
+      <div style="margin-bottom: 16px; white-space: pre-line; font-size: 13px; color: #1f2937;">
+        {{ tenant_settings.receipt_header }}
+      </div>
+    {% endif %}
     <h1>CHECKOUT RECEIPT</h1>
-    <p>Key & Lockbox Management System</p>
+    <p>{{ tenant.company_name if tenant else 'Key & Lockbox Management System' }}</p>
     <p><strong>Receipt #{{ checkout.id }}</strong></p>
     {% if barcode_svg %}
     <div class="barcode-container" style="margin: 20px auto; text-align: center;">
@@ -280,6 +285,9 @@
   <div class="receipt-footer">
     <p>This receipt serves as proof of checkout.</p>
     <p>Please return the item(s) in good condition{% if checkout.expected_return_date %} by {{ checkout.expected_return_date.strftime('%B %d, %Y') }}{% endif %}.</p>
+    {% if tenant_settings and tenant_settings.receipt_footer %}
+    <p style="margin-top: 15px; white-space: pre-line;">{{ tenant_settings.receipt_footer }}</p>
+    {% endif %}
     <p style="margin-top: 15px; font-size: 11px;">Generated on {{ now.strftime('%B %d, %Y at %I:%M %p') }}</p>
   </div>
 </div>
