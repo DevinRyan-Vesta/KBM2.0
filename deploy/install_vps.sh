@@ -89,8 +89,22 @@ fi
 # ------------------------------------------------------------------------------
 # 4. Required directories (gitignored, so won't exist on a fresh clone)
 # ------------------------------------------------------------------------------
-log "Ensuring data directories exist"
+# UID/GID match the non-root appuser baked into the Dockerfile. Bind-mounted
+# data dirs need to be owned by that UID so the container can write to them.
+APP_UID=1000
+APP_GID=1000
+
+log "Ensuring data directories exist and are owned by UID ${APP_UID}"
 mkdir -p master_db tenant_dbs backups logs
+chown -R "${APP_UID}:${APP_GID}" master_db tenant_dbs backups logs
+
+# .git is bind-mounted so the in-app system-update feature can git pull. It
+# needs to be writable by appuser too, but we can't blindly chown the whole
+# tree (would change git index ownership in confusing ways). Adding write
+# permissions for "other" is the lightest-touch fix on a single-purpose VPS.
+if [[ -d .git ]]; then
+	chmod -R o+rw .git
+fi
 
 # ------------------------------------------------------------------------------
 # 5. Sanity-check the env values that need human input
