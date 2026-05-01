@@ -243,6 +243,146 @@
         gap: 12px;
       }
 
+      /* Global search */
+      .global-search {
+        position: relative;
+        width: 320px;
+        max-width: 40vw;
+      }
+
+      .global-search-input {
+        width: 100%;
+        padding: 9px 12px 9px 34px;
+        border-radius: 10px;
+        border: 1px solid var(--color-border);
+        background: rgba(148, 163, 184, 0.08);
+        color: var(--color-text);
+        font-size: 14px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .global-search-input::placeholder {
+        color: var(--color-muted);
+      }
+
+      .global-search-input:focus {
+        outline: none;
+        border-color: rgba(229, 57, 53, 0.45);
+        box-shadow: 0 0 0 3px var(--color-accent-soft);
+      }
+
+      .global-search-icon {
+        position: absolute;
+        left: 11px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--color-muted);
+        font-size: 14px;
+        pointer-events: none;
+      }
+
+      .global-search-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        max-height: 480px;
+        overflow-y: auto;
+        background: var(--color-card);
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+        z-index: 50;
+      }
+
+      .global-search.is-open .global-search-dropdown {
+        display: block;
+      }
+
+      .global-search-item {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        text-decoration: none;
+        color: var(--color-text);
+        cursor: pointer;
+        border-bottom: 1px solid var(--color-border);
+        transition: background 0.15s ease;
+      }
+
+      .global-search-item:last-of-type {
+        border-bottom: none;
+      }
+
+      .global-search-item:hover,
+      .global-search-item.is-active {
+        background: var(--color-accent-soft);
+      }
+
+      .global-search-icon-cell {
+        font-size: 18px;
+        text-align: center;
+      }
+
+      .global-search-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      .global-search-label {
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .global-search-subtitle {
+        font-size: 12px;
+        color: var(--color-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .global-search-type {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--color-muted);
+        margin-left: 4px;
+      }
+
+      .global-search-empty,
+      .global-search-loading {
+        padding: 14px 12px;
+        font-size: 13px;
+        color: var(--color-muted);
+        text-align: center;
+      }
+
+      .global-search-footer {
+        padding: 10px 12px;
+        font-size: 13px;
+        color: var(--color-accent);
+        border-top: 1px solid var(--color-border);
+        text-align: center;
+        cursor: pointer;
+      }
+
+      .global-search-footer:hover {
+        background: var(--color-accent-soft);
+      }
+
+      @media (max-width: 720px) {
+        .global-search { width: 180px; }
+      }
+
       .btn {
         display: inline-flex;
         align-items: center;
@@ -872,7 +1012,21 @@
         <header class="topbar">
           <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Toggle menu">☰</button>
           <div class="topbar-actions">
-            {% if current_user.is_authenticated %}
+            {% if current_user.is_authenticated and not is_root_domain %}
+              <form class="global-search" id="global-search" role="search"
+                    action="{{ url_for('search.search') }}" method="get" autocomplete="off">
+                <span class="global-search-icon">🔍</span>
+                <input
+                  type="search"
+                  name="q"
+                  class="global-search-input"
+                  placeholder="Search keys, lockboxes, properties, contacts…"
+                  aria-label="Global search"
+                  autocomplete="off">
+                <div class="global-search-dropdown" role="listbox" aria-label="Search suggestions"></div>
+              </form>
+              <span class="muted text-small">{{ current_user.email }}</span>
+            {% elif current_user.is_authenticated %}
               <span class="muted text-small">{{ current_user.email }}</span>
             {% endif %}
           </div>
@@ -975,6 +1129,136 @@
           showReceiptModal(receiptIdParam);
         }
       });
+
+      // ---- Global search autocomplete ----
+      (function () {
+        const form = document.getElementById('global-search');
+        if (!form) return;
+        const input = form.querySelector('.global-search-input');
+        const dropdown = form.querySelector('.global-search-dropdown');
+        const searchUrl = form.getAttribute('action');
+
+        const ICONS = {
+          lockbox: '🔒', key: '🔑', sign: '🪧', item: '📦',
+          property: '🏘️', contact: '👤', smartlock: '🔐', receipt: '🧾'
+        };
+
+        let debounceTimer = null;
+        let activeFetch = null;
+        let activeIndex = -1;
+        let currentResults = [];
+
+        function open() { form.classList.add('is-open'); }
+        function close() {
+          form.classList.remove('is-open');
+          activeIndex = -1;
+        }
+        function escapeHtml(s) {
+          return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+          });
+        }
+
+        function renderResults(results, query) {
+          currentResults = results;
+          activeIndex = -1;
+          if (!query) { close(); return; }
+
+          const fullSearchUrl = searchUrl + '?q=' + encodeURIComponent(query);
+
+          if (results.length === 0) {
+            dropdown.innerHTML =
+              '<div class="global-search-empty">No matches for "' + escapeHtml(query) + '"</div>' +
+              '<a href="' + escapeHtml(fullSearchUrl) + '" class="global-search-footer">Search anyway</a>';
+            open();
+            return;
+          }
+
+          let html = '';
+          results.forEach(function (r, i) {
+            const icon = ICONS[r.type] || '•';
+            html +=
+              '<a href="' + escapeHtml(r.url) + '" class="global-search-item" data-idx="' + i + '">' +
+                '<span class="global-search-icon-cell">' + icon + '</span>' +
+                '<span class="global-search-text">' +
+                  '<span class="global-search-label">' + escapeHtml(r.label || '') +
+                    '<span class="global-search-type">' + escapeHtml(r.type_label || '') + '</span>' +
+                  '</span>' +
+                  (r.subtitle ? '<span class="global-search-subtitle">' + escapeHtml(r.subtitle) + '</span>' : '') +
+                '</span>' +
+              '</a>';
+          });
+          html += '<a href="' + escapeHtml(fullSearchUrl) + '" class="global-search-footer">' +
+                  'View all results for "' + escapeHtml(query) + '"</a>';
+          dropdown.innerHTML = html;
+          open();
+        }
+
+        function fetchSuggestions(query) {
+          if (activeFetch && activeFetch.abort) {
+            activeFetch.abort();
+          }
+          const controller = new AbortController();
+          activeFetch = controller;
+          dropdown.innerHTML = '<div class="global-search-loading">Searching…</div>';
+          open();
+          fetch('/search/suggest?q=' + encodeURIComponent(query), { signal: controller.signal })
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) { renderResults(data.results || [], data.query || query); })
+            .catch(function (err) {
+              if (err.name === 'AbortError') return;
+              dropdown.innerHTML = '<div class="global-search-empty">Search failed.</div>';
+            });
+        }
+
+        input.addEventListener('input', function () {
+          const q = input.value.trim();
+          if (debounceTimer) clearTimeout(debounceTimer);
+          if (q.length < 2) { close(); return; }
+          debounceTimer = setTimeout(function () { fetchSuggestions(q); }, 180);
+        });
+
+        input.addEventListener('focus', function () {
+          if (input.value.trim().length >= 2 && currentResults.length) open();
+        });
+
+        input.addEventListener('keydown', function (e) {
+          const items = dropdown.querySelectorAll('.global-search-item');
+          if (e.key === 'ArrowDown') {
+            if (!form.classList.contains('is-open')) return;
+            e.preventDefault();
+            if (items.length === 0) return;
+            activeIndex = (activeIndex + 1) % items.length;
+            updateActive(items);
+          } else if (e.key === 'ArrowUp') {
+            if (!form.classList.contains('is-open')) return;
+            e.preventDefault();
+            if (items.length === 0) return;
+            activeIndex = (activeIndex - 1 + items.length) % items.length;
+            updateActive(items);
+          } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && items[activeIndex]) {
+              e.preventDefault();
+              window.location.href = items[activeIndex].getAttribute('href');
+            }
+            // Otherwise: let the form submit to /search?q=...
+          } else if (e.key === 'Escape') {
+            close();
+            input.blur();
+          }
+        });
+
+        function updateActive(items) {
+          items.forEach(function (el, i) {
+            el.classList.toggle('is-active', i === activeIndex);
+            if (i === activeIndex) el.scrollIntoView({ block: 'nearest' });
+          });
+        }
+
+        document.addEventListener('click', function (e) {
+          if (!form.contains(e.target)) close();
+        });
+      })();
     </script>
   </body>
 </html>

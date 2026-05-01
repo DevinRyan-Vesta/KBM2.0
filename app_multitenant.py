@@ -31,6 +31,7 @@ from properties import properties_bp
 from audits import audits_bp
 from smartlocks import smartlocks_bp
 from exports import exports_bp
+from search import search_bp
 
 migrate_master = Migrate()
 migrate_tenant = Migrate()
@@ -94,6 +95,7 @@ def create_app():
     app.register_blueprint(smartlocks_bp, url_prefix="/smart-locks")
     app.register_blueprint(exports_bp, url_prefix="/exports")
     app.register_blueprint(audits_bp, url_prefix="/audits")
+    app.register_blueprint(search_bp)
 
     # 8) Debug helpers (DISABLED FOR SECURITY)
     # These routes are disabled for production security

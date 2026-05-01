@@ -23,6 +23,9 @@
           <li>Optional fields: Current Code, Previous Code, Supra ID, Location, Address, Status, Assigned To, Property Name, Property Unit Label</li>
           {% elif item_type == 'Signs' %}
           <li>Optional fields: Sign Type, Piece Type, Rider Text, Material, Condition, Storage Location, Property Address, Status, Assigned To, Property Name, Property Unit Label</li>
+          {% elif item_type == 'SmartLocks' %}
+          <li>Required fields: <strong>Label</strong>, <strong>Code</strong></li>
+          <li>Optional fields: Provider, Backup Code, Instructions, Notes, Property Name, Property Unit Label</li>
           {% endif %}
         </ul>
 
@@ -40,6 +43,10 @@ LB-002,5678,S-67890,456 Oak Ave</pre>
           <pre style="background: var(--color-card); border: 1px solid var(--color-border); padding: 10px; border-radius: 4px; overflow-x: auto; color: var(--color-text);">Label,Sign Type,Piece Type,Material,Condition
 For Sale Sign #1,Assembled Unit,Sign,Aluminum,Excellent
 Rider Piece #1,Piece,Name Rider,Metal,Good</pre>
+          {% elif item_type == 'SmartLocks' %}
+          <pre style="background: var(--color-card); border: 1px solid var(--color-border); padding: 10px; border-radius: 4px; overflow-x: auto; color: var(--color-text);">Label,Code,Provider,Property Name,Property Unit Label
+Front Door — 101,482931,August,Sunset Apartments,Apt 101
+Garage — 456 Oak,7421,Schlage,Oak Street Complex,</pre>
           {% endif %}
         </div>
 
@@ -58,6 +65,10 @@ Rider Piece #1,Piece,Name Rider,Metal,Good</pre>
           <a href="{{ url_for('exports.download_import_template', item_type='signs') }}" class="btn small primary" download>
             Download Signs Template
           </a>
+          {% elif item_type == 'SmartLocks' %}
+          <a href="{{ url_for('exports.download_import_template', item_type='smartlocks') }}" class="btn small primary" download>
+            Download Smart Locks Template
+          </a>
           {% endif %}
         </div>
       </div>
@@ -70,7 +81,9 @@ Rider Piece #1,Piece,Name Rider,Metal,Good</pre>
 
       <div class="toolbar spaced">
         <button type="submit" class="btn primary">Upload & Continue</button>
-        {% if item_type == 'Keys' %}
+        {% if cancel_url %}
+        <a class="btn ghost" href="{{ cancel_url }}">Cancel</a>
+        {% elif item_type == 'Keys' %}
         <a class="btn ghost" href="{{ url_for('inventory.list_keys') }}">Cancel</a>
         {% elif item_type == 'Lockboxes' %}
         <a class="btn ghost" href="{{ url_for('inventory.list_lockboxes') }}">Cancel</a>

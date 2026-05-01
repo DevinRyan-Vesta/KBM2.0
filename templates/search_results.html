@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Search{% if query %} — {{ query }}{% endif %} - KBM{% endblock %}
+
+{% block head %}
+<style>
+  .search-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .search-section h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .search-section-count {
+    font-size: 12px;
+    color: var(--color-muted);
+    font-weight: 500;
+    background: rgba(148, 163, 184, 0.12);
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  .search-result-item {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background 0.15s ease;
+  }
+
+  .search-result-item:hover {
+    background: var(--color-accent-soft);
+  }
+
+  .search-result-icon {
+    font-size: 20px;
+    text-align: center;
+  }
+
+  .search-result-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .search-result-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .search-result-subtitle {
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+
+  .search-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--color-muted);
+  }
+
+  .search-summary {
+    font-size: 14px;
+    color: var(--color-muted);
+    margin-bottom: 18px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Search</h1>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+  <form method="get" action="{{ url_for('search.search') }}" class="searchbar" style="width: 100%;">
+    <input type="text" name="q" value="{{ query or '' }}" placeholder="Search keys, lockboxes, properties, contacts, smart locks, receipts…" style="flex: 1;" autofocus>
+    <button class="btn primary small" type="submit">Search</button>
+    {% if query %}<a class="btn small" href="{{ url_for('search.search') }}">Clear</a>{% endif %}
+  </form>
+</div>
+
+{% if not query %}
+  <div class="search-empty">
+    <p>Type something above to search across the whole tenant.</p>
+    <p class="text-small">Inventory items · Properties · Contacts · Smart Locks · Receipts</p>
+  </div>
+{% elif total == 0 %}
+  <div class="search-empty">
+    <p>No matches for <strong>{{ query }}</strong>.</p>
+    <p class="text-small">Try a shorter or different term, or check spelling.</p>
+  </div>
+{% else %}
+  {% set icons = {'lockbox':'🔒','key':'🔑','sign':'🪧','item':'📦','property':'🏘️','contact':'👤','smartlock':'🔐','receipt':'🧾'} %}
+  <p class="search-summary">{{ total }} match{{ '' if total == 1 else 'es' }} for <strong>{{ query }}</strong></p>
+
+  <div class="search-results-grid">
+    {% for section in sections %}
+      {% if section.results %}
+      <div class="card search-section">
+        <h2>
+          {{ section.title }}
+          <span class="search-section-count">{{ section.results|length }}</span>
+        </h2>
+        {% for r in section.results %}
+        <a href="{{ r.url }}" class="search-result-item">
+          <span class="search-result-icon">{{ icons.get(r.type, '•') }}</span>
+          <span class="search-result-text">
+            <span class="search-result-label">{{ r.label }}</span>
+            {% if r.subtitle %}<span class="search-result-subtitle">{{ r.subtitle }}</span>{% endif %}
+          </span>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

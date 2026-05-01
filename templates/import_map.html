@@ -99,7 +99,7 @@
 
       <div class="toolbar spaced">
         <button type="submit" class="btn primary">Continue to Preview</button>
-        <a class="btn ghost" href="{{ url_for('inventory.import_keys') }}">Start Over</a>
+        <a class="btn ghost" href="{{ restart_url or url_for('inventory.import_keys') }}">Start Over</a>
       </div>
     </form>
   </div>
