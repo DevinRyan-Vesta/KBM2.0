@@ -45,29 +45,43 @@ class SystemUpdateManager:
 
             if result.returncode == 0:
                 container_info = json.loads(result.stdout)[0]
-                labels = container_info.get('Labels', {})
+                # Compose labels live under .Config.Labels in `docker inspect`,
+                # not at the top level. The original code looked at the top
+                # level, got an empty dict, and silently fell back to wrong
+                # defaults — which made the sidecar updater run against a
+                # phantom project.
+                labels = container_info.get('Config', {}).get('Labels', {}) or {}
 
-                # Extract compose project info from labels
-                project_name = labels.get('com.docker.compose.project', 'kbm20')
-                working_dir = labels.get('com.docker.compose.project.working_dir', str(self.repo_path))
-                config_files = labels.get('com.docker.compose.project.config_files', 'compose.yaml')
+                project_name = labels.get('com.docker.compose.project')
+                working_dir = labels.get('com.docker.compose.project.working_dir')
+                config_files = labels.get('com.docker.compose.project.config_files')
 
-                self._project_info = {
-                    'project_name': project_name,
-                    'working_dir': working_dir,
-                    'config_file': config_files.split(',')[0] if config_files else 'compose.yaml',
-                    'container_id': hostname
-                }
-                return self._project_info
+                if project_name and working_dir:
+                    self._project_info = {
+                        'project_name': project_name,
+                        'working_dir': working_dir,
+                        'config_file': config_files.split(',')[0] if config_files else 'compose.yaml',
+                        'container_id': hostname,
+                    }
+                    return self._project_info
+
+                print(
+                    "Warning: compose labels missing on this container "
+                    f"(project={project_name!r}, working_dir={working_dir!r}). "
+                    "Falling back to defaults — the sidecar updater may target "
+                    "the wrong project."
+                )
         except Exception as e:
             print(f"Warning: Could not auto-detect project info: {e}")
 
-        # Fallback to defaults
+        # Conservative fallback. We hardcode the known production defaults
+        # rather than self.repo_path (which is the *container* path /app —
+        # not what `docker run -v` needs on the host).
         self._project_info = {
-            'project_name': 'kbm20',
-            'working_dir': str(self.repo_path),
+            'project_name': 'kbm',
+            'working_dir': '/opt/kbm',
             'config_file': 'compose.yaml',
-            'container_id': os.environ.get('HOSTNAME', 'python-app')
+            'container_id': os.environ.get('HOSTNAME', 'python-app'),
         }
         return self._project_info
 
