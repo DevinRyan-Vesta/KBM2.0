@@ -233,7 +233,10 @@
         </tr>
       </thead>
       <tbody>
-        {% set low_threshold = tenant_settings.low_keys_threshold if tenant_settings else 4 %}
+        {# Defensive: fall back to 4 if the tenant settings row exists but
+           low_keys_threshold is somehow None (pre-backfill DB state). #}
+        {% set _raw_threshold = tenant_settings.low_keys_threshold if tenant_settings else None %}
+        {% set low_threshold = _raw_threshold if (_raw_threshold is not none) else 4 %}
         {% for key in keys %}
           {% set status_lower = (key.status or '')|lower %}
           {% set total = key.total_copies or 0 %}

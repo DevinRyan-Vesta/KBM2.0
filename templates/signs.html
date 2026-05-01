@@ -244,7 +244,10 @@
           {% set is_piece = sign.sign_subtype == 'Piece' %}
           {% set is_assembled = sign.sign_subtype == 'Assembled Unit' %}
           {% set has_parent = sign.parent_sign_id is not none %}
-          <tr>
+          <tr data-item-id="{{ sign.id }}" data-item-label="{{ sign.label }}">
+            <td class="select-col">
+              <input type="checkbox" class="item-checkbox" value="{{ sign.id }}" onchange="updateBulkToolbar()" style="margin: 0;">
+            </td>
             <td>
               <div><strong><a href="{{ url_for('inventory.item_details', item_id=sign.id) }}" style="color: inherit; text-decoration: none;">{{ sign.label }}</a></strong></div>
               <div class="muted">{{ sign.custom_id or '-' }}</div>
