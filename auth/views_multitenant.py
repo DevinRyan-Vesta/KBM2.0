@@ -171,6 +171,12 @@ def login_post():
         user.last_login_at = datetime.now(UTC).replace(tzinfo=None)
 
         login_user(user, remember=remember)
+        # Mark the session permanent so PERMANENT_SESSION_LIFETIME applies and
+        # SESSION_REFRESH_EACH_REQUEST gives us a sliding idle timeout. Without
+        # this, sessions live until the browser closes regardless of how long
+        # they've been idle.
+        from flask import session
+        session.permanent = True
         master_db.session.commit()
 
         # Redirect based on role
