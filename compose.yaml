@@ -22,7 +22,11 @@ services:
       - ./tenant_dbs:/app/tenant_dbs
       - ./backups:/app/backups
       - /var/run/docker.sock:/var/run/docker.sock
-      # Source mounts so the in-app system update can pull code without a rebuild
+      # Source mounts so the in-app system update can pull code without a rebuild.
+      # IMPORTANT: when you add a new top-level Python file or blueprint package,
+      # add it here too — otherwise `git pull` won't reach the running container.
+      - ./app_multitenant.py:/app/app_multitenant.py:ro
+      - ./config.py:/app/config.py:ro
       - ./templates:/app/templates
       - ./static:/app/static
       - ./audits:/app/audits
@@ -36,6 +40,7 @@ services:
       - ./app_admin:/app/app_admin
       - ./main:/app/main
       - ./exports:/app/exports
+      - ./search:/app/search
       - ./utilities:/app/utilities
       - ./middleware:/app/middleware
     networks:
