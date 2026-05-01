@@ -47,6 +47,26 @@ def add_column_if_missing(table: str, column: str, ddl: str) -> Callable:
     return _upgrade
 
 
+def create_table_if_missing(table: str, ddl: str) -> Callable:
+    """Return an upgrade callable that creates a table if it doesn't exist.
+
+    `ddl` is the full column-list portion of CREATE TABLE, without the
+    `CREATE TABLE name (...)` wrapper. Example:
+        '"id" INTEGER PRIMARY KEY, "smart_lock_id" INTEGER NOT NULL'
+    """
+    def _upgrade(engine, db_path: Path) -> bool:
+        insp = inspect(engine)
+        if insp.has_table(table):
+            return False
+        with engine.begin() as conn:
+            conn.execute(text(f'CREATE TABLE "{table}" ({ddl})'))
+        log.info("[%s] created table %s", db_path.name, table)
+        return True
+
+    _upgrade.__name__ = f"create_{table}"
+    return _upgrade
+
+
 # ----------------------------------------------------------------------------
 # All tenant upgrades. Each one is idempotent.
 # ----------------------------------------------------------------------------
@@ -57,6 +77,26 @@ TENANT_UPGRADES: list[Callable] = [
         table="item_checkouts",
         column="contact_id",
         ddl='INTEGER REFERENCES "contacts"("id") ON DELETE SET NULL',
+    ),
+    # Smart-lock pairing/manufacturer details (often only printed on the
+    # sticker that ships with the device — useful to capture before the
+    # sticker is lost).
+    add_column_if_missing("smart_locks", "model_number", "VARCHAR(120)"),
+    add_column_if_missing("smart_locks", "serial_number", "VARCHAR(120)"),
+    add_column_if_missing("smart_locks", "pairing_code", "VARCHAR(120)"),
+    add_column_if_missing("smart_locks", "qr_code_data", "TEXT"),
+    # Image attachments per smart lock (photo of unit, sticker, etc.)
+    create_table_if_missing(
+        "smart_lock_images",
+        '"id" INTEGER NOT NULL PRIMARY KEY, '
+        '"smart_lock_id" INTEGER NOT NULL REFERENCES "smart_locks"("id") ON DELETE CASCADE, '
+        '"filename" VARCHAR(255) NOT NULL, '
+        '"original_filename" VARCHAR(255), '
+        '"caption" VARCHAR(255), '
+        '"content_type" VARCHAR(120), '
+        '"size_bytes" INTEGER, '
+        '"uploaded_at" DATETIME NOT NULL, '
+        '"uploaded_by_id" INTEGER'
     ),
 ]
 

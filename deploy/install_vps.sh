@@ -95,7 +95,7 @@ APP_UID=1000
 APP_GID=1000
 
 log "Ensuring data directories exist"
-mkdir -p master_db tenant_dbs backups logs
+mkdir -p master_db tenant_dbs backups logs uploads
 
 # Chown the entire repo to appuser. This covers:
 #   - data dirs (master_db, tenant_dbs, backups, logs)
