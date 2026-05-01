@@ -12,6 +12,9 @@
         <a class="btn small" href="{{ url_for('smartlocks.list_smartlocks') }}">Clear</a>
       {% endif %}
     </form>
+    <a class="btn ghost" href="{{ url_for('smartlocks.import_smartlocks') }}">Import</a>
+    <a class="btn ghost" href="{{ url_for('smartlocks.export_smartlocks', q=q, format='csv') }}">Export CSV</a>
+    <a class="btn ghost" href="{{ url_for('smartlocks.export_smartlocks', q=q, format='excel') }}">Export Excel</a>
     <a class="btn primary" href="{{ url_for('smartlocks.create_smartlock') }}">Add Smart Lock</a>
   </div>
 </div>

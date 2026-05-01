@@ -63,8 +63,8 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <div class="toolbar spaced">
         <button type="submit" class="btn primary">Import Now ({{ total_rows }} rows)</button>
-        <a class="btn ghost" href="{{ url_for('inventory.import_keys_map') }}">Back to Mapping</a>
-        <a class="btn ghost" href="{{ url_for('inventory.import_keys') }}">Start Over</a>
+        <a class="btn ghost" href="{{ back_url or url_for('inventory.import_keys_map') }}">Back to Mapping</a>
+        <a class="btn ghost" href="{{ restart_url or url_for('inventory.import_keys') }}">Start Over</a>
       </div>
     </form>
   </div>

@@ -791,6 +791,31 @@ def download_import_template(item_type: str):
                     'Property Unit Label': ''
                 }
             ]
+        },
+        'smartlocks': {
+            'filename': 'smartlocks_import_template.csv',
+            'data': [
+                {
+                    'Label': 'Front Door — Sunset 101',
+                    'Code': '482931',
+                    'Provider': 'August',
+                    'Backup Code': '193847',
+                    'Instructions': 'Press # after entering code',
+                    'Notes': 'Battery replaced 2025-08-12',
+                    'Property Name': 'Sunset Apartments',
+                    'Property Unit Label': 'Apt 101',
+                },
+                {
+                    'Label': 'Garage — 456 Oak',
+                    'Code': '7421',
+                    'Provider': 'Schlage',
+                    'Backup Code': '',
+                    'Instructions': '',
+                    'Notes': '',
+                    'Property Name': 'Oak Street Complex',
+                    'Property Unit Label': '',
+                },
+            ]
         }
     }
 

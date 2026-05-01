@@ -5,6 +5,8 @@
 <div class="page-header">
   <h1>Receipt Lookup</h1>
   <div class="toolbar">
+    <a href="{{ url_for('inventory.export_receipts', q=query, format='csv') }}" class="btn ghost">Export CSV</a>
+    <a href="{{ url_for('inventory.export_receipts', q=query, format='excel') }}" class="btn ghost">Export Excel</a>
     <a href="{{ url_for('main.home') }}" class="btn ghost">Back to Home</a>
   </div>
 </div>
@@ -12,7 +14,7 @@
 <div class="card" style="margin-bottom: 24px;">
   <h3>Search Receipts</h3>
   <p class="muted" style="margin-bottom: 16px;">
-    Search by receipt number, barcode (RCP######), or person's name.
+    Search by receipt number, barcode (RCP######), person's name, item label, item ID, or address.
     Barcode scanners are automatically detected.
   </p>
 

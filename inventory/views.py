@@ -2491,51 +2491,92 @@ def checkout_receipt(checkout_id):
     )
 
 
+def _receipt_search_query(query: str):
+    """Build the SQLAlchemy query for receipt search.
+
+    Searches across receipt id (RCP###### or numeric), the person checked out to,
+    the checkout address, and — via JOIN — the item label and custom_id. Returns
+    a query object the caller can paginate / count / .all() on.
+    """
+    from sqlalchemy import or_
+
+    base = tenant_query(ItemCheckout).outerjoin(Item, ItemCheckout.item_id == Item.id)
+
+    if not query:
+        return base.order_by(ItemCheckout.checked_out_at.desc())
+
+    receipt_id = None
+    candidate = query[3:] if query.upper().startswith("RCP") else query
+    try:
+        receipt_id = int(candidate)
+    except ValueError:
+        pass
+
+    like = f"%{query}%"
+    filters = [
+        ItemCheckout.checked_out_to.ilike(like),
+        ItemCheckout.address.ilike(like),
+        Item.label.ilike(like),
+        Item.custom_id.ilike(like),
+    ]
+    if receipt_id is not None:
+        filters.append(ItemCheckout.id == receipt_id)
+
+    return base.filter(or_(*filters)).order_by(ItemCheckout.checked_out_at.desc())
+
+
 @inventory_bp.route("/receipts", methods=["GET"])
 @login_required
 @tenant_required
 def receipt_lookup():
     """Receipt lookup page with barcode scanner support"""
     query = (request.args.get("q") or "").strip()
-    results = []
-    
+
     if query:
-        # Try to extract receipt ID from barcode (RCP000001 format)
-        receipt_id = None
-        if query.upper().startswith("RCP"):
-            try:
-                receipt_id = int(query[3:])
-            except ValueError:
-                pass
-        else:
-            # Try direct ID
-            try:
-                receipt_id = int(query)
-            except ValueError:
-                pass
-        
-        # Build search filter
-        filters = []
-        if receipt_id:
-            filters.append(ItemCheckout.id == receipt_id)
-        
-        # Also search by checked_out_to name
-        if query:
-            like = f"%{query}%"
-            filters.append(ItemCheckout.checked_out_to.ilike(like))
-        
-        if filters:
-            from sqlalchemy import or_
-            results = tenant_query(ItemCheckout).filter(or_(*filters)).order_by(
-                ItemCheckout.checked_out_at.desc()
-            ).limit(50).all()
+        results = _receipt_search_query(query).limit(50).all()
     else:
-        # Show 10 most recent receipts by default when no search query
-        results = tenant_query(ItemCheckout).order_by(
-            ItemCheckout.checked_out_at.desc()
-        ).limit(10).all()
-    
+        results = _receipt_search_query("").limit(10).all()
+
     return render_template("receipt_lookup.html", results=results, query=query)
+
+
+@inventory_bp.route("/receipts/export", methods=["GET"])
+@login_required
+@tenant_required
+def export_receipts():
+    """Export receipts (filtered by current search) as CSV or Excel."""
+    from exports.views import generate_csv, generate_excel
+    from datetime import datetime
+
+    query = (request.args.get("q") or "").strip()
+    format_type = (request.args.get("format") or "csv").lower()
+
+    # Cap the export at 10k rows so a runaway query can't OOM the worker.
+    rows = _receipt_search_query(query).limit(10000).all()
+
+    data = []
+    for c in rows:
+        item = c.item
+        data.append({
+            "Receipt #": c.id,
+            "Barcode": f"RCP{c.id:06d}",
+            "Item Label": item.label if item else "",
+            "Item Type": item.type if item else "",
+            "Item ID": (item.custom_id if item else "") or "",
+            "Checked Out To": c.checked_out_to or "",
+            "Quantity": c.quantity or 0,
+            "Address": c.address or "",
+            "Purpose": c.purpose or "",
+            "Assignment Type": c.assignment_type or "",
+            "Checked Out At": c.checked_out_at.strftime("%Y-%m-%d %H:%M:%S") if c.checked_out_at else "",
+            "Checked In At": c.checked_in_at.strftime("%Y-%m-%d %H:%M:%S") if c.checked_in_at else "",
+            "Status": "Returned" if not c.is_active else "Checked Out",
+        })
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if format_type == "excel":
+        return generate_excel(data, f"receipts_{timestamp}.xlsx")
+    return generate_csv(data, f"receipts_{timestamp}.csv")
 
 @inventory_bp.route("/items/<int:item_id>", methods=["GET"])
 @login_required

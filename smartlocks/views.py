@@ -119,3 +119,45 @@ def smartlock_detail(lock_id: int):
     smart_lock = _get_smartlock_or_404(lock_id)
     return render_template("smartlock_detail.html", smartlock=smart_lock)
 
+
+@smartlocks_bp.route("/export", methods=["GET"])
+@login_required
+@tenant_required
+def export_smartlocks():
+    """Export smart locks (filtered by current search) as CSV or Excel."""
+    from exports.views import generate_csv, generate_excel
+    from datetime import datetime
+
+    q = (request.args.get("q") or "").strip()
+    format_type = (request.args.get("format") or "csv").lower()
+
+    query = tenant_query(SmartLock)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(
+                SmartLock.label.ilike(like),
+                SmartLock.code.ilike(like),
+                SmartLock.provider.ilike(like),
+            )
+        )
+    locks = query.order_by(SmartLock.label.asc()).all()
+
+    data = []
+    for lock in locks:
+        data.append({
+            "Label": lock.label or "",
+            "Code": lock.code or "",
+            "Provider": lock.provider or "",
+            "Backup Code": lock.backup_code or "",
+            "Instructions": lock.instructions or "",
+            "Notes": lock.notes or "",
+            "Property": lock.property.name if lock.property else "",
+            "Unit": lock.property_unit.label if lock.property_unit else "",
+        })
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if format_type == "excel":
+        return generate_excel(data, f"smartlocks_{timestamp}.xlsx")
+    return generate_csv(data, f"smartlocks_{timestamp}.csv")
+
