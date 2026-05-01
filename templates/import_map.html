@@ -73,12 +73,12 @@
       <div style="overflow-x: auto; margin-bottom: 20px;">
         <table class="preview-table" style="width: 100%; border-collapse: collapse;">
           <thead>
-            <tr style="background: #f5f5f5;">
+            <tr style="background: rgba(148, 163, 184, 0.08);">
               {% for header in import_data.headers[:10] %}
-                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">{{ header }}</th>
+                <th style="padding: 10px; border: 1px solid var(--color-border); text-align: left;">{{ header }}</th>
               {% endfor %}
               {% if import_data.headers|length > 10 %}
-                <th style="padding: 10px; border: 1px solid #ddd;">...</th>
+                <th style="padding: 10px; border: 1px solid var(--color-border);">...</th>
               {% endif %}
             </tr>
           </thead>
@@ -86,10 +86,10 @@
             {% for row in import_data.rows[:5] %}
               <tr>
                 {% for header in import_data.headers[:10] %}
-                  <td style="padding: 10px; border: 1px solid #ddd;">{{ row.get(header, '') }}</td>
+                  <td style="padding: 10px; border: 1px solid var(--color-border);">{{ row.get(header, '') }}</td>
                 {% endfor %}
                 {% if import_data.headers|length > 10 %}
-                  <td style="padding: 10px; border: 1px solid #ddd;">...</td>
+                  <td style="padding: 10px; border: 1px solid var(--color-border);">...</td>
                 {% endif %}
               </tr>
             {% endfor %}

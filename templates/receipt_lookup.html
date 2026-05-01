@@ -12,29 +12,38 @@
 </div>
 
 <div class="card" style="margin-bottom: 24px;">
-  <h3>Search Receipts</h3>
-  <p class="muted" style="margin-bottom: 16px;">
-    Search by receipt number, barcode (RCP######), person's name, item label, item ID, or address.
-    Barcode scanners are automatically detected.
-  </p>
-
   <form method="GET" action="{{ url_for('inventory.receipt_lookup') }}" id="search-form">
     <div class="form-field">
-      <label for="search-input">Receipt Search</label>
-      <input
-        type="text"
-        id="search-input"
-        name="q"
-        value="{{ query }}"
-        placeholder="Scan barcode or type receipt number, name..."
-        autofocus
-        autocomplete="off"
-      >
-      <p class="muted text-small" style="margin-top: 4px;">
+      <label for="search-input">Search receipts</label>
+      <div class="searchbar" style="padding: 8px 10px;">
+        <input
+          type="text"
+          id="search-input"
+          name="q"
+          value="{{ query }}"
+          placeholder="Receipt #, barcode, name, item, or address…"
+          autofocus
+          autocomplete="off"
+          style="flex: 1; font-size: 15px; padding: 6px 4px;"
+        >
+        <button type="submit" class="btn primary small">Search</button>
+        {% if query %}
+          <a class="btn ghost small" href="{{ url_for('inventory.receipt_lookup') }}">Clear</a>
+        {% endif %}
+      </div>
+    </div>
+    <details style="margin-top: 8px;">
+      <summary class="muted text-small" style="cursor: pointer; user-select: none;">
+        Search tips &amp; barcode scanner status
+      </summary>
+      <p class="muted text-small" style="margin: 8px 0 0;">
+        Search by receipt number, barcode (<code>RCP######</code>), person's name,
+        item label, item ID, or address. Barcode scanners are automatically detected.
+      </p>
+      <p class="muted text-small" style="margin: 4px 0 0;">
         <span id="scanner-status">Ready for barcode scanner input</span>
       </p>
-    </div>
-    <button type="submit" class="btn primary">Search</button>
+    </details>
   </form>
 </div>
 

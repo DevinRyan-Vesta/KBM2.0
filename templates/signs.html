@@ -356,7 +356,14 @@
       </tbody>
     </table>
   {% else %}
-    <div class="empty-state">No signs found.</div>
+    <div class="empty-state">
+      <h3>No signs yet</h3>
+      <p>Track for-sale signs, riders, and storage locations.</p>
+      <div class="toolbar">
+        <a class="btn primary" href="{{ url_for('inventory.add_sign') }}">Add your first sign</a>
+        <a class="btn ghost" href="{{ url_for('inventory.import_signs') }}">Import from CSV</a>
+      </div>
+    </div>
   {% endif %}
 </div>
 
@@ -832,6 +839,16 @@
     }
   }
 
+  function handleBulkResult(data, operation) {
+    if (data && data.success) {
+      toast(data.message || `${operation} complete`, { type: 'success' });
+      setTimeout(() => window.location.reload(), 700);
+    } else {
+      const msg = (data && data.error) || `${operation} failed`;
+      toast('Error: ' + msg, { type: 'error', duration: 0 });
+    }
+  }
+
   async function bulkDelete(itemIds) {
     try {
       const response = await fetch('/inventory/bulk/delete', {
@@ -845,16 +862,9 @@
           item_type: 'sign'
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk delete');
     } catch (error) {
-      alert('Error performing bulk delete: ' + error);
+      toast('Error performing bulk delete: ' + error, { type: 'error', duration: 0 });
     }
   }
 
@@ -871,16 +881,9 @@
           status: newStatus
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk status update');
     } catch (error) {
-      alert('Error performing bulk status update: ' + error);
+      toast('Error performing bulk status update: ' + error, { type: 'error', duration: 0 });
     }
   }
 
@@ -897,16 +900,9 @@
           assigned_to: assignTo
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk assign');
     } catch (error) {
-      alert('Error performing bulk assign: ' + error);
+      toast('Error performing bulk assign: ' + error, { type: 'error', duration: 0 });
     }
   }
 

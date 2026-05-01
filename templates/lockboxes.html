@@ -258,7 +258,14 @@
       </tbody>
     </table>
   {% else %}
-    <p class="muted">No lockboxes found. <a href="{{ url_for('inventory.add_lockbox') }}">Add your first lockbox</a>.</p>
+    <div class="empty-state">
+      <h3>No lockboxes yet</h3>
+      <p>Track lockbox codes, locations, and who's using them.</p>
+      <div class="toolbar">
+        <a class="btn primary" href="{{ url_for('inventory.add_lockbox') }}">Add your first lockbox</a>
+        <a class="btn ghost" href="{{ url_for('inventory.import_lockboxes') }}">Import from CSV</a>
+      </div>
+    </div>
   {% endif %}
 </div>
 
@@ -410,6 +417,16 @@
     }
   }
 
+  function handleBulkResult(data, operation) {
+    if (data && data.success) {
+      toast(data.message || `${operation} complete`, { type: 'success' });
+      setTimeout(() => window.location.reload(), 700);
+    } else {
+      const msg = (data && data.error) || `${operation} failed`;
+      toast('Error: ' + msg, { type: 'error', duration: 0 });
+    }
+  }
+
   async function bulkDelete(itemIds) {
     try {
       const response = await fetch('/inventory/bulk/delete', {
@@ -423,16 +440,9 @@
           item_type: 'lockbox'
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk delete');
     } catch (error) {
-      alert('Error performing bulk delete: ' + error);
+      toast('Error performing bulk delete: ' + error, { type: 'error', duration: 0 });
     }
   }
 
@@ -449,16 +459,9 @@
           status: newStatus
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk status update');
     } catch (error) {
-      alert('Error performing bulk status update: ' + error);
+      toast('Error performing bulk status update: ' + error, { type: 'error', duration: 0 });
     }
   }
 
@@ -475,16 +478,9 @@
           assigned_to: assignTo
         })
       });
-
-      const data = await response.json();
-      if (data.success) {
-        alert(data.message);
-        window.location.reload();
-      } else {
-        alert('Error: ' + data.error);
-      }
+      handleBulkResult(await response.json(), 'Bulk assign');
     } catch (error) {
-      alert('Error performing bulk assign: ' + error);
+      toast('Error performing bulk assign: ' + error, { type: 'error', duration: 0 });
     }
   }
 </script>
