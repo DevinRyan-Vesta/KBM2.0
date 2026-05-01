@@ -1229,6 +1229,17 @@ def checkout_key(item_id):
     tenant_commit()
     flash(f"Checked out {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label}.", "success")
 
+    # Fire-and-forget: email the recipient if a matching Contact has an email
+    from utilities.email import notify_checkout
+    notify_checkout(
+        item=key,
+        recipient_name=checked_out_to,
+        checkout_id=checkout_record.id,
+        quantity=copies,
+        purpose=purpose,
+        expected_return_date=expected_return_date,
+    )
+
     # Redirect back to keys page with receipt_id to trigger modal
     return redirect(url_for('inventory.list_keys', receipt_id=checkout_record.id))
 
@@ -1366,6 +1377,17 @@ def assign_key(item_id):
     tenant_commit()
     flash(f"Assigned {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label} to {assigned_to}.", "success")
 
+    # Fire-and-forget: email the recipient if a matching Contact has an email
+    from utilities.email import notify_checkout
+    notify_checkout(
+        item=key,
+        recipient_name=assigned_to,
+        checkout_id=assignment_record.id,
+        quantity=copies,
+        purpose=f"Assignment ({assignment_type})" if assignment_type else None,
+        expected_return_date=expected_return_date,
+    )
+
     # Redirect back to keys page with receipt_id to trigger modal
     return redirect(url_for('inventory.list_keys', receipt_id=assignment_record.id))
 
@@ -1462,6 +1484,19 @@ def checkin_key(item_id):
 
     tenant_commit()
     flash(f"Checked in {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label}.", "success")
+
+    # Fire-and-forget: email the recipient if a matching Contact has an email.
+    # Only meaningful when we have an actual checkout record we can reference.
+    if checkout_id_str and 'checkout' in locals() and checkout is not None:
+        from utilities.email import notify_checkin
+        notify_checkin(
+            item=key,
+            recipient_name=checked_out_to,
+            checkout_id=checkout.id,
+            quantity=copies,
+            checked_in_at=checkout.checked_in_at,
+        )
+
     return redirect(_get_redirect_url(default_redirect))
 
 

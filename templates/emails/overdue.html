@@ -1,0 +1,21 @@
+{% extends "emails/_layout.html" %}
+{% block subject %}Overdue: {{ item_label }}{% endblock %}
+{% block content %}
+<p style="margin:0 0 12px;">Hi {{ recipient_name or 'there' }},</p>
+<p style="margin:0 0 16px;">A reminder from <strong>{{ tenant_name or 'KBM' }}</strong>: the following item is past its expected return date.</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin:0 0 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
+  <tr><td style="padding:12px 14px 4px;font-weight:600;font-size:16px;">{{ item_label }}{% if item_custom_id %} <span style="color:#6b7280;font-weight:400;">({{ item_custom_id }})</span>{% endif %}</td></tr>
+  <tr><td style="padding:0 14px 12px;color:#9a3412;font-size:13px;font-weight:600;">{{ days_overdue }} day{{ '' if days_overdue == 1 else 's' }} overdue</td></tr>
+</table>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;font-size:14px;margin:0 0 16px;">
+  <tr><td style="padding:4px 0;color:#6b7280;width:120px;">Type</td><td style="padding:4px 0;">{{ item_type }}</td></tr>
+  {% if item_address %}<tr><td style="padding:4px 0;color:#6b7280;">Address</td><td style="padding:4px 0;">{{ item_address }}</td></tr>{% endif %}
+  {% if quantity and quantity > 1 %}<tr><td style="padding:4px 0;color:#6b7280;">Quantity</td><td style="padding:4px 0;">{{ quantity }}</td></tr>{% endif %}
+  <tr><td style="padding:4px 0;color:#6b7280;">Was due</td><td style="padding:4px 0;"><strong>{{ expected_return_date.strftime('%b %d, %Y') }}</strong></td></tr>
+  <tr><td style="padding:4px 0;color:#6b7280;">Receipt #</td><td style="padding:4px 0;font-family:ui-monospace,Menlo,Consolas,monospace;">RCP{{ '%06d' % checkout_id }}</td></tr>
+</table>
+
+<p style="margin:0;color:#6b7280;font-size:13px;">Please return at your earliest convenience, or reach out if you need an extension.</p>
+{% endblock %}

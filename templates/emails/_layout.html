@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block subject %}KBM Notification{% endblock %}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f5f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(15,23,42,0.06);">
+            <tr>
+              <td style="padding:20px 24px;background:#e53935;color:#ffffff;font-weight:700;font-size:18px;letter-spacing:0.04em;">
+                KBM 2.0
+                {% if tenant_name %}<span style="font-weight:400;opacity:0.85;"> · {{ tenant_name }}</span>{% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;font-size:15px;line-height:1.55;">
+                {% block content %}{% endblock %}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px;background:#f5f7fb;color:#6b7280;font-size:12px;text-align:center;">
+                You're receiving this because a record at {{ tenant_name or 'KBM' }} lists this email address.
+                If this looks wrong, please contact the team that sent it.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

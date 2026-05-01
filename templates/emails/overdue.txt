@@ -1,0 +1,18 @@
+Hi {{ recipient_name or 'there' }},
+
+A reminder from {{ tenant_name or 'KBM' }}: the following item is past its
+expected return date.
+
+  {{ item_label }}{% if item_custom_id %} ({{ item_custom_id }}){% endif %}
+  Type:           {{ item_type }}{% if item_address %}
+  Address:        {{ item_address }}{% endif %}{% if quantity and quantity > 1 %}
+  Quantity:       {{ quantity }}{% endif %}
+  Was due:        {{ expected_return_date.strftime('%b %d, %Y') }}
+  Days overdue:   {{ days_overdue }}
+
+Receipt #: RCP{{ '%06d' % checkout_id }}
+
+Please return at your earliest convenience, or reach out to {{ tenant_name or 'the team' }}
+if you need an extension.
+
+— KBM 2.0

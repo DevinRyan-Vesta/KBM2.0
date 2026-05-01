@@ -1,0 +1,14 @@
+Hi {{ recipient_name or 'there' }},
+
+{{ tenant_name or 'KBM' }} has confirmed the return of the following item:
+
+  {{ item_label }}{% if item_custom_id %} ({{ item_custom_id }}){% endif %}
+  Type:    {{ item_type }}{% if quantity and quantity > 1 %}
+  Quantity: {{ quantity }}{% endif %}{% if checked_in_at %}
+  Returned: {{ checked_in_at.strftime('%b %d, %Y %I:%M %p') }}{% endif %}
+
+Receipt #: RCP{{ '%06d' % checkout_id }}
+
+Thanks!
+
+— KBM 2.0
