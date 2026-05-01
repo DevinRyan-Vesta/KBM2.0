@@ -98,12 +98,14 @@ log "Ensuring data directories exist and are owned by UID ${APP_UID}"
 mkdir -p master_db tenant_dbs backups logs
 chown -R "${APP_UID}:${APP_GID}" master_db tenant_dbs backups logs
 
-# .git is bind-mounted so the in-app system-update feature can git pull. It
-# needs to be writable by appuser too, but we can't blindly chown the whole
-# tree (would change git index ownership in confusing ways). Adding write
-# permissions for "other" is the lightest-touch fix on a single-purpose VPS.
+# .git is bind-mounted so the in-app system-update feature can git pull.
+# appuser inside the container needs to be able to write new objects (every
+# fetch creates new files in .git/objects), so the simplest reliable fix is
+# to chown the directory to appuser. chmod alone doesn't survive — git
+# creates new files with default permissions on each operation, and "other"
+# write bits don't propagate.
 if [[ -d .git ]]; then
-	chmod -R o+rw .git
+	chown -R "${APP_UID}:${APP_GID}" .git
 fi
 
 # ------------------------------------------------------------------------------
