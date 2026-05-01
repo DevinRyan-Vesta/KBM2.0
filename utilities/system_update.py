@@ -270,14 +270,22 @@ class SystemUpdateManager:
 
         return True, output
 
-    def restart_containers(self) -> Tuple[bool, str]:
+    def restart_containers(self, rebuild: bool = False) -> Tuple[bool, str]:
         """
-        Restart Docker containers using docker compose restart.
+        Trigger a restart (or rebuild + restart) of the compose project.
 
-        Simple and reliable:
-        1. Uses the docker socket mounted in the container
-        2. Automatically detects project name and working directory
-        3. Restarts without rebuilding (code changes are live via volume mounts)
+        Uses a short-lived **sidecar container** rather than spawning a script
+        inside ourselves: when this container restarts, anything running inside
+        it dies, so multi-step compose operations are unreliable. A sidecar
+        lives in its own PID namespace and survives our restart.
+
+        The sidecar runs `docker compose up -d` (or `up -d --build` when
+        rebuild=True), which:
+          - picks up compose.yaml changes (new mounts, env vars, etc.) — unlike
+            `docker compose restart`, which would miss them
+          - is a no-op when nothing has changed
+          - rebuilds the image when --build is passed (used after
+            requirements.txt changes)
         """
         # Check if docker is available
         available, message = self.check_docker_available()
@@ -290,57 +298,72 @@ class SystemUpdateManager:
         working_dir = project_info['working_dir']
         config_file = project_info['config_file']
 
-        # Build docker compose restart command
-        compose_cmd = [
-            'docker', 'compose',
-            '-f', config_file,
-            '-p', project_name,
-            'restart'
+        # Sidecar uses our own image, which already has docker + docker compose
+        # CLI installed (see Dockerfile). Discover the image tag via inspect on
+        # ourselves so we don't have to hardcode it.
+        success, image = self.run_command(
+            ['docker', 'inspect', '-f', '{{.Config.Image}}', project_info['container_id']],
+            timeout=5,
+        )
+        if not success or not image:
+            return False, f"Could not detect image for sidecar updater: {image}"
+
+        # Build the command the sidecar runs. The sleep gives our HTTP response
+        # time to flush before the project starts churning.
+        compose_args = f"-f {config_file} -p {project_name} up -d"
+        if rebuild:
+            compose_args += " --build"
+
+        log_in_sidecar = "/work/restart_output.log"
+        sidecar_script = (
+            f"set -e; "
+            f"sleep 5; "
+            f"cd /work; "
+            f"echo '=== Sidecar updater started at '$(date)' ===' > {log_in_sidecar}; "
+            f"echo 'Project: {project_name}' >> {log_in_sidecar}; "
+            f"echo 'Rebuild: {str(rebuild).lower()}' >> {log_in_sidecar}; "
+            f"echo '------------------------------------------------------------' >> {log_in_sidecar}; "
+            f"docker compose {compose_args} >> {log_in_sidecar} 2>&1; "
+            f"echo '' >> {log_in_sidecar}; "
+            f"echo '=== Sidecar finished at '$(date)' ===' >> {log_in_sidecar}"
+        )
+
+        sidecar_name = f"kbm-updater-{int(datetime.now().timestamp())}"
+        sidecar_cmd = [
+            'docker', 'run', '--rm', '-d',
+            '--name', sidecar_name,
+            '-v', '/var/run/docker.sock:/var/run/docker.sock',
+            '-v', f'{working_dir}:/work',
+            '-w', '/work',
+            image,
+            'sh', '-c', sidecar_script,
         ]
 
-        # Create a restart script that will execute after a delay
-        restart_script = f"""#!/bin/sh
-# Wait to ensure the HTTP response is sent
-sleep 3
-
-# Execute the restart
-cd {working_dir}
-{' '.join(compose_cmd)} > {self.repo_path}/restart_output.log 2>&1
-
-# Log completion
-echo "" >> {self.repo_path}/restart_output.log
-echo "Restart completed at $(date)" >> {self.repo_path}/restart_output.log
-"""
-
-        # Write restart script
-        script_path = self.repo_path / 'restart_now.sh'
+        # Seed the log so the UI has something to show before the sidecar wakes up
         try:
-            with open(script_path, 'w') as f:
-                f.write(restart_script)
-            os.chmod(script_path, 0o755)
-
-            # Clear previous log
             log_path = self.repo_path / 'restart_output.log'
             with open(log_path, 'w') as f:
-                f.write(f"=== Container Restart Started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                f.write(f"Project: {project_name}\n")
-                f.write(f"Working Dir: {working_dir}\n")
-                f.write(f"Config: {config_file}\n")
-                f.write(f"Command: {' '.join(compose_cmd)}\n")
+                f.write(f"=== Sidecar updater scheduled at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                f.write(f"Sidecar name: {sidecar_name}\n")
+                f.write(f"Image:        {image}\n")
+                f.write(f"Project:      {project_name}\n")
+                f.write(f"Working dir:  {working_dir}\n")
+                f.write(f"Rebuild:      {rebuild}\n")
+                f.write("Sleeping 5s, then running: docker compose " + compose_args + "\n")
                 f.write("=" * 60 + "\n\n")
+        except Exception:
+            pass  # best-effort
 
-            # Execute restart script in background
-            subprocess.Popen(
-                ['/bin/sh', str(script_path)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True
-            )
+        success, output = self.run_command(sidecar_cmd, timeout=15)
+        if not success:
+            return False, f"Failed to launch sidecar updater: {output}"
 
-            return True, "Container restart initiated. The application will reload in a few seconds. Check restart_output.log for details."
-
-        except Exception as e:
-            return False, f"Failed to initiate restart: {str(e)}"
+        action = "Rebuild + restart" if rebuild else "Restart"
+        return True, (
+            f"{action} initiated via sidecar container ({sidecar_name}). "
+            "The application will reload in 5–30 seconds. "
+            "Refresh the page after a moment, or check the restart log below."
+        )
 
     def get_container_status(self) -> List[Dict[str, str]]:
         """Get status of running containers in this project."""
@@ -487,10 +510,8 @@ echo "Restart completed at $(date)" >> {self.repo_path}/restart_output.log
             }
             return results
 
-        # Step 4: Restart containers
-        # Note: We don't rebuild because code changes are live via volume mounts
-        # Rebuilding is only needed for dependency changes (requirements.txt)
-        success, message = self.restart_containers()
+        # Step 4: Restart containers (with optional rebuild for requirements.txt changes)
+        success, message = self.restart_containers(rebuild=rebuild)
         results["restart"] = {
             "status": "success" if success else "failed",
             "message": message

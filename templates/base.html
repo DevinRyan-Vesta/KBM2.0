@@ -243,6 +243,12 @@
         gap: 12px;
       }
 
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
       /* Global search */
       .global-search {
         position: relative;
@@ -1010,8 +1016,8 @@
 
       <div class="content">
         <header class="topbar">
-          <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Toggle menu">☰</button>
-          <div class="topbar-actions">
+          <div class="topbar-left">
+            <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Toggle menu">☰</button>
             {% if current_user.is_authenticated and not is_root_domain %}
               <form class="global-search" id="global-search" role="search"
                     action="{{ url_for('search.search') }}" method="get" autocomplete="off">
@@ -1020,13 +1026,15 @@
                   type="search"
                   name="q"
                   class="global-search-input"
-                  placeholder="Search keys, lockboxes, properties, contacts…"
+                  placeholder="Search for anything…"
                   aria-label="Global search"
                   autocomplete="off">
                 <div class="global-search-dropdown" role="listbox" aria-label="Search suggestions"></div>
               </form>
-              <span class="muted text-small">{{ current_user.email }}</span>
-            {% elif current_user.is_authenticated %}
+            {% endif %}
+          </div>
+          <div class="topbar-actions">
+            {% if current_user.is_authenticated %}
               <span class="muted text-small">{{ current_user.email }}</span>
             {% endif %}
           </div>
