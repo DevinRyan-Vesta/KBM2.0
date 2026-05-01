@@ -78,6 +78,17 @@ def create_app():
             master_db.create_all()
             print("Master database schema created")
 
+    # 6a) Apply pending tenant DB schema upgrades. Idempotent: each upgrade
+    # checks whether its column/table is already present and only acts if
+    # missing. Safe to run on every boot. See utilities/tenant_schema.py.
+    try:
+        from utilities.tenant_schema import upgrade_all_tenant_dbs
+        upgrade_all_tenant_dbs(app.config.get("TENANT_DATA_DIR", "tenant_dbs"))
+    except Exception as e:
+        # Don't crash startup on migration trouble — just log loudly so the
+        # operator can fix it. The relevant column will be missing until then.
+        print(f"WARNING: tenant DB schema upgrade failed: {e}")
+
     # 7) Register blueprints
     # Root domain blueprints (signup, app admin)
     app.register_blueprint(accounts_bp, url_prefix="/accounts")
