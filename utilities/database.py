@@ -305,8 +305,12 @@ class ItemCheckout(db.Model):
     item_id = db.Column(db.Integer, db.ForeignKey("items.id", ondelete="CASCADE"), nullable=False, index=True)
     item = db.relationship("Item", backref="checkouts")
 
-    # Who has it
+    # Who has it. checked_out_to is always populated (display name / free text);
+    # contact_id is the structured link when the recipient was picked from a
+    # Contact record. Either may be present without the other.
     checked_out_to = db.Column(db.String(255), nullable=False)  # Name or company
+    contact_id = db.Column(db.Integer, db.ForeignKey("contacts.id", ondelete="SET NULL"), nullable=True, index=True)
+    contact = db.relationship("Contact", foreign_keys=[contact_id])
     # In multi-tenant setup, user IDs reference MasterUser in master DB
     checked_out_by_id = db.Column(db.Integer, nullable=True)
 

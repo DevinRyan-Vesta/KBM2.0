@@ -46,6 +46,23 @@ def _apply_optional_location_and_address(item: Item, location_raw: Optional[str]
         address_clean = address_raw.strip()
         item.address = address_clean or None
 
+def _form_contact_id(raw: Optional[str]) -> Optional[int]:
+    """Parse a `contact_id` form value and validate it points at a real
+    Contact in the current tenant. Returns the int id or None — never
+    raises. Bad / missing / unknown ids are treated as "no contact link"."""
+    if not raw:
+        return None
+    try:
+        cid = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if cid <= 0:
+        return None
+    from utilities.database import Contact
+    contact = get_tenant_session().get(Contact, cid)
+    return contact.id if contact else None
+
+
 def _get_redirect_url(default_url: str) -> str:
     """Get redirect URL from request, defaulting to provided URL"""
     next_url = request.form.get('next') or request.args.get('next')
@@ -1179,6 +1196,7 @@ def checkout_key(item_id):
 
     purpose = (request.form.get("purpose") or "").strip()
     checked_out_to = (request.form.get("checked_out_to") or "").strip()
+    contact_id = _form_contact_id(request.form.get("contact_id"))
     expected_return_str = (request.form.get("expected_return_date") or "").strip()
     expected_return_date = None
     if expected_return_str:
@@ -1203,6 +1221,7 @@ def checkout_key(item_id):
     checkout_record = ItemCheckout(
         item_id=key.id,
         checked_out_to=checked_out_to,
+        contact_id=contact_id,
         checked_out_by_id=getattr(current_user, "id", None),
         quantity=copies,
         purpose=purpose or None,
@@ -1229,16 +1248,10 @@ def checkout_key(item_id):
     tenant_commit()
     flash(f"Checked out {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label}.", "success")
 
-    # Fire-and-forget: email the recipient if a matching Contact has an email
+    # Fire-and-forget: email the recipient if we have a contact link or a
+    # matching Contact name with an email on file.
     from utilities.email import notify_checkout
-    notify_checkout(
-        item=key,
-        recipient_name=checked_out_to,
-        checkout_id=checkout_record.id,
-        quantity=copies,
-        purpose=purpose,
-        expected_return_date=expected_return_date,
-    )
+    notify_checkout(checkout_record)
 
     # Redirect back to keys page with receipt_id to trigger modal
     return redirect(url_for('inventory.list_keys', receipt_id=checkout_record.id))
@@ -1348,6 +1361,7 @@ def assign_key(item_id):
     assignment_record = ItemCheckout(
         item_id=key.id,
         checked_out_to=assigned_to,
+        contact_id=_form_contact_id(request.form.get("contact_id")),
         checked_out_by_id=getattr(current_user, "id", None),
         quantity=copies,
         assignment_type=assignment_type,
@@ -1377,16 +1391,10 @@ def assign_key(item_id):
     tenant_commit()
     flash(f"Assigned {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label} to {assigned_to}.", "success")
 
-    # Fire-and-forget: email the recipient if a matching Contact has an email
+    # Fire-and-forget: email the recipient if we have a contact link or a
+    # matching Contact name with an email on file.
     from utilities.email import notify_checkout
-    notify_checkout(
-        item=key,
-        recipient_name=assigned_to,
-        checkout_id=assignment_record.id,
-        quantity=copies,
-        purpose=f"Assignment ({assignment_type})" if assignment_type else None,
-        expected_return_date=expected_return_date,
-    )
+    notify_checkout(assignment_record)
 
     # Redirect back to keys page with receipt_id to trigger modal
     return redirect(url_for('inventory.list_keys', receipt_id=assignment_record.id))
@@ -1485,17 +1493,11 @@ def checkin_key(item_id):
     tenant_commit()
     flash(f"Checked in {copies} cop{'y' if copies == 1 else 'ies'} of key {key.label}.", "success")
 
-    # Fire-and-forget: email the recipient if a matching Contact has an email.
-    # Only meaningful when we have an actual checkout record we can reference.
+    # Fire-and-forget: email the recipient if a contact link exists, or a
+    # matching Contact name has an email on file.
     if checkout_id_str and 'checkout' in locals() and checkout is not None:
         from utilities.email import notify_checkin
-        notify_checkin(
-            item=key,
-            recipient_name=checked_out_to,
-            checkout_id=checkout.id,
-            quantity=copies,
-            checked_in_at=checkout.checked_in_at,
-        )
+        notify_checkin(checkout)
 
     return redirect(_get_redirect_url(default_redirect))
 

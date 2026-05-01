@@ -171,21 +171,27 @@ def _current_tenant_name() -> Optional[str]:
     return None
 
 
-def notify_checkout(
-    *,
-    item,
-    recipient_name: str,
-    checkout_id: int,
-    quantity: int = 1,
-    purpose: Optional[str] = None,
-    expected_return_date=None,
-    tenant_name: Optional[str] = None,
-) -> bool:
-    """Send a 'you've been issued an item' email to the named recipient if
-    they have a Contact record on file with an email."""
+def _resolve_recipient_email(checkout) -> Optional[str]:
+    """Find the email address to notify for a given ItemCheckout.
+
+    Prefers the directly-linked Contact (set when the recipient was picked
+    from the autocomplete). Falls back to a case-insensitive Contact-name
+    lookup for legacy checkouts that don't have contact_id set.
+    """
+    contact = getattr(checkout, "contact", None)
+    if contact is not None and contact.email and contact.email.strip():
+        return contact.email.strip()
+    return lookup_contact_email(getattr(checkout, "checked_out_to", "") or "")
+
+
+def notify_checkout(checkout, *, tenant_name: Optional[str] = None) -> bool:
+    """Send a 'you've been issued an item' email for the given ItemCheckout."""
     if not is_configured():
         return False
-    email = lookup_contact_email(recipient_name)
+    item = checkout.item
+    if item is None:
+        return False
+    email = _resolve_recipient_email(checkout)
     if not email:
         return False
     try:
@@ -193,36 +199,30 @@ def notify_checkout(
             to=email,
             template_name="checkout",
             subject=f"Item issued: {item.label}",
-            recipient_name=recipient_name,
+            recipient_name=checkout.checked_out_to or "",
             tenant_name=tenant_name or _current_tenant_name(),
             item_label=item.label,
             item_custom_id=item.custom_id,
             item_type=item.type,
             item_address=item.address,
-            quantity=quantity,
-            purpose=purpose,
-            expected_return_date=expected_return_date,
-            checkout_id=checkout_id,
+            quantity=checkout.quantity or 1,
+            purpose=checkout.purpose,
+            expected_return_date=checkout.expected_return_date,
+            checkout_id=checkout.id,
         )
     except Exception:
-        log.exception("notify_checkout failed for item=%r recipient=%r", item.id, recipient_name)
+        log.exception("notify_checkout failed for checkout=%r", checkout.id)
         return False
 
 
-def notify_checkin(
-    *,
-    item,
-    recipient_name: str,
-    checkout_id: int,
-    quantity: int = 1,
-    checked_in_at=None,
-    tenant_name: Optional[str] = None,
-) -> bool:
-    """Send a 'return confirmed' email to the named recipient if they have
-    a Contact record with an email."""
+def notify_checkin(checkout, *, tenant_name: Optional[str] = None) -> bool:
+    """Send a 'return confirmed' email for the given ItemCheckout."""
     if not is_configured():
         return False
-    email = lookup_contact_email(recipient_name)
+    item = checkout.item
+    if item is None:
+        return False
+    email = _resolve_recipient_email(checkout)
     if not email:
         return False
     try:
@@ -230,34 +230,28 @@ def notify_checkin(
             to=email,
             template_name="checkin",
             subject=f"Return confirmed: {item.label}",
-            recipient_name=recipient_name,
+            recipient_name=checkout.checked_out_to or "",
             tenant_name=tenant_name or _current_tenant_name(),
             item_label=item.label,
             item_custom_id=item.custom_id,
             item_type=item.type,
-            quantity=quantity,
-            checked_in_at=checked_in_at,
-            checkout_id=checkout_id,
+            quantity=checkout.quantity or 1,
+            checked_in_at=checkout.checked_in_at,
+            checkout_id=checkout.id,
         )
     except Exception:
-        log.exception("notify_checkin failed for item=%r recipient=%r", item.id, recipient_name)
+        log.exception("notify_checkin failed for checkout=%r", checkout.id)
         return False
 
 
-def notify_overdue(
-    *,
-    item,
-    recipient_name: str,
-    checkout_id: int,
-    expected_return_date,
-    days_overdue: int,
-    quantity: int = 1,
-    tenant_name: Optional[str] = None,
-) -> bool:
-    """Send a 'this item is overdue' reminder. Used by the daily cron runner."""
+def notify_overdue(checkout, days_overdue: int, *, tenant_name: Optional[str] = None) -> bool:
+    """Send an 'item is overdue' reminder for the given ItemCheckout."""
     if not is_configured():
         return False
-    email = lookup_contact_email(recipient_name)
+    item = checkout.item
+    if item is None:
+        return False
+    email = _resolve_recipient_email(checkout)
     if not email:
         return False
     try:
@@ -265,17 +259,17 @@ def notify_overdue(
             to=email,
             template_name="overdue",
             subject=f"Overdue: {item.label}",
-            recipient_name=recipient_name,
+            recipient_name=checkout.checked_out_to or "",
             tenant_name=tenant_name,
             item_label=item.label,
             item_custom_id=item.custom_id,
             item_type=item.type,
             item_address=item.address,
-            quantity=quantity,
-            expected_return_date=expected_return_date,
+            quantity=checkout.quantity or 1,
+            expected_return_date=checkout.expected_return_date,
             days_overdue=days_overdue,
-            checkout_id=checkout_id,
+            checkout_id=checkout.id,
         )
     except Exception:
-        log.exception("notify_overdue failed for item=%r recipient=%r", item.id, recipient_name)
+        log.exception("notify_overdue failed for checkout=%r", checkout.id)
         return False

@@ -57,30 +57,33 @@
     top: 100%;
     left: 0;
     right: 0;
-    background: var(--color-surface, #fff);
-    border: 1px solid var(--color-border, #ddd);
+    background: var(--color-card);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
     border-radius: 8px;
     max-height: 200px;
     overflow-y: auto;
     z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     margin-top: 4px;
   }
   .autocomplete-item {
     padding: 10px 14px;
     cursor: pointer;
-    border-bottom: 1px solid var(--color-border, #eee);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
   }
   .autocomplete-item:last-child {
     border-bottom: none;
   }
   .autocomplete-item:hover,
   .autocomplete-item.selected {
-    background: rgba(229, 57, 53, 0.08);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
   }
   .autocomplete-name {
     font-weight: 600;
-    color: var(--color-text, #333);
+    color: inherit;
   }
   .autocomplete-meta {
     font-size: 12px;
@@ -539,6 +542,18 @@
       dropdown.className = 'autocomplete-dropdown';
       dropdown.style.display = 'none';
       wrapper.appendChild(dropdown);
+
+      // Hidden field that holds the picked contact's id (when one was
+      // selected from the dropdown). Cleared if the user edits the visible
+      // input afterwards, so the id can never be stale.
+      if (field.autocomplete === 'contacts') {
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'contact_id';
+        hidden.className = 'autocomplete-hidden-id';
+        hidden.value = '';
+        wrapper.appendChild(hidden);
+      }
     }
     
     if (field.help) {
@@ -683,43 +698,49 @@
     
     const dropdown = wrapper.querySelector('.autocomplete-dropdown');
     if (!dropdown) return;
-    
+    const hiddenId = wrapper.querySelector('.autocomplete-hidden-id');
+
     let debounceTimer;
     let selectedIndex = -1;
-    
+
     input.addEventListener('input', (e) => {
+      // Any keystroke after picking invalidates the previously chosen contact
+      // id — otherwise we could ship a stale id with an edited display name.
+      if (hiddenId) hiddenId.value = '';
+
       clearTimeout(debounceTimer);
       const query = e.target.value.trim();
-      
+
       if (query.length < 2) {
         dropdown.style.display = 'none';
         return;
       }
-      
+
       debounceTimer = setTimeout(async () => {
         try {
           const response = await fetch(`/contacts/search?q=${encodeURIComponent(query)}`);
           const contacts = await response.json();
-          
+
           if (contacts.length === 0) {
             dropdown.style.display = 'none';
             return;
           }
-          
+
           dropdown.innerHTML = contacts.map((contact, index) => `
-            <div class="autocomplete-item" data-index="${index}" data-name="${contact.name}" data-contact-type="${contact.contact_type}">
+            <div class="autocomplete-item" data-index="${index}" data-id="${contact.id}" data-name="${contact.name}" data-contact-type="${contact.contact_type || ''}">
               <div class="autocomplete-name">${contact.name}</div>
               <div class="autocomplete-meta">${contact.company || contact.email || ''}</div>
             </div>
           `).join('');
-          
+
           dropdown.style.display = 'block';
           selectedIndex = -1;
-          
+
           // Add click handlers
           dropdown.querySelectorAll('.autocomplete-item').forEach((item) => {
             item.addEventListener('click', () => {
               input.value = item.dataset.name;
+              if (hiddenId) hiddenId.value = item.dataset.id || '';
               dropdown.style.display = 'none';
               
               // Auto-select assignment type based on contact type
@@ -845,6 +866,7 @@
         submitAction(actionUrl, {
           copies: copies,
           assigned_to: assignedTo,
+          contact_id: (formData.get('contact_id') || '').toString(),
           assignment_type: assignmentType,
           expected_return_date: expectedReturn,
           property_id: propertyId,

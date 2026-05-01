@@ -62,17 +62,12 @@ def run_for_tenant(account: Account) -> tuple[int, int]:
 
     overdue_total = len(overdue)
     for checkout in overdue:
-        item = checkout.item
-        if not item:
+        if not checkout.item:
             continue
         days = max(1, (now - checkout.expected_return_date).days)
         ok = notify_overdue(
-            item=item,
-            recipient_name=checkout.checked_out_to or "",
-            checkout_id=checkout.id,
-            expected_return_date=checkout.expected_return_date,
+            checkout,
             days_overdue=days,
-            quantity=checkout.quantity or 1,
             tenant_name=account.company_name or account.subdomain,
         )
         if ok:

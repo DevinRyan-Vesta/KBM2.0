@@ -66,19 +66,25 @@ SMTP_USE_STARTTLS=true
 
 ## How recipient lookup works
 
-When an item is checked out / assigned / checked in, the recipient is stored
-as a free-text name (e.g. `Tracy Smith`). To find that person's email, the
-app does a case-insensitive lookup against the **Contacts** table for the
-current tenant: `Contact.name ILIKE '<name>'`.
+The Assign-key form has a Contact autocomplete. When you pick a contact from
+the dropdown, the checkout record is linked to that Contact via a foreign
+key (`item_checkouts.contact_id`), and the email goes straight to that
+contact's `email` field.
 
-- If a Contact exists with that exact name and has an email → email sent.
-- If no Contact exists, or no email on file → silently skipped (no error).
+If you type a name without picking from the dropdown — or for legacy
+checkouts created before this feature — the app falls back to a
+case-insensitive lookup against the Contacts table (`Contact.name ILIKE`),
+so existing data still works.
 
-So: to get email working for a tenant, **make sure the people you check items
-out to are in Contacts with their email filled in**.
+Either way:
 
-A future enhancement could let you pick a Contact directly during checkout
-(rather than typing a name), eliminating the fuzzy-match step.
+- If a contact (linked or matched by name) has an email → email sent.
+- If no contact link, no name match, or no email on file → silently
+  skipped (no error).
+
+So: to get email working for a tenant, **add the recipient as a Contact
+with their email filled in, and pick them from the autocomplete when
+assigning items.**
 
 ---
 
