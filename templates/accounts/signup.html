@@ -8,8 +8,17 @@
         <h1 class="text-3xl font-bold mb-2 text-gray-800">Create Your Company Account</h1>
         <p class="text-gray-600 mb-6">Start managing your keys, lockboxes, and signs today</p>
 
-        <form method="POST" id="signup-form" class="space-y-6">
+        <form method="POST" id="signup-form" class="space-y-6" autocomplete="on">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <!--
+              Honeypot: hidden from humans, often filled by spam bots that
+              auto-complete every input. Server rejects any submission with
+              this populated. Real users never see or touch it.
+            -->
+            <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+                <label for="website">Website (leave blank)</label>
+                <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+            </div>
             <!-- Company Information -->
             <div class="border-b pb-4">
                 <h2 class="text-xl font-semibold mb-4 text-gray-700">Company Information</h2>

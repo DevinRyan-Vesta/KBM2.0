@@ -25,6 +25,18 @@
     color: var(--color-text);
     padding: 8px;
   }
+  .bulk-bar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border: 1px solid var(--color-accent);
+    background: var(--color-accent-soft);
+    border-radius: 10px;
+  }
+  .bulk-bar.is-visible { display: flex; }
+  .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 </style>
 
 <div class="page-header">
@@ -35,6 +47,7 @@
   <form method="GET" class="toolbar">
     <select name="status" class="form-field" style="max-width: 200px;">
       <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+      <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending Approval</option>
       <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
       <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspended</option>
       <option value="deleted" {% if status_filter == 'deleted' %}selected{% endif %}>Deleted</option>
@@ -46,48 +59,137 @@
   </form>
 </div>
 
-<div class="card table-card">
-  <table>
-    <thead>
-      <tr>
-        <th>Company</th>
-        <th>Subdomain</th>
-        <th>Status</th>
-        <th>Users</th>
-        <th>Created</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for account in accounts %}
-      <tr>
-        <td>{{ account.company_name }}</td>
-        <td class="meta-cell">{{ account.subdomain }}</td>
-        <td>
-          {% if account.status == 'active' %}
-          <span class="tag ok">Active</span>
-          {% elif account.status == 'suspended' %}
-          <span class="tag warn">Suspended</span>
-          {% else %}
-          <span class="tag warn">{{ account.status }}</span>
-          {% endif %}
-        </td>
-        <td>{{ account.users|length }}</td>
-        <td class="text-small">{{ account.created_at.strftime('%Y-%m-%d') }}</td>
-        <td>
-          <a href="{{ url_for('app_admin.view_account', account_id=account.id) }}" class="btn small">
-            View
-          </a>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="6" class="empty-state">
-          No accounts found
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<form id="bulk-form" method="POST" action="{{ url_for('app_admin.bulk_delete_accounts') }}"
+      onsubmit="return confirmBulkDelete()">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+  <div class="bulk-bar" id="bulk-bar">
+    <strong><span id="bulk-count">0</span> selected</strong>
+    <button type="submit" class="btn danger small">Delete selected</button>
+    <button type="button" class="btn ghost small" onclick="clearSelection()">Clear</button>
+  </div>
+
+  <div class="card table-card">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 36px;">
+            <input type="checkbox" id="select-all" onchange="toggleAll(this)">
+          </th>
+          <th>Company</th>
+          <th>Subdomain</th>
+          <th>Status</th>
+          <th>Users</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for account in accounts %}
+        <tr>
+          <td>
+            <input type="checkbox" name="account_ids" value="{{ account.id }}"
+                   class="row-check" onchange="updateBulkBar()">
+          </td>
+          <td>{{ account.company_name }}</td>
+          <td class="meta-cell">{{ account.subdomain }}</td>
+          <td>
+            {% if account.status == 'active' %}
+              <span class="tag ok">Active</span>
+            {% elif account.status == 'pending' %}
+              <span class="tag warn">Pending</span>
+            {% elif account.status == 'suspended' %}
+              <span class="tag warn">Suspended</span>
+            {% else %}
+              <span class="tag warn">{{ account.status }}</span>
+            {% endif %}
+          </td>
+          <td>{{ account.users|length }}</td>
+          <td class="text-small">{{ account.created_at.strftime('%Y-%m-%d') }}</td>
+          <td>
+            <div class="row-actions">
+              <a href="{{ url_for('app_admin.view_account', account_id=account.id) }}" class="btn small">View</a>
+              {% if account.status == 'pending' %}
+                <button type="button" class="btn small primary"
+                        onclick="approveAccount({{ account.id }}, '{{ account.subdomain }}')">Approve</button>
+              {% endif %}
+              <button type="button" class="btn small danger"
+                      onclick="deleteAccount({{ account.id }}, '{{ account.subdomain }}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="empty-state">
+            No accounts found
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+
+<script>
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  function selectedRows() {
+    return document.querySelectorAll('.row-check:checked');
+  }
+
+  function updateBulkBar() {
+    const n = selectedRows().length;
+    const bar = document.getElementById('bulk-bar');
+    document.getElementById('bulk-count').textContent = n;
+    bar.classList.toggle('is-visible', n > 0);
+
+    // Sync the header checkbox state
+    const all = document.querySelectorAll('.row-check');
+    const allChecked = all.length > 0 && n === all.length;
+    document.getElementById('select-all').checked = allChecked;
+  }
+
+  function toggleAll(box) {
+    document.querySelectorAll('.row-check').forEach(cb => { cb.checked = box.checked; });
+    updateBulkBar();
+  }
+
+  function clearSelection() {
+    document.querySelectorAll('.row-check').forEach(cb => { cb.checked = false; });
+    document.getElementById('select-all').checked = false;
+    updateBulkBar();
+  }
+
+  function confirmBulkDelete() {
+    const n = selectedRows().length;
+    if (n === 0) return false;
+    return confirm(`Delete ${n} account${n === 1 ? '' : 's'} permanently? This drops the tenant database file too. Cannot be undone.`);
+  }
+
+  function postForm(action, fields) {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = action;
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden'; csrf.name = 'csrf_token'; csrf.value = csrfToken;
+    form.appendChild(csrf);
+    Object.entries(fields).forEach(([k, v]) => {
+      const i = document.createElement('input');
+      i.type = 'hidden'; i.name = k; i.value = v;
+      form.appendChild(i);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function deleteAccount(id, subdomain) {
+    if (!confirm(`Permanently delete "${subdomain}"? This drops the tenant database file too. Cannot be undone.`)) return;
+    postForm(`/admin/accounts/${id}/delete`, { confirmed: 'quick' });
+  }
+
+  function approveAccount(id, subdomain) {
+    if (!confirm(`Approve "${subdomain}"? Its admin will be able to log in.`)) return;
+    postForm(`/admin/accounts/${id}/approve`, {});
+  }
+</script>
 {% endblock %}

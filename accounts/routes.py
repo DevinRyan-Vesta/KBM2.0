@@ -2,23 +2,49 @@
 Account signup and management routes.
 """
 
+import logging
+import re
+
 from flask import render_template, request, redirect, url_for, flash, current_app
 from . import accounts_bp
+from utilities.extensions import limiter
 from utilities.master_database import master_db, Account, MasterUser
 from utilities.tenant_manager import tenant_manager
 from middleware.tenant_middleware import root_domain_only
-import re
+
+log = logging.getLogger(__name__)
 
 
 @accounts_bp.route('/signup', methods=['GET', 'POST'])
 @root_domain_only
+@limiter.limit("3 per hour; 10 per day", methods=["POST"])
 def signup():
     """
     Company account signup form.
     Creates a new account, database, and first admin user.
+
+    New accounts land as status='pending' and require app-admin approval
+    before they can be used. This means even if a bot squeaks past the
+    honeypot + rate limit, the resulting account is unusable until a
+    human approves it.
     """
     if request.method == 'GET':
         return render_template('accounts/signup.html')
+
+    # ------------------------------------------------------------------
+    # Bot prevention layer 1: honeypot.
+    # The signup form has a hidden 'website' field that's invisible to
+    # humans (CSS-hidden). Bots that auto-fill every input will populate
+    # it. If we see a value, drop the request and pretend it succeeded
+    # so the bot doesn't retry.
+    # ------------------------------------------------------------------
+    if request.form.get('website', '').strip():
+        log.info("signup blocked by honeypot from %s", request.remote_addr)
+        flash('Account created. Awaiting administrator approval.', 'success')
+        return redirect(url_for('accounts.signup'))
+
+    # Bot prevention layer 2 — rate limit — is applied via the
+    # @limiter.limit decorator on this route (3/hour, 10/day per IP).
 
     # Process signup form
     subdomain = request.form.get('subdomain', '').lower().strip()
@@ -70,11 +96,14 @@ def signup():
                              admin_email=admin_email)
 
     try:
-        # Create account
+        # New accounts land as pending — an app admin must approve before
+        # the subdomain becomes usable. Until then, the tenant middleware
+        # blocks logins (returns 403) and the account shows up in the
+        # "Pending Approval" filter on the admin dashboard.
         account = Account(
             subdomain=subdomain,
             company_name=company_name,
-            status='active'
+            status='pending'
         )
 
         # Get database path
@@ -99,14 +128,14 @@ def signup():
         master_db.session.add(admin_user)
         master_db.session.commit()
 
-        flash(f'Account created successfully! Welcome to {company_name}!', 'success')
-
-        # Redirect to tenant subdomain
-        base_domain = current_app.config.get('BASE_DOMAIN', 'localhost:5000')
-        protocol = 'http' if 'localhost' in base_domain else 'https'
-        redirect_url = f"{protocol}://{subdomain}.{base_domain}/"
-
-        return redirect(redirect_url)
+        # Don't redirect to the subdomain — the account isn't active yet.
+        # Show a confirmation page so the user knows what to expect.
+        return render_template(
+            'accounts/signup_pending.html',
+            company_name=company_name,
+            subdomain=subdomain,
+            admin_email=admin_email,
+        )
 
     except Exception as e:
         master_db.session.rollback()

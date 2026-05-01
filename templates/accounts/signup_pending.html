@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Account submitted — KBM{% endblock %}
+
+{% block content %}
+<div class="form-shell">
+  <div class="card form-card text-center">
+    <h1 style="margin-bottom: 8px;">Account submitted</h1>
+    <p class="muted" style="margin: 0 0 24px;">
+      Awaiting administrator approval before <strong>{{ subdomain }}</strong> goes live.
+    </p>
+
+    <div style="text-align: left; max-width: 520px; margin: 0 auto;">
+      <div class="info-grid" style="grid-template-columns: 1fr;">
+        <div class="info-item">
+          <div class="info-label">Company</div>
+          <div class="info-value">{{ company_name }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Subdomain</div>
+          <div class="info-value">{{ subdomain }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Admin email</div>
+          <div class="info-value">{{ admin_email }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <p class="text-small muted">
+      You'll be able to log in once an administrator approves your account.
+      No further action is needed on your end.
+    </p>
+  </div>
+</div>
+{% endblock %}
