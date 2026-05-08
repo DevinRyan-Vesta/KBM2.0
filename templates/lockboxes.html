@@ -557,9 +557,9 @@
   </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/modals.js') }}"></script>
-<script src="{{ url_for('static', filename='js/item_actions.js') }}"></script>
 <script>
+  // Must be set BEFORE item_actions.js loads — that script is an IIFE
+  // that reads window.kbmItemDetails on parse and bails out if missing.
   window.kbmItemDetails = {
     itemType: 'lockbox',
     statusOptions: {{ status_options | tojson }},
@@ -568,5 +568,6 @@
     activeCheckoutsUrl: null
   };
 </script>
+<script src="{{ url_for('static', filename='js/item_actions.js') }}"></script>
 
 {% endblock %}
