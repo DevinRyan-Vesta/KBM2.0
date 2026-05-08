@@ -233,23 +233,24 @@
             </td>
             <td>
               <div class="row-buttons">
-                {% if viewer_role in ['admin', 'owner', 'staff'] %}
-                  <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'edit')">Edit</button>
-
-                  {% if st_lower == 'available' %}
-                    <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'assign')">Assign</button>
-                    <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'checkout')">Checkout</button>
-                  {% elif st_lower == 'assigned' %}
-                    <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'unassign')">Unassign</button>
-                  {% elif st_lower == 'checked_out' %}
-                    <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'checkin')">Checkin</button>
-                  {% endif %}
-
-                  {% if viewer_role in ['admin', 'owner'] %}
-                    <a class="btn xsmall danger" href="{{ url_for('inventory.delete_lockbox', item_id=lb.id) }}" onclick="return confirm('Delete this lockbox?')">Delete</a>
-                  {% endif %}
-                {% else %}
-                  <a class="btn xsmall" href="{{ url_for('inventory.item_details', item_id=lb.id) }}">View</a>
+                {# Row buttons just take you to the lockbox's detail page,
+                   which has working Edit / Assign / Check In / Check Out
+                   buttons (wired via item_actions.js + the class-based
+                   .js-*-action handlers). The previous inline buttons
+                   referenced a removed openItemActionModal() function
+                   and were silently broken — and they showed an
+                   "Unassign" label that doesn't match the actual flow
+                   (returning an assigned lockbox is just Check In). #}
+                <a class="btn xsmall primary" href="{{ url_for('inventory.item_details', item_id=lb.id) }}">
+                  {% if viewer_role in ['admin', 'owner', 'staff'] %}Manage{% else %}View{% endif %}
+                </a>
+                {% if viewer_role in ['admin', 'owner'] %}
+                  <form method="POST" action="{{ url_for('inventory.delete_lockbox', item_id=lb.id) }}"
+                        style="display: inline;"
+                        onsubmit="return confirm('Delete lockbox &quot;{{ lb.label|e }}&quot;? This cannot be undone.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn xsmall danger">Delete</button>
+                  </form>
                 {% endif %}
               </div>
             </td>
