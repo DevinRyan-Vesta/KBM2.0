@@ -233,23 +233,79 @@
             </td>
             <td>
               <div class="row-buttons">
+                {# Row buttons reuse the shared item_actions.js modal flow
+                   (.js-*-action handlers). data-redirect keeps you on the
+                   list after submit instead of bouncing to the detail page.
+                   Check Out vs. Check In flips on status. Maintenance/
+                   retired rows only get Edit. #}
                 {% if viewer_role in ['admin', 'owner', 'staff'] %}
-                  <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'edit')">Edit</button>
+                  <button type="button" class="btn xsmall js-edit-action"
+                    data-item-id="{{ lb.id }}"
+                    data-item-type="lockbox"
+                    data-action="{{ url_for('inventory.edit_lockbox', item_id=lb.id) }}"
+                    data-label="{{ lb.label|e }}"
+                    data-location="{{ lb.location|default('', true)|e }}"
+                    data-address="{{ lb.address|default('', true)|e }}"
+                    data-property-id="{{ lb.property_id or '' }}"
+                    data-code-current="{{ lb.code_current|default('', true)|e }}"
+                    data-code-previous="{{ lb.code_previous|default('', true)|e }}"
+                    data-status="{{ lb.status or '' }}"
+                    data-assigned-to="{{ lb.assigned_to|default('', true)|e }}"
+                    data-redirect="{{ url_for('inventory.list_lockboxes') }}"
+                    data-redirect-anchor="edit-{{ lb.id }}">
+                    Edit
+                  </button>
 
                   {% if st_lower == 'available' %}
-                    <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'assign')">Assign</button>
-                    <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'checkout')">Checkout</button>
-                  {% elif st_lower == 'assigned' %}
-                    <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'unassign')">Unassign</button>
-                  {% elif st_lower == 'checked_out' %}
-                    <button class="btn xsmall" onclick="openItemActionModal({{ lb.id }}, 'checkin')">Checkin</button>
+                    <button type="button" class="btn xsmall primary js-checkout-action"
+                      data-item-id="{{ lb.id }}"
+                      data-item-type="lockbox"
+                      data-action="{{ url_for('inventory.checkout_lockbox', item_id=lb.id) }}"
+                      data-label="{{ lb.label|e }}"
+                      data-location="{{ lb.location|default('', true)|e }}"
+                      data-address="{{ lb.address|default('', true)|e }}"
+                      data-assigned="{{ lb.assigned_to|default('', true)|e }}"
+                      data-redirect="{{ url_for('inventory.list_lockboxes') }}"
+                      data-redirect-anchor="checkout-{{ lb.id }}">
+                      Check Out
+                    </button>
+                  {% elif st_lower in ['assigned', 'checked_out'] %}
+                    <button type="button" class="btn xsmall primary js-checkin-action"
+                      data-item-id="{{ lb.id }}"
+                      data-item-type="lockbox"
+                      data-action="{{ url_for('inventory.checkin_lockbox', item_id=lb.id) }}"
+                      data-label="{{ lb.label|e }}"
+                      data-location="{{ lb.location|default('', true)|e }}"
+                      data-address="{{ lb.address|default('', true)|e }}"
+                      data-redirect="{{ url_for('inventory.list_lockboxes') }}"
+                      data-redirect-anchor="checkin-{{ lb.id }}">
+                      Check In
+                    </button>
                   {% endif %}
 
-                  {% if viewer_role in ['admin', 'owner'] %}
-                    <a class="btn xsmall danger" href="{{ url_for('inventory.delete_lockbox', item_id=lb.id) }}" onclick="return confirm('Delete this lockbox?')">Delete</a>
+                  {% if st_lower in ['available', 'assigned', 'checked_out'] %}
+                    <button type="button" class="btn xsmall js-assign-action"
+                      data-item-id="{{ lb.id }}"
+                      data-item-type="lockbox"
+                      data-action="{{ url_for('inventory.assign_lockbox', item_id=lb.id) }}"
+                      data-label="{{ lb.label|e }}"
+                      data-property-id="{{ lb.property_id or '' }}"
+                      data-redirect="{{ url_for('inventory.list_lockboxes') }}"
+                      data-redirect-anchor="assign-{{ lb.id }}">
+                      Assign
+                    </button>
                   {% endif %}
                 {% else %}
                   <a class="btn xsmall" href="{{ url_for('inventory.item_details', item_id=lb.id) }}">View</a>
+                {% endif %}
+
+                {% if viewer_role in ['admin', 'owner'] %}
+                  <form method="POST" action="{{ url_for('inventory.delete_lockbox', item_id=lb.id) }}"
+                        style="display: inline;"
+                        onsubmit="return confirm('Delete lockbox &quot;{{ lb.label|e }}&quot;? This cannot be undone.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn xsmall danger">Delete</button>
+                  </form>
                 {% endif %}
               </div>
             </td>
