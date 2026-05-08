@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% block title %}Review Import - {{ item_type }} - KBM{% endblock %}
+
+{% block content %}
+{# This template renders the resolve/review wizard between column mapping
+   and the actual import. Server-side analysis hands us:
+     - analysis.stats: counts for the summary card
+     - analysis.duplicates: rows that match existing tenant items by label
+     - analysis.properties: unique property names with status (exact|fuzzy|missing)
+     - analysis.property_options: [(id, name)] for the "use existing" dropdown
+   The form posts back to process_url where _parse_resolution_form picks up
+   the user's decisions. #}
+
+{% set stats = analysis.stats %}
+{% set duplicates = analysis.duplicates %}
+{% set properties = analysis.properties %}
+{% set property_options = analysis.property_options %}
+
+<style>
+  .resolve-shell { max-width: 1100px; margin: 0 auto; }
+  .stats-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-tile {
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+  }
+  .stat-tile .label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-muted);
+    margin-bottom: 6px;
+  }
+  .stat-tile .value {
+    font-size: 24px;
+    font-weight: 600;
+  }
+  .stat-tile.success { background: rgba(74, 222, 128, 0.06); border-color: rgba(74, 222, 128, 0.3); }
+  .stat-tile.warning { background: rgba(251, 191, 36, 0.06); border-color: rgba(251, 191, 36, 0.3); }
+  .stat-tile.danger  { background: rgba(229, 57, 53, 0.06); border-color: rgba(229, 57, 53, 0.3); }
+
+  .resolve-section {
+    margin-bottom: 28px;
+    padding: 18px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-card);
+  }
+  .resolve-section h2 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+  }
+  .resolve-section .muted-note {
+    color: var(--color-muted);
+    font-size: 13px;
+    margin: 0 0 14px 0;
+  }
+  .bulk-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    border-radius: 8px;
+    background: rgba(148, 163, 184, 0.06);
+    border: 1px solid var(--color-border);
+  }
+  .bulk-bar .label { font-size: 13px; align-self: center; margin-right: 8px; color: var(--color-muted); }
+
+  .resolve-row {
+    padding: 12px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: rgba(148, 163, 184, 0.03);
+  }
+  .resolve-row .row-title {
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .resolve-row .row-detail {
+    font-size: 13px;
+    color: var(--color-muted);
+    margin-bottom: 10px;
+  }
+  .resolve-row .options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+  }
+  .resolve-row .options label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .resolve-row .options select {
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+    color: var(--color-text);
+    font-size: 13px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge.fuzzy   { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+  .badge.missing { background: rgba(229, 57, 53, 0.16); color: #f87171; }
+  .badge.dup     { background: rgba(96, 165, 250, 0.16); color: #60a5fa; }
+
+  .empty-note {
+    padding: 14px;
+    color: var(--color-muted);
+    font-style: italic;
+    text-align: center;
+  }
+
+  .footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 16px;
+    border-top: 1px solid var(--color-border);
+    margin-top: 12px;
+  }
+  .footer-actions .spacer { flex: 1; }
+</style>
+
+<div class="resolve-shell">
+  <div class="page-header">
+    <h1>Review Import — {{ item_type }}</h1>
+    <p class="muted">
+      Review duplicates and unmatched property names before importing.
+      {% if stats.exact_property_matches %}
+        {{ stats.exact_property_matches }} property name(s) matched existing properties exactly and will be linked automatically.
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="stats-card">
+    <div class="stat-tile success">
+      <span class="label">Ready to import</span>
+      <span class="value">{{ stats.ready_count }}</span>
+    </div>
+    <div class="stat-tile {{ 'warning' if stats.duplicate_count else '' }}">
+      <span class="label">Duplicates to review</span>
+      <span class="value">{{ stats.duplicate_count }}</span>
+    </div>
+    <div class="stat-tile {{ 'warning' if stats.needs_property_review else '' }}">
+      <span class="label">Properties to review</span>
+      <span class="value">{{ stats.needs_property_review }}</span>
+    </div>
+    {% if stats.in_file_dup_count %}
+      <div class="stat-tile danger">
+        <span class="label">In-file duplicates skipped</span>
+        <span class="value">{{ stats.in_file_dup_count }}</span>
+      </div>
+    {% endif %}
+    <div class="stat-tile">
+      <span class="label">Total rows in file</span>
+      <span class="value">{{ stats.total_rows_in_file }}</span>
+    </div>
+  </div>
+
+  <form method="post" action="{{ process_url }}" id="resolve-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+    {# ---- Duplicates section ---- #}
+    <section class="resolve-section">
+      <h2>Duplicates ({{ duplicates|length }})</h2>
+      <p class="muted-note">
+        These rows have a label that matches an existing {{ item_type|lower }} in your account.
+        Choose what to do for each — or use the bulk actions below.
+        <strong>Update</strong> overlays only non-empty fields from the file onto the existing record.
+        <strong>Replace</strong> overwrites every imported field, blanking out fields you didn't supply.
+        <strong>Skip</strong> leaves the existing record untouched.
+      </p>
+
+      {% if duplicates %}
+        <div class="bulk-bar">
+          <span class="label">Bulk:</span>
+          <button type="button" class="btn small" data-bulk="dup" data-value="skip">Skip all</button>
+          <button type="button" class="btn small" data-bulk="dup" data-value="update">Update all</button>
+          <button type="button" class="btn small" data-bulk="dup" data-value="replace">Replace all</button>
+        </div>
+
+        {% for d in duplicates %}
+          <div class="resolve-row">
+            <div class="row-title">
+              <span class="badge dup">Duplicate</span>
+              Row {{ d.row_idx }}: "{{ d.label }}"
+            </div>
+            <div class="row-detail">
+              already exists in your {{ item_type|lower }} (existing label: "{{ d.existing_label }}")
+            </div>
+            <div class="options">
+              <label>
+                <input type="radio" name="dup_action_{{ loop.index0 }}" value="skip" checked>
+                Skip
+              </label>
+              <label>
+                <input type="radio" name="dup_action_{{ loop.index0 }}" value="update">
+                Update (merge non-empty fields)
+              </label>
+              <label>
+                <input type="radio" name="dup_action_{{ loop.index0 }}" value="replace">
+                Replace (overwrite all fields)
+              </label>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-note">No duplicates detected.</div>
+      {% endif %}
+    </section>
+
+    {# ---- Properties section ---- #}
+    <section class="resolve-section">
+      <h2>Property Review ({{ properties|selectattr('status', 'in', ['fuzzy', 'missing'])|list|length }})</h2>
+      <p class="muted-note">
+        These property names from your file don't match an existing property exactly.
+        Choose to use a fuzzy-matched property, pick a different existing one, create a new property,
+        or leave the row's property unassigned.
+      </p>
+
+      {% set review_props = properties|selectattr('status', 'in', ['fuzzy', 'missing'])|list %}
+      {% if review_props %}
+        <div class="bulk-bar">
+          <span class="label">Bulk:</span>
+          <button type="button" class="btn small" data-bulk="prop-fuzzy" data-value="use_existing">Accept all fuzzy matches</button>
+          <button type="button" class="btn small" data-bulk="prop-missing" data-value="create_new">Create all missing</button>
+          <button type="button" class="btn small" data-bulk="prop" data-value="skip">Leave all unassigned</button>
+        </div>
+
+        {% for p in properties %}
+          {% if p.status in ('fuzzy', 'missing') %}
+            <div class="resolve-row" data-prop-status="{{ p.status }}">
+              <div class="row-title">
+                {% if p.status == 'fuzzy' %}
+                  <span class="badge fuzzy">Fuzzy {{ p.similarity }}%</span>
+                {% else %}
+                  <span class="badge missing">No match</span>
+                {% endif %}
+                "{{ p.name }}"
+              </div>
+              <div class="row-detail">
+                {% if p.status == 'fuzzy' %}
+                  Suggested: <strong>{{ p.matched_property_name }}</strong>
+                  {% if p.sample_address %}
+                    · file address: {{ p.sample_address }}
+                  {% endif %}
+                {% else %}
+                  Not found in your existing properties
+                  {% if p.sample_address %}
+                    · file address: {{ p.sample_address }}
+                  {% endif %}
+                {% endif %}
+                · first seen on row {{ p.first_row_idx }}
+              </div>
+              <div class="options">
+                <label>
+                  <input type="radio" name="prop_action_{{ loop.index0 }}" value="use_existing"
+                         {% if p.status == 'fuzzy' %}checked{% endif %}>
+                  {% if p.status == 'fuzzy' %}Use existing:{% else %}Pick existing:{% endif %}
+                  <select name="prop_existing_{{ loop.index0 }}" class="prop-existing-select">
+                    <option value="">-- select --</option>
+                    {% for opt_id, opt_name in property_options %}
+                      <option value="{{ opt_id }}"
+                              {% if p.status == 'fuzzy' and opt_id == p.matched_property_id %}selected{% endif %}>
+                        {{ opt_name }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </label>
+                <label>
+                  <input type="radio" name="prop_action_{{ loop.index0 }}" value="create_new"
+                         {% if p.status == 'missing' %}checked{% endif %}>
+                  Create new "{{ p.name }}"
+                </label>
+                <label>
+                  <input type="radio" name="prop_action_{{ loop.index0 }}" value="skip">
+                  Leave unassigned
+                </label>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="empty-note">All property names matched existing properties exactly.</div>
+      {% endif %}
+    </section>
+
+    {# ---- Auto-create units toggle ---- #}
+    <section class="resolve-section">
+      <h2>Units</h2>
+      <p class="muted-note">
+        Units on <em>newly-created</em> properties are auto-created from the file's unit labels.
+        Toggle below to also auto-create units on existing properties when an unmatched unit label appears.
+      </p>
+      <label style="display: inline-flex; gap: 8px; align-items: center; cursor: pointer;">
+        <input type="checkbox" name="auto_create_units" value="on">
+        Auto-create missing units for existing properties (off by default — safer)
+      </label>
+    </section>
+
+    <div class="footer-actions">
+      <a class="btn ghost" href="{{ cancel_url }}">Cancel</a>
+      <a class="btn ghost" href="{{ back_url }}">Back to mapping</a>
+      <span class="spacer"></span>
+      <button type="submit" class="btn primary">Confirm &amp; Import</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  // Bulk-action handlers
+  document.querySelectorAll('[data-bulk]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var bulkType = btn.dataset.bulk;
+      var value = btn.dataset.value;
+      var rows;
+
+      if (bulkType === 'dup') {
+        rows = document.querySelectorAll('input[type="radio"][name^="dup_action_"]');
+        rows.forEach(function (r) {
+          if (r.value === value) r.checked = true;
+        });
+      } else if (bulkType === 'prop') {
+        rows = document.querySelectorAll('input[type="radio"][name^="prop_action_"]');
+        rows.forEach(function (r) {
+          if (r.value === value) r.checked = true;
+        });
+      } else if (bulkType === 'prop-fuzzy') {
+        // Use the fuzzy suggestion (use_existing radio + the pre-selected dropdown value)
+        document.querySelectorAll('.resolve-row[data-prop-status="fuzzy"]').forEach(function (row) {
+          var radio = row.querySelector('input[type="radio"][value="use_existing"]');
+          if (radio) radio.checked = true;
+        });
+      } else if (bulkType === 'prop-missing') {
+        document.querySelectorAll('.resolve-row[data-prop-status="missing"]').forEach(function (row) {
+          var radio = row.querySelector('input[type="radio"][value="create_new"]');
+          if (radio) radio.checked = true;
+        });
+      }
+    });
+  });
+
+  // When user picks from the "use existing" dropdown, auto-check the use_existing radio
+  document.querySelectorAll('.prop-existing-select').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      if (!sel.value) return;
+      var name = sel.name.replace('prop_existing_', 'prop_action_');
+      var radio = document.querySelector('input[type="radio"][name="' + name + '"][value="use_existing"]');
+      if (radio) radio.checked = true;
+    });
+  });
+})();
+</script>
+{% endblock %}
