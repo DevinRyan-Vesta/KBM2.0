@@ -2,48 +2,14 @@
 {% block title %}Add Lockbox - KBM{% endblock %}
 
 {% block content %}
-<style>
-  .form-card .select-field {
-    position: relative;
-  }
-  .form-card .select-field select {
-    appearance: none;
-    width: 100%;
-    padding: 12px 44px 12px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.02));
-    color: var(--color-text);
-    font-size: 14px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  }
-  .form-card .select-field select:focus {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-soft);
-    background: linear-gradient(135deg, rgba(229, 57, 53, 0.12), rgba(148, 163, 184, 0.05));
-  }
-  .form-card .select-field select option {
-    background: var(--color-card);
-    color: var(--color-text);
-    padding: 8px;
-  }
-  .form-card .select-field::after {
-    content: "\25BC";
-    position: absolute;
-    top: 50%;
-    right: 14px;
-    transform: translateY(-50%);
-    font-size: 12px;
-    pointer-events: none;
-    color: var(--color-muted);
-  }
-</style>
-
 <div class="form-shell">
   <h2>Add Lockbox</h2>
+  <p class="muted text-small" style="margin-top: -6px;">
+    Property assignment happens after the lockbox exists — open the lockbox's
+    detail page and click Edit to attach it to a property.
+  </p>
   <form method="post" action="{{ url_for('inventory.add_lockbox') }}" class="card form-card">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="form-field">
       <label for="label">Label *</label>
       <input id="label" type="text" name="label" required placeholder="LB-001">
@@ -54,25 +20,15 @@
     </div>
     <div class="form-field">
       <label for="supra_id">Supra ID</label>
-      <input id="supra_id" type="text" name="supra_id" placeholder="Optional - for Supra lockboxes">
+      <input id="supra_id" type="text" name="supra_id" placeholder="Optional — for Supra lockboxes">
     </div>
     <div class="form-field">
       <label for="location">Location</label>
       <input id="location" type="text" name="location" placeholder="Front desk">
     </div>
-    <div class="form-field select-field">
-      <label for="property_id">Property</label>
-      <select id="property_id" name="property_id">
-        <option value="">-- Select Property --</option>
-        {% for prop in properties %}
-          <option value="{{ prop.id }}">{{ prop.display }}</option>
-        {% endfor %}
-      </select>
-      <small class="muted">Optional. Address will auto-fill when left blank.</small>
-    </div>
     <div class="form-field">
       <label for="address">Address</label>
-      <input id="address" type="text" name="address" placeholder="123 Main St">
+      <input id="address" type="text" name="address" placeholder="Optional — fill in if you already know where it'll go">
     </div>
 
     <div class="toolbar align-end">
@@ -81,28 +37,4 @@
     </div>
   </form>
 </div>
-
-<script>
-  (function() {
-    const propertyLookup = {{ property_lookup|default({})|tojson }};
-    const propertySelect = document.getElementById('property_id');
-    const addressInput = document.getElementById('address');
-
-    propertySelect.addEventListener('change', () => {
-      const details = propertyLookup[propertySelect.value] || null;
-      if (!details) {
-        return;
-      }
-      if (!addressInput.value) {
-        const parts = [
-          details.address_line1,
-          details.city,
-          details.state,
-          details.postal_code
-        ];
-        addressInput.value = parts.filter(Boolean).join(', ');
-      }
-    });
-  })();
-</script>
 {% endblock %}
