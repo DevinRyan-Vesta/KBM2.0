@@ -373,27 +373,12 @@ def bulk_assign():
 @login_required
 @tenant_required
 def add_lockbox():
-    properties = tenant_query(Property).order_by(Property.name.asc()).all()
+    """Create a new lockbox.
 
-    def _property_display(prop: Property) -> str:
-        address_bits = [prop.address_line1, prop.city, prop.state]
-        address = ", ".join([bit for bit in address_bits if bit])
-        return f"{prop.name} - {address}" if address else prop.name
-
-    property_choices: list[dict[str, str]] = []
-    property_lookup: dict[str, dict[str, str | None]] = {}
-    for prop in properties:
-        entry = {
-            "id": str(prop.id),
-            "display": _property_display(prop),
-            "address_line1": prop.address_line1,
-            "city": prop.city,
-            "state": prop.state,
-            "postal_code": prop.postal_code,
-        }
-        property_choices.append(entry)
-        property_lookup[entry["id"]] = entry
-
+    The Add form intentionally does NOT collect a property — assignment to
+    a property is a separate step you do from the lockbox's detail page
+    (Edit), so the create form stays focused on the physical lockbox itself.
+    """
     if request.method == "POST":
         label = (request.form.get("label") or "").strip()
         location = (request.form.get("location") or "").strip()
@@ -414,25 +399,6 @@ def add_lockbox():
             flash("Label is required.", "error")
             return redirect(url_for("inventory.add_lockbox"))
 
-        property_id_str = (request.form.get("property_id") or "").strip()
-        property_obj = None
-        if property_id_str:
-            try:
-                property_obj = get_tenant_session().get(Property, int(property_id_str))
-            except ValueError:
-                property_obj = None
-            if property_obj is None:
-                flash("Selected property could not be found.", "error")
-                return redirect(url_for("inventory.add_lockbox"))
-            if not address:
-                address_parts = [
-                    property_obj.address_line1,
-                    property_obj.city,
-                    property_obj.state,
-                    property_obj.postal_code,
-                ]
-                address = ", ".join([part for part in address_parts if part])
-
         # Generate custom ID
         custom_id = Item.generate_custom_id("Lockbox")
 
@@ -449,7 +415,6 @@ def add_lockbox():
             last_action="created",
             last_action_at=utc_now(),
             last_action_by_id=getattr(current_user, "id", None),
-            property_id=property_obj.id if property_obj else None,
         )
         tenant_add(item)
         tenant_flush()
@@ -464,19 +429,14 @@ def add_lockbox():
                 "address": item.address,
                 "code": code,
                 "supra_id": supra_id,
-                "property_id": property_obj.id if property_obj else None,
             },
             commit=False,
         )
         tenant_commit()
-        flash("Lockbox added.", "success")
+        flash("Lockbox added. Open the lockbox to assign it to a property.", "success")
         return redirect(url_for("inventory.list_lockboxes"))
 
-    return render_template(
-        "lockbox_add.html",
-        properties=property_choices,
-        property_lookup=property_lookup,
-    )
+    return render_template("lockbox_add.html")
 
 # --- Quick check out (requires entering current code) ---
 @inventory_bp.route("/lockboxes/<int:item_id>/checkout", methods=["POST"])
