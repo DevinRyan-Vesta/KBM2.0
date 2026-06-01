@@ -50,6 +50,43 @@ services:
       - ./middleware:/app/middleware
     networks:
       - appnet
+    # Traefik routing labels. Inert when Caddy is the proxy (Caddy ignores
+    # them). Picked up automatically when Traefik runs in this same compose
+    # network — either via the `traefik` profile below or via an external
+    # Traefik instance pointed at this docker socket.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=appnet"
+
+      # Backend service definition (one for all routers below)
+      - "traefik.http.services.kbm-app.loadbalancer.server.port=8000"
+
+      # ---- Router: root domain + www (explicit Host rule, eager cert) ----
+      - "traefik.http.routers.kbm-root.rule=Host(`${BASE_DOMAIN}`) || Host(`www.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.kbm-root.entrypoints=websecure"
+      - "traefik.http.routers.kbm-root.tls=true"
+      - "traefik.http.routers.kbm-root.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kbm-root.service=kbm-app"
+
+      # ---- Router: wildcard tenant subdomains ----
+      # Uses HostRegexp (Traefik v3 Go-regex syntax). The cert resolver
+      # decides whether each unique subdomain gets its own HTTP-01 cert,
+      # or whether they all share a DNS-01 wildcard cert covering
+      # *.${BASE_DOMAIN} (recommended for production multi-tenant). See
+      # traefik/traefik.yml + TRAEFIK.md for the choice.
+      - "traefik.http.routers.kbm-tenants.rule=HostRegexp(`^[a-z0-9-]+\\.${BASE_DOMAIN}$`)"
+      - "traefik.http.routers.kbm-tenants.entrypoints=websecure"
+      - "traefik.http.routers.kbm-tenants.tls=true"
+      - "traefik.http.routers.kbm-tenants.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kbm-tenants.tls.domains[0].main=${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-tenants.tls.domains[0].sans=*.${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-tenants.service=kbm-app"
+      # Per-request gating via the same /_internal/check-domain endpoint
+      # Caddy uses. Even with HTTP-01 (per-subdomain certs), requests for
+      # subdomains that don't map to active tenants get 401'd here.
+      - "traefik.http.routers.kbm-tenants.middlewares=tenant-gate@docker"
+      - "traefik.http.middlewares.tenant-gate.forwardauth.address=http://python-app:8000/_internal/check-domain?secret=${INTERNAL_API_SECRET}"
+      - "traefik.http.middlewares.tenant-gate.forwardauth.trustForwardHeader=true"
 
   caddy:
     image: caddy:2-alpine

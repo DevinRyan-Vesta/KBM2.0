@@ -105,3 +105,9 @@ credentials/
 *.pem
 *.crt
 *.p12
+
+# Traefik cert state — contains private keys for issued Let's Encrypt certs.
+# The traefik/letsencrypt/ directory itself is kept (with .gitkeep) so the
+# bind mount target exists, but acme.json never gets committed.
+traefik/letsencrypt/acme.json
+traefik/letsencrypt/*.json
