@@ -164,11 +164,20 @@ def create_app():
     def health():
         return {"ok": True, "multi_tenant": True}, 200
 
-    # 9a) Caddy on-demand TLS validation endpoint.
-    # Caddy calls this before issuing a Let's Encrypt cert for a subdomain.
-    # Returns 200 if the requested host maps to an active tenant (or is the
-    # configured root domain), 404 otherwise. A shared secret prevents abuse
-    # if the endpoint is ever exposed beyond the internal docker network.
+    # 9a) On-demand TLS / per-request tenant validation endpoint.
+    # Two callers, two flows — same endpoint:
+    #
+    #   - Caddy uses this as its `on_demand_tls.ask` BEFORE issuing a cert
+    #     for a subdomain. Caddy passes the candidate hostname as ?domain=.
+    #     Returns 200 if the host maps to an active tenant (or is the root
+    #     domain), 404 otherwise.
+    #
+    #   - Traefik uses this as a `forwardauth` middleware on EVERY request
+    #     to a tenant subdomain (gates the request, not the cert). Traefik
+    #     passes the original Host as X-Forwarded-Host. Same response logic.
+    #
+    # A shared INTERNAL_API_SECRET prevents abuse if the endpoint is ever
+    # exposed beyond the internal docker network.
     @app.get("/_internal/check-domain")
     def _check_domain():
         from utilities.master_database import Account
@@ -179,7 +188,17 @@ def create_app():
         if not expected_secret or provided != expected_secret:
             return {"ok": False, "reason": "unauthorized"}, 403
 
+        # Resolve the candidate domain in priority order:
+        #   1) ?domain=  (Caddy's on_demand_tls.ask passes it this way)
+        #   2) X-Forwarded-Host header (Traefik forwardauth populates this
+        #      with the original Host of the gated request)
+        #   3) Host header (last-resort fallback if a future proxy doesn't
+        #      forward the original host)
         domain = (_req.args.get("domain", "") or "").lower().strip()
+        if not domain:
+            domain = (_req.headers.get("X-Forwarded-Host", "") or "").lower().strip().split(":")[0]
+        if not domain:
+            domain = (_req.host or "").lower().strip().split(":")[0]
         if not domain:
             return {"ok": False, "reason": "missing-domain"}, 400
 

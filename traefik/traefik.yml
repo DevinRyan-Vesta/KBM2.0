@@ -1,0 +1,74 @@
+# Traefik v3 static configuration for KBM.
+# Loaded by the `traefik` service in compose.yaml (only when the `traefik`
+# Compose profile is active). Per-route rules + TLS hints live as labels on
+# the python-app service in compose.yaml.
+
+# Disable the dashboard by default — re-enable behind auth if you want it.
+api:
+  dashboard: false
+  insecure: false
+
+log:
+  level: INFO
+
+accessLog: {}
+
+# ---- Entrypoints ------------------------------------------------------------
+# :80 redirects everything to :443. :443 terminates TLS.
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+
+# ---- Providers --------------------------------------------------------------
+# Docker socket → Traefik watches container labels and builds routes
+# automatically. exposedByDefault=false means only containers that opt in
+# (via traefik.enable=true) get routes — protects against accidental exposure.
+providers:
+  docker:
+    exposedByDefault: false
+    network: appnet
+    watch: true
+
+# ---- Certificate resolver(s) ------------------------------------------------
+# DEFAULT: HTTP-01 challenge. Works without any DNS provider credentials, but
+# issues one cert per unique subdomain that hits the proxy. For a multi-tenant
+# app this is OK at low scale; Let's Encrypt's rate limits are 50 certs per
+# registered domain per week. The tenant-gate forwardAuth middleware (defined
+# as a label on python-app) blocks REQUESTS for non-tenant subdomains, but
+# can't block the cert REQUEST itself — Traefik would still attempt LE for
+# any subdomain that resolves and hits the proxy.
+#
+# RECOMMENDED FOR PRODUCTION MULTI-TENANT: switch to DNS-01 with a wildcard
+# cert covering *.${BASE_DOMAIN}. One cert covers all current and future
+# tenants. Requires a DNS provider with API support (Cloudflare, Route 53,
+# Hetzner, etc. — see https://doc.traefik.io/traefik/https/acme/#providers).
+#
+# To enable wildcard via DNS-01 (Cloudflare example):
+#   1. Set in .env:  CLOUDFLARE_DNS_API_TOKEN=...
+#   2. Replace the `httpChallenge:` block below with:
+#        dnsChallenge:
+#          provider: cloudflare
+#          resolvers:
+#            - "1.1.1.1:53"
+#            - "8.8.8.8:53"
+#   3. Add to compose.yaml's traefik service env_file or environment:
+#        - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
+#   4. Restart traefik. First cert request will create the wildcard.
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "{{ env \"ACME_EMAIL\" }}"
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+      # Uncomment for staging while you're testing — much higher rate limits,
+      # but the certs aren't trusted by browsers.
+      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory

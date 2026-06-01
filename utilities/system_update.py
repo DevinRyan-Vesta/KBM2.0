@@ -57,10 +57,22 @@ class SystemUpdateManager:
                 config_files = labels.get('com.docker.compose.project.config_files')
 
                 if project_name and working_dir:
+                    # config_files is comma-separated when the user started
+                    # compose with multiple -f flags (e.g. COMPOSE_FILE set
+                    # to compose.yaml:compose.traefik.yaml). We need to
+                    # preserve all of them so the next `up -d` reconstructs
+                    # the same compose merge — otherwise switching to a
+                    # Traefik-style override would silently fall back to the
+                    # default file on the next update.
+                    if config_files:
+                        config_file_list = [f.strip() for f in config_files.split(',') if f.strip()]
+                    else:
+                        config_file_list = ['compose.yaml']
                     self._project_info = {
                         'project_name': project_name,
                         'working_dir': working_dir,
-                        'config_file': config_files.split(',')[0] if config_files else 'compose.yaml',
+                        'config_file': config_file_list[0],          # legacy single-file callers
+                        'config_files': config_file_list,            # full list for the sidecar
                         'container_id': hostname,
                     }
                     return self._project_info
@@ -81,6 +93,7 @@ class SystemUpdateManager:
             'project_name': 'kbm',
             'working_dir': '/opt/kbm',
             'config_file': 'compose.yaml',
+            'config_files': ['compose.yaml'],
             'container_id': os.environ.get('HOSTNAME', 'python-app'),
         }
         return self._project_info
@@ -402,7 +415,10 @@ class SystemUpdateManager:
         project_info = self._get_project_info()
         project_name = project_info['project_name']
         working_dir = project_info['working_dir']
-        config_file = project_info['config_file']
+        # Use the full list of files so multi-file setups (e.g. Traefik
+        # override via COMPOSE_FILE=compose.yaml:compose.traefik.yaml) keep
+        # working through the in-app updater.
+        config_files = project_info.get('config_files') or [project_info['config_file']]
 
         # Sidecar uses our own image, which already has docker + docker compose
         # CLI installed (see Dockerfile). Discover the image tag via inspect on
@@ -416,7 +432,8 @@ class SystemUpdateManager:
 
         # Build the command the sidecar runs. The sleep gives our HTTP response
         # time to flush before the project starts churning.
-        compose_args = f"-f {config_file} -p {project_name} up -d"
+        compose_file_flags = ' '.join(f'-f {f}' for f in config_files)
+        compose_args = f"{compose_file_flags} -p {project_name} up -d"
         if rebuild:
             compose_args += " --build"
 

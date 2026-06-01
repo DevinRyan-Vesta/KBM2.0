@@ -86,6 +86,7 @@ if grep -q "^DOCKER_GID=" .env; then
 	fi
 fi
 
+
 # ------------------------------------------------------------------------------
 # 4. Required directories (gitignored, so won't exist on a fresh clone)
 # ------------------------------------------------------------------------------
@@ -95,7 +96,7 @@ APP_UID=1000
 APP_GID=1000
 
 log "Ensuring data directories exist"
-mkdir -p master_db tenant_dbs backups logs uploads
+mkdir -p master_db tenant_dbs backups logs uploads traefik/letsencrypt
 
 # Chown the entire repo to appuser. This covers:
 #   - data dirs (master_db, tenant_dbs, backups, logs)

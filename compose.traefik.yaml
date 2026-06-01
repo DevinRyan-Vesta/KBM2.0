@@ -1,0 +1,41 @@
+# Compose override file that swaps Caddy for Traefik. Apply by setting
+# COMPOSE_FILE in .env:
+#
+#     COMPOSE_FILE=compose.yaml:compose.traefik.yaml
+#
+# Compose merges both files — the python-app service keeps its labels from
+# compose.yaml (which Traefik now picks up), and:
+#   - caddy gets `profiles: ["disabled"]` so it never starts
+#   - traefik service gets added
+#
+# To switch back to Caddy: remove the override from COMPOSE_FILE in .env
+# and `docker compose up -d` again.
+
+services:
+  caddy:
+    # Putting caddy behind an arbitrary profile that never gets activated
+    # is the standard Compose-override pattern for "disable this service".
+    # The actual port/volume/image config stays untouched, just inert.
+    profiles: ["disabled"]
+
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/letsencrypt:/letsencrypt
+      # Read-only docker socket — Traefik only needs to *read* container
+      # labels, never write back. :ro is a small additional defense if
+      # anything ever compromised the Traefik container.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - python-app
+    networks:
+      - appnet
