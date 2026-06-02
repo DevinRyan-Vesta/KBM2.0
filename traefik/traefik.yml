@@ -53,32 +53,39 @@ providers:
 # One wildcard cert covers all current and future tenants — no per-subdomain
 # issuance, no Let's Encrypt rate-limit risk.
 #
-# REQUIRED: DNS provider API credentials in .env. Configured here for Namecheap
-# (lego provider `namecheap`), which needs:
-#     NAMECHEAP_API_USER   — your Namecheap account username
-#     NAMECHEAP_API_KEY    — API key from Namecheap → Profile → Tools → API Access
-# The traefik service in compose.traefik.yaml loads .env, so lego picks these
-# up automatically. For a different provider change `provider:` below and set
-# that provider's vars — see https://doc.traefik.io/traefik/https/acme/#providers
+# REQUIRED: DNS provider API credentials in .env. Configured here for Cloudflare
+# (lego provider `cloudflare`), which needs just ONE scoped API token:
+#     CF_DNS_API_TOKEN   — a Cloudflare API token (see prerequisites below)
+# The traefik service in compose.traefik.yaml loads .env, so lego picks this up
+# automatically. For a different provider change `provider:` below and set that
+# provider's vars — see https://doc.traefik.io/traefik/https/acme/#providers
 #
-# NAMECHEAP PREREQUISITES (one-time, in the Namecheap dashboard):
-#   1. Enable API Access (Profile → Tools → Namecheap API Access).
-#   2. Whitelist the VPS's PUBLIC IP under the API access settings — Namecheap
-#      rejects API calls from non-whitelisted IPs, which would make every cert
-#      request fail.
-#   3. The ${BASE_DOMAIN} zone must use Namecheap BasicDNS (their default
-#      nameservers) so the API can write the _acme-challenge TXT record.
+# WHY CLOUDFLARE (and not Namecheap): Cloudflare DNS is free, propagates in
+# seconds (no slow-propagation timeout hacks), and — unlike Namecheap — needs
+# NO source-IP whitelisting, so cert renewals keep working even if the VPS IP
+# changes. Setup is one-time and then completely hands-off.
+#
+# CLOUDFLARE PREREQUISITES (one-time):
+#   1. Add the ${BASE_DOMAIN} zone to a (free) Cloudflare account and switch the
+#      domain's nameservers to the two Cloudflare gives you. This is a UI change
+#      in the Namecheap dashboard (Domain List → Manage → Nameservers → Custom
+#      DNS) — NOT the Namecheap API.
+#   2. Create a scoped API token: Cloudflare dashboard → My Profile → API Tokens
+#      → Create Token → "Edit zone DNS" template. Scope it to the ${BASE_DOMAIN}
+#      zone. The token must have Zone:DNS:Edit + Zone:Zone:Read so lego can
+#      write the _acme-challenge TXT record.
+#   3. Put that token in .env as CF_DNS_API_TOKEN (see compose.traefik.yaml).
 certificatesResolvers:
   letsencrypt:
     acme:
       email: "{{ env \"ACME_EMAIL\" }}"
       storage: /letsencrypt/acme.json
       dnsChallenge:
-        provider: namecheap
+        provider: cloudflare
         # Public resolvers used to verify the _acme-challenge TXT record has
-        # propagated before telling Let's Encrypt to check it. Namecheap DNS
-        # can be slow to propagate, so we also bump the propagation timeout
-        # via NAMECHEAP_PROPAGATION_TIMEOUT in .env (see compose.traefik.yaml).
+        # propagated before telling Let's Encrypt to check it. Cloudflare
+        # propagates in seconds, so lego's default propagation timeout is fine
+        # — no override needed.
         resolvers:
           - "1.1.1.1:53"
           - "8.8.8.8:53"
