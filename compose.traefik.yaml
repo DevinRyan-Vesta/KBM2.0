@@ -23,8 +23,19 @@ services:
     container_name: traefik
     restart: unless-stopped
     init: true
+    # env_file injects every var from .env into the container, so lego's DNS-01
+    # (Namecheap) provider picks these up automatically. The explicit
+    # environment entries below document the dependency and surface an empty
+    # value if a credential is missing, instead of silently falling back to a
+    # self-signed cert. Switch these var names if you use a different provider.
     env_file:
       - .env
+    environment:
+      - NAMECHEAP_API_USER=${NAMECHEAP_API_USER:-}
+      - NAMECHEAP_API_KEY=${NAMECHEAP_API_KEY:-}
+      # Namecheap propagation can lag; give lego longer before it asks LE to
+      # verify. Optional — defaults are used if unset.
+      - NAMECHEAP_PROPAGATION_TIMEOUT=${NAMECHEAP_PROPAGATION_TIMEOUT:-1800}
     ports:
       - "80:80"
       - "443:443"

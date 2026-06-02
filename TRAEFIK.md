@@ -47,53 +47,63 @@ On your VPS:
 To switch back to Caddy: comment out `COMPOSE_FILE`, then `down` + `up -d`
 again.
 
-## Cert challenge: HTTP-01 vs DNS-01 wildcard
+## Cert challenge: DNS-01 wildcard (required for multi-tenant)
 
-Out of the box `traefik/traefik.yml` is configured for the **HTTP-01**
-challenge. This works without any DNS provider creds, but Traefik issues
-**one cert per unique subdomain** that hits the proxy. Let's Encrypt's
-hard limit is 50 certs per registered domain per week.
+`traefik/traefik.yml` is configured for the **DNS-01** challenge and issues
+a single **wildcard cert** covering `*.${BASE_DOMAIN}`. This is required,
+not optional, for this app:
 
-The `tenant-gate` forwardauth middleware (defined as a label on
-`python-app` in `compose.yaml`) gates per-request authorization — returns
-401 for subdomains that don't map to active tenants. **It doesn't gate
-cert issuance** — Traefik will still attempt LE for any subdomain that
-resolves to your VPS and hits port 443. An attacker controlling a
-wildcard DNS record pointed at your IP could exhaust your rate limit.
+- Tenants live on arbitrary, dynamically created subdomains
+  (`<tenant>.${BASE_DOMAIN}`), matched by the `kbm-tenants` `HostRegexp`
+  router.
+- **Traefik has no on-demand TLS** (Caddy's killer multi-tenant feature).
+  It must know cert domains up front and *cannot derive a hostname from a
+  regex*. So the tenant router requests a wildcard.
+- **Let's Encrypt only issues wildcards over DNS-01** — HTTP-01 cannot.
+  (The original Traefik labels asked for a wildcard while the resolver was
+  still on HTTP-01; that mismatch meant the ACME order failed and every
+  tenant subdomain got Traefik's self-signed default cert — the "Not
+  secure" bug. DNS-01 is the fix.)
 
-For a public multi-tenant production deployment, **switch to DNS-01 with
-a wildcard cert** covering `*.${BASE_DOMAIN}`. One cert covers all
-current and future tenants. No per-subdomain issuance, no rate-limit risk.
+One wildcard cert covers all current and future tenants — no per-subdomain
+issuance, no Let's Encrypt rate-limit risk.
 
-### Enabling DNS-01 wildcard (Cloudflare example)
+The `tenant-gate` forwardauth middleware still gates each *request* (401/404
+for subdomains that don't map to an active tenant); the wildcard cert covers
+TLS, the middleware covers authorization.
 
-1. Move your DNS to Cloudflare (or any provider supported by lego/Traefik).
-   Create an API token with `Zone:DNS:Edit` on the `BASE_DOMAIN` zone.
-2. Add to `.env`:
-   ```
-   CLOUDFLARE_DNS_API_TOKEN=<your token>
-   ```
-3. Edit `traefik/traefik.yml`. Replace the `httpChallenge:` block under
-   `certificatesResolvers.letsencrypt.acme` with:
-   ```yaml
-   dnsChallenge:
-     provider: cloudflare
-     resolvers:
-       - "1.1.1.1:53"
-       - "8.8.8.8:53"
-   ```
-4. Edit `compose.traefik.yaml`, add an `environment:` block to the
-   `traefik` service:
-   ```yaml
-   environment:
-     - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
-   ```
-5. `docker compose -p kbm restart traefik`. Watch the logs — Traefik will
-   request a wildcard cert via DNS-01 challenge.
+### DNS-01 is configured for Namecheap
 
-For other providers (Route 53, Hetzner, DigitalOcean, etc.), see
-<https://doc.traefik.io/traefik/https/acme/#providers>. Each provider
-needs slightly different env vars.
+`buywithvesta.com` uses **Namecheap** DNS, so the resolver uses the lego
+`namecheap` provider. One-time setup in the Namecheap dashboard:
+
+1. **Enable API access**: Profile → Tools → Namecheap API Access.
+2. **Whitelist the VPS public IP** in that same API settings page —
+   Namecheap rejects API calls from non-whitelisted IPs, which would make
+   every cert request fail.
+3. The `BASE_DOMAIN` zone must use **Namecheap BasicDNS** (their default
+   nameservers) so the API can write the `_acme-challenge` TXT record.
+
+Then add to `.env`:
+```
+NAMECHEAP_API_USER=<your Namecheap username>
+NAMECHEAP_API_KEY=<API key from the API Access page>
+# Optional, raise if propagation is slow (seconds):
+# NAMECHEAP_PROPAGATION_TIMEOUT=1800
+```
+
+`compose.traefik.yaml` already passes these to the `traefik` container, and
+`traefik/traefik.yml` already selects `provider: namecheap`. Just fill in
+`.env` and `docker compose -p kbm up -d`. Watch `docker logs traefik -f` —
+you should see a DNS-01 challenge and a wildcard cert get issued.
+
+### Using a different DNS provider
+
+If you ever move DNS off Namecheap, change `provider:` in
+`traefik/traefik.yml`, swap the credential vars in `.env` +
+`compose.traefik.yaml`, and consult
+<https://doc.traefik.io/traefik/https/acme/#providers> for that provider's
+required env vars.
 
 ## How the routing labels work
 
