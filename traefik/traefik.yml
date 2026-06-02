@@ -38,37 +38,50 @@ providers:
     watch: true
 
 # ---- Certificate resolver(s) ------------------------------------------------
-# DEFAULT: HTTP-01 challenge. Works without any DNS provider credentials, but
-# issues one cert per unique subdomain that hits the proxy. For a multi-tenant
-# app this is OK at low scale; Let's Encrypt's rate limits are 50 certs per
-# registered domain per week. The tenant-gate forwardAuth middleware (defined
-# as a label on python-app) blocks REQUESTS for non-tenant subdomains, but
-# can't block the cert REQUEST itself — Traefik would still attempt LE for
-# any subdomain that resolves and hits the proxy.
+# DNS-01 challenge with a WILDCARD cert covering *.${BASE_DOMAIN}.
 #
-# RECOMMENDED FOR PRODUCTION MULTI-TENANT: switch to DNS-01 with a wildcard
-# cert covering *.${BASE_DOMAIN}. One cert covers all current and future
-# tenants. Requires a DNS provider with API support (Cloudflare, Route 53,
-# Hetzner, etc. — see https://doc.traefik.io/traefik/https/acme/#providers).
+# Why DNS-01 (and not HTTP-01)?
+#   This is a multi-tenant app: tenants live on arbitrary, dynamically created
+#   subdomains (<tenant>.${BASE_DOMAIN}), matched by a HostRegexp router in
+#   compose.yaml. Traefik — unlike Caddy — has no on-demand TLS: it must know
+#   the cert domains up front and cannot derive a concrete hostname from a
+#   regex. The tenant router therefore requests a WILDCARD (*.${BASE_DOMAIN}),
+#   and Let's Encrypt only issues wildcards over DNS-01. (HTTP-01 cannot issue
+#   wildcards — that mismatch was the bug: tenant subdomains got Traefik's
+#   self-signed default cert and showed "Not secure".)
 #
-# To enable wildcard via DNS-01 (Cloudflare example):
-#   1. Set in .env:  CLOUDFLARE_DNS_API_TOKEN=...
-#   2. Replace the `httpChallenge:` block below with:
-#        dnsChallenge:
-#          provider: cloudflare
-#          resolvers:
-#            - "1.1.1.1:53"
-#            - "8.8.8.8:53"
-#   3. Add to compose.yaml's traefik service env_file or environment:
-#        - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
-#   4. Restart traefik. First cert request will create the wildcard.
+# One wildcard cert covers all current and future tenants — no per-subdomain
+# issuance, no Let's Encrypt rate-limit risk.
+#
+# REQUIRED: DNS provider API credentials in .env. Configured here for Namecheap
+# (lego provider `namecheap`), which needs:
+#     NAMECHEAP_API_USER   — your Namecheap account username
+#     NAMECHEAP_API_KEY    — API key from Namecheap → Profile → Tools → API Access
+# The traefik service in compose.traefik.yaml loads .env, so lego picks these
+# up automatically. For a different provider change `provider:` below and set
+# that provider's vars — see https://doc.traefik.io/traefik/https/acme/#providers
+#
+# NAMECHEAP PREREQUISITES (one-time, in the Namecheap dashboard):
+#   1. Enable API Access (Profile → Tools → Namecheap API Access).
+#   2. Whitelist the VPS's PUBLIC IP under the API access settings — Namecheap
+#      rejects API calls from non-whitelisted IPs, which would make every cert
+#      request fail.
+#   3. The ${BASE_DOMAIN} zone must use Namecheap BasicDNS (their default
+#      nameservers) so the API can write the _acme-challenge TXT record.
 certificatesResolvers:
   letsencrypt:
     acme:
       email: "{{ env \"ACME_EMAIL\" }}"
       storage: /letsencrypt/acme.json
-      httpChallenge:
-        entryPoint: web
+      dnsChallenge:
+        provider: namecheap
+        # Public resolvers used to verify the _acme-challenge TXT record has
+        # propagated before telling Let's Encrypt to check it. Namecheap DNS
+        # can be slow to propagate, so we also bump the propagation timeout
+        # via NAMECHEAP_PROPAGATION_TIMEOUT in .env (see compose.traefik.yaml).
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
       # Uncomment for staging while you're testing — much higher rate limits,
       # but the certs aren't trusted by browsers.
       # caServer: https://acme-staging-v02.api.letsencrypt.org/directory
