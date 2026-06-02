@@ -72,34 +72,41 @@ The `tenant-gate` forwardauth middleware still gates each *request* (401/404
 for subdomains that don't map to an active tenant); the wildcard cert covers
 TLS, the middleware covers authorization.
 
-### DNS-01 is configured for Namecheap
+### DNS-01 is configured for Cloudflare
 
-`buywithvesta.com` uses **Namecheap** DNS, so the resolver uses the lego
-`namecheap` provider. One-time setup in the Namecheap dashboard:
+The resolver uses the lego `cloudflare` provider. Cloudflare DNS is **free**
+and, unlike Namecheap, requires **no source-IP whitelisting** — so renewals
+keep working even if the VPS IP changes, and propagation takes seconds instead
+of up to half an hour. Setup is one-time and then completely hands-off.
 
-1. **Enable API access**: Profile → Tools → Namecheap API Access.
-2. **Whitelist the VPS public IP** in that same API settings page —
-   Namecheap rejects API calls from non-whitelisted IPs, which would make
-   every cert request fail.
-3. The `BASE_DOMAIN` zone must use **Namecheap BasicDNS** (their default
-   nameservers) so the API can write the `_acme-challenge` TXT record.
+One-time setup:
+
+1. **Add the zone to Cloudflare**: create a free Cloudflare account and add
+   `buywithvesta.com` as a site. Cloudflare imports your existing records.
+2. **Point nameservers at Cloudflare**: in the **Namecheap** dashboard →
+   Domain List → Manage → Nameservers → switch from BasicDNS to **Custom DNS**
+   and enter the two nameservers Cloudflare gives you. This is a UI change —
+   **not** the Namecheap API. Wait for Cloudflare to show the zone as *Active*
+   (usually minutes).
+3. **Create a scoped API token**: Cloudflare → My Profile → API Tokens →
+   Create Token → **"Edit zone DNS"** template → scope it to the
+   `buywithvesta.com` zone. The token gets `Zone:DNS:Edit` + `Zone:Zone:Read`,
+   which is exactly what lego needs to write the `_acme-challenge` TXT record.
 
 Then add to `.env`:
 ```
-NAMECHEAP_API_USER=<your Namecheap username>
-NAMECHEAP_API_KEY=<API key from the API Access page>
-# Optional, raise if propagation is slow (seconds):
-# NAMECHEAP_PROPAGATION_TIMEOUT=1800
+CF_DNS_API_TOKEN=<the scoped token from step 3>
 ```
 
-`compose.traefik.yaml` already passes these to the `traefik` container, and
-`traefik/traefik.yml` already selects `provider: namecheap`. Just fill in
+`compose.traefik.yaml` already passes this to the `traefik` container, and
+`traefik/traefik.yml` already selects `provider: cloudflare`. Just fill in
 `.env` and `docker compose -p kbm up -d`. Watch `docker logs traefik -f` —
-you should see a DNS-01 challenge and a wildcard cert get issued.
+you should see a DNS-01 challenge and a wildcard cert get issued (typically
+within a minute, since Cloudflare propagation is near-instant).
 
 ### Using a different DNS provider
 
-If you ever move DNS off Namecheap, change `provider:` in
+If you ever move DNS off Cloudflare, change `provider:` in
 `traefik/traefik.yml`, swap the credential vars in `.env` +
 `compose.traefik.yaml`, and consult
 <https://doc.traefik.io/traefik/https/acme/#providers> for that provider's
