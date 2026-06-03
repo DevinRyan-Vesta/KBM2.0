@@ -112,6 +112,56 @@ If you ever move DNS off Cloudflare, change `provider:` in
 <https://doc.traefik.io/traefik/https/acme/#providers> for that provider's
 required env vars.
 
+## Running behind an existing external Traefik
+
+`compose.traefik.yaml` (above) starts KBM's **own** Traefik. That only works if
+nothing else on the host already holds ports 80/443. If you run a **shared,
+central Traefik** for several apps (a common VPS pattern — e.g. Hostinger's
+one-click Traefik in `network_mode: host`), KBM can't start a second proxy on
+the same ports. Use **`compose.external-traefik.yaml`** instead:
+
+```
+COMPOSE_FILE=compose.yaml:compose.external-traefik.yaml
+```
+
+This override:
+
+- Disables the bundled Caddy (`profiles: ["disabled"]`).
+- Publishes the app on `127.0.0.1:8000`. A host-network Traefik can't resolve
+  the `python-app` container name over docker DNS, so the `tenant-gate`
+  forwardauth must reach the app via the host loopback. Inbound app traffic is
+  still routed by the external Traefik to the container IP via the docker
+  provider.
+- Emits the full router set — `kbm-root` (apex), `kbm-www` (308→apex redirect),
+  `kbm-tenants` (wildcard, forwardauth-gated) — all using a cert resolver named
+  **`cfdns`**, with explicit priorities so apex/www are never gated as tenants.
+
+### What the external Traefik must provide
+
+Add a Cloudflare DNS-01 resolver named `cfdns` to your central Traefik,
+**alongside** whatever resolver your other apps already use (don't replace it):
+
+```
+--certificatesresolvers.cfdns.acme.dnschallenge=true
+--certificatesresolvers.cfdns.acme.dnschallenge.provider=cloudflare
+--certificatesresolvers.cfdns.acme.email=${ACME_EMAIL}
+--certificatesresolvers.cfdns.acme.storage=/letsencrypt/acme.json
+```
+
+and pass `CF_DNS_API_TOKEN` (a scoped Cloudflare "Edit zone DNS" token for
+`${BASE_DOMAIN}`) into the **Traefik** container's environment. The token lives
+with Traefik, not with KBM. DNS records for `@`, `www`, and `*.${BASE_DOMAIN}`
+must be **DNS-only (grey cloud)** A records pointing at the host so Traefik
+terminates TLS directly.
+
+### Survives in-app updates
+
+The in-app updater records the active `config_files` from the running
+container's compose labels and reconstructs the same merge on every `up -d`, and
+the base `compose.yaml` stays pristine (so the auto-stash/`reset --hard` reverts
+nothing). Once `COMPOSE_FILE` is set in `.env` (which is gitignored), the
+override sticks across updates.
+
 ## How the routing labels work
 
 Every router rule lives as a label on the `python-app` service in
