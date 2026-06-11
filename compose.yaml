@@ -91,6 +91,14 @@ services:
   caddy:
     image: caddy:2-alpine
     container_name: caddy
+    # Caddy is opt-in. By default `docker compose up -d` starts ONLY python-app,
+    # which is the right shape when a reverse proxy (an external/shared Traefik,
+    # or the bundled one in compose.traefik.yaml) fronts the app and reads its
+    # labels off the Docker socket. Without a profile, Caddy would auto-start and
+    # crash-loop fighting the real proxy for ports 80/443.
+    #
+    # To run Caddy as the proxy instead:  docker compose --profile caddy up -d
+    profiles: ["caddy"]
     restart: unless-stopped
     ports:
       - "80:80"
