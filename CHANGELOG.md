@@ -24,6 +24,13 @@ found in a full-codebase audit, security hardening, and repo cleanup.
   multi-tenant app, provisions a tenant, and exercises every page plus the
   core workflows (create → checkout → receipt → check-in → audit → export).
 - **App version** (`APP_VERSION` in `config.py`) displayed in the sidebar.
+- **Demo account seeder** (`create_demo_account.py`) — provisions a "Demo
+  Realty Group" tenant with realistic sample data for testing.
+- **Favicon** (red key mark, SVG).
+- **Keyboard shortcut**: press `/` anywhere to focus the global search.
+- **CI workflow**: GitHub Actions runs the test suite on every pull request.
+- `ToDo.txt` reorganized into a live roadmap (stale entries verified and
+  closed; new improvement ideas added).
 - This changelog.
 
 ### Fixed
