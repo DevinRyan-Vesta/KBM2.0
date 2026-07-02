@@ -233,7 +233,7 @@ def seed_tenant(app, admin_id):
             # Active lockbox checkout — due tomorrow
             co(lockboxes[4], "Dana Brooks", dana, 1, "Suite 200 showings", 1, 1),
             # Upcoming — key out, due in 3 days
-            co(keys[7], "Dana Brooks", dana, 1, "Tenant walkthrough", 3, 3),
+            co(keys[6], "Dana Brooks", dana, 1, "Tenant walkthrough", 3, 3),
             # Returned history
             co(keys[4], "Alice Johnson", alice, 1, "Move-in", 30, None, returned_days_ago=25),
             co(keys[1], "Carlos Martinez", carlos, 1, "Radiator fix", 20, None, returned_days_ago=18),
