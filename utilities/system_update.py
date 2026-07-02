@@ -109,12 +109,54 @@ class SystemUpdateManager:
                 timeout=timeout
             )
             success = result.returncode == 0
-            output = result.stdout if success else result.stderr
+            if success:
+                output = result.stdout
+            else:
+                # Combine both streams on failure — git and docker split
+                # diagnostics across stdout/stderr, and losing either half
+                # has repeatedly made update failures undebuggable.
+                output = "\n".join(p for p in (result.stderr, result.stdout) if p and p.strip())
             return success, output.strip()
         except subprocess.TimeoutExpired:
             return False, f"Command timed out after {timeout} seconds"
         except Exception as e:
             return False, f"Error executing command: {str(e)}"
+
+    def _get_own_image(self) -> Optional[str]:
+        """Return the image tag this container runs, or None outside docker."""
+        info = self._get_project_info()
+        success, image = self.run_command(
+            ['docker', 'inspect', '-f', '{{.Config.Image}}', info['container_id']],
+            timeout=5,
+        )
+        image = (image or "").strip()
+        return image if success and image else None
+
+    def _get_update_branch(self) -> str:
+        """Resolve which branch updates should track.
+
+        Order: UPDATE_BRANCH env var -> current checked-out branch ->
+        origin's default branch -> 'main'. Handles detached HEAD (a state
+        past failed updates have left repos in), which used to make branch
+        detection return the literal string 'HEAD' and break every
+        subsequent fetch/reset.
+        """
+        env_branch = (os.environ.get('UPDATE_BRANCH') or '').strip()
+        if env_branch:
+            return env_branch
+
+        success, branch = self.run_command(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], timeout=15)
+        branch = (branch or "").strip()
+        if success and branch and branch != 'HEAD':
+            return branch
+
+        # Detached HEAD — fall back to origin's default branch.
+        success, ref = self.run_command(
+            ['git', 'symbolic-ref', 'refs/remotes/origin/HEAD'], timeout=15
+        )
+        if success and ref.strip().startswith('refs/remotes/origin/'):
+            return ref.strip().rsplit('/', 1)[-1]
+        return 'main'
 
     def check_docker_available(self) -> Tuple[bool, str]:
         """Check if docker and docker compose are available."""
@@ -185,10 +227,15 @@ class SystemUpdateManager:
         if not host_working_dir:
             return False, "no working_dir on container labels — skipping ownership fix"
 
+        # Prefer our own image (always present locally, has chown) so this
+        # never depends on pulling alpine over the network — a failure mode
+        # we've hit on locked-down VPSes. Alpine remains the fallback when
+        # image detection fails.
+        image = self._get_own_image() or 'alpine:latest'
         cmd = [
             'docker', 'run', '--rm',
             '-v', f'{host_working_dir}:/repo',
-            'alpine:latest',
+            image,
             'chown', '-R', '1000:1000', '/repo/.git',
         ]
         success, output = self.run_command(cmd, timeout=60)
@@ -253,9 +300,9 @@ class SystemUpdateManager:
             if not success:
                 return {"error": f"Failed to fetch from remote: {fetch_output}"}
 
-        # Get current branch
+        # Get the branch updates track (handles detached HEAD / env override)
         current_version = self.get_current_version()
-        branch = current_version.get("branch", "main")
+        branch = self._get_update_branch()
 
         # Check for new commits
         success, output = self.run_command(['git', 'log', f'HEAD..origin/{branch}', '--format=%h %s'])
@@ -352,8 +399,7 @@ class SystemUpdateManager:
         # Fix git permissions first (chown sidecar + fallback chmod).
         self._fix_git_permissions()
 
-        current_version = self.get_current_version()
-        branch = current_version.get("branch", "main")
+        branch = self._get_update_branch()
 
         # Belt: stash anything tracked-and-dirty so it's recoverable later.
         stash_msg = self._auto_stash()
@@ -423,32 +469,41 @@ class SystemUpdateManager:
         # Sidecar uses our own image, which already has docker + docker compose
         # CLI installed (see Dockerfile). Discover the image tag via inspect on
         # ourselves so we don't have to hardcode it.
-        success, image = self.run_command(
-            ['docker', 'inspect', '-f', '{{.Config.Image}}', project_info['container_id']],
-            timeout=5,
-        )
-        if not success or not image:
-            return False, f"Could not detect image for sidecar updater: {image}"
+        image = self._get_own_image()
+        if not image:
+            return False, "Could not detect image for sidecar updater"
 
-        # Build the command the sidecar runs. The sleep gives our HTTP response
-        # time to flush before the project starts churning.
+        # Mount the host project dir at the SAME path inside the sidecar.
+        # Compose labels record config_files as ABSOLUTE host paths (e.g.
+        # /opt/kbm/compose.yaml); the old /work mount made those -f flags
+        # point at nothing inside the sidecar, so `compose up` failed there
+        # every time — and the failure was invisible (see log note below).
+        # Same-path mounting makes absolute -f paths, relative paths, and
+        # --build contexts all resolve identically to the host.
         compose_file_flags = ' '.join(f'-f {f}' for f in config_files)
         compose_args = f"{compose_file_flags} -p {project_name} up -d"
         if rebuild:
             compose_args += " --build"
 
-        log_in_sidecar = "/work/restart_output.log"
+        # The log must live in a directory that is bind-mounted into the app
+        # container, or the UI can never read what the sidecar wrote. The
+        # repo root is NOT mounted (only subdirs are) — backups/ is, on
+        # every deployment, so the restart log lives there.
+        log_in_sidecar = f"{working_dir}/backups/restart_output.log"
         sidecar_script = (
-            f"set -e; "
             f"sleep 5; "
-            f"cd /work; "
+            f"cd '{working_dir}'; "
+            f"mkdir -p '{working_dir}/backups'; "
             f"echo '=== Sidecar updater started at '$(date)' ===' > {log_in_sidecar}; "
             f"echo 'Project: {project_name}' >> {log_in_sidecar}; "
             f"echo 'Rebuild: {str(rebuild).lower()}' >> {log_in_sidecar}; "
+            f"echo 'Command: docker compose {compose_args}' >> {log_in_sidecar}; "
             f"echo '------------------------------------------------------------' >> {log_in_sidecar}; "
-            f"docker compose {compose_args} >> {log_in_sidecar} 2>&1; "
-            f"echo '' >> {log_in_sidecar}; "
-            f"echo '=== Sidecar finished at '$(date)' ===' >> {log_in_sidecar}"
+            f"if docker compose {compose_args} >> {log_in_sidecar} 2>&1; then "
+            f"  echo '=== SUCCESS: sidecar finished at '$(date)' ===' >> {log_in_sidecar}; "
+            f"else "
+            f"  echo '=== FAILED: docker compose exited non-zero at '$(date)' ===' >> {log_in_sidecar}; "
+            f"fi"
         )
 
         sidecar_name = f"kbm-updater-{int(datetime.now().timestamp())}"
@@ -456,16 +511,17 @@ class SystemUpdateManager:
             'docker', 'run', '--rm', '-d',
             '--name', sidecar_name,
             '-v', '/var/run/docker.sock:/var/run/docker.sock',
-            '-v', f'{working_dir}:/work',
-            '-w', '/work',
+            '-v', f'{working_dir}:{working_dir}',
+            '-w', working_dir,
             image,
             'sh', '-c', sidecar_script,
         ]
 
         # Seed the log so the UI has something to show before the sidecar wakes up
         try:
-            log_path = self.repo_path / 'restart_output.log'
-            with open(log_path, 'w') as f:
+            log_dir = self.repo_path / 'backups'
+            log_dir.mkdir(parents=True, exist_ok=True)
+            with open(log_dir / 'restart_output.log', 'w') as f:
                 f.write(f"=== Sidecar updater scheduled at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
                 f.write(f"Sidecar name: {sidecar_name}\n")
                 f.write(f"Image:        {image}\n")
@@ -473,6 +529,8 @@ class SystemUpdateManager:
                 f.write(f"Working dir:  {working_dir}\n")
                 f.write(f"Rebuild:      {rebuild}\n")
                 f.write("Sleeping 5s, then running: docker compose " + compose_args + "\n")
+                f.write("If this message is still here after a minute, the sidecar\n")
+                f.write("never wrote its log — check `docker ps -a` for the sidecar.\n")
                 f.write("=" * 60 + "\n\n")
         except Exception:
             pass  # best-effort
@@ -511,19 +569,30 @@ class SystemUpdateManager:
             if not success:
                 return [{"error": "Failed to get container status"}]
 
-        # Parse JSON output (one object per line)
+        # Parse JSON output. Depending on the compose/docker version this is
+        # either NDJSON (one object per line) or a single JSON array — handle
+        # both, or newer hosts show a bogus "No containers found".
+        def _entry(container: dict) -> dict:
+            return {
+                "name": container.get("Name") or container.get("Names", "unknown"),
+                "status": container.get("Status", "unknown"),
+                "state": container.get("State", "unknown"),
+            }
+
         containers = []
-        for line in output.split('\n'):
-            if line.strip():
-                try:
-                    container = json.loads(line)
-                    containers.append({
-                        "name": container.get("Name") or container.get("Names", "unknown"),
-                        "status": container.get("Status", "unknown"),
-                        "state": container.get("State", "unknown"),
-                    })
-                except:
-                    pass
+        stripped = output.strip()
+        if stripped.startswith('['):
+            try:
+                containers = [_entry(c) for c in json.loads(stripped)]
+            except Exception:
+                containers = []
+        if not containers:
+            for line in output.split('\n'):
+                if line.strip():
+                    try:
+                        containers.append(_entry(json.loads(line)))
+                    except Exception:
+                        pass
 
         return containers if containers else [{"info": "No containers found in project"}]
 
@@ -543,31 +612,77 @@ class SystemUpdateManager:
         return output
 
     def get_restart_log(self) -> str:
-        """Get the restart output log if it exists."""
-        log_path = self.repo_path / 'restart_output.log'
+        """Get the restart output log if it exists.
+
+        Lives in backups/ because that directory is bind-mounted in every
+        deployment — the sidecar (writing on the host) and this container
+        (reading at /app/backups) see the same file. The legacy repo-root
+        location is checked as a fallback for pre-2.1 deployments.
+        """
+        for log_path in (self.repo_path / 'backups' / 'restart_output.log',
+                         self.repo_path / 'restart_output.log'):
+            try:
+                if log_path.exists():
+                    with open(log_path, 'r') as f:
+                        return f.read()
+            except Exception as e:
+                return f"Error reading restart log: {str(e)}"
+        return "No restart log found. The restart may not have executed yet or no restart has been performed."
+
+    BACKUP_RETENTION = 10  # keep this many backup_* directories, prune older
+
+    def _prune_old_backups(self, backup_dir: Path) -> int:
+        """Delete oldest backup_* dirs beyond BACKUP_RETENTION. Returns the
+        number pruned. Unbounded backups have filled VPS disks before — a
+        full disk then breaks the next git fetch AND the app itself."""
+        import shutil
         try:
-            if log_path.exists():
-                with open(log_path, 'r') as f:
-                    return f.read()
-            else:
-                return "No restart log found. The restart may not have executed yet or no restart has been performed."
-        except Exception as e:
-            return f"Error reading restart log: {str(e)}"
+            backups = sorted(
+                (p for p in backup_dir.glob('backup_*') if p.is_dir()),
+                key=lambda p: p.name,
+            )
+            excess = backups[:-self.BACKUP_RETENTION] if len(backups) > self.BACKUP_RETENTION else []
+            for old in excess:
+                shutil.rmtree(old, ignore_errors=True)
+            return len(excess)
+        except Exception:
+            return 0
 
     def create_backup(self, backup_dir: str = None) -> Tuple[bool, str]:
-        """Create backup of databases."""
+        """Create backup of databases.
+
+        SQLite files are copied with sqlite3's online backup API, which is
+        safe against concurrent writes — a plain file copy of a live
+        database can capture a torn, unusable file. Non-database files are
+        copied normally. Old backups beyond BACKUP_RETENTION are pruned.
+        """
         if backup_dir is None:
             backup_dir = "/app/backups" if os.path.exists("/app/backups") else str(self.repo_path / "backups")
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = Path(backup_dir) / f"backup_{timestamp}"
+        backup_root = Path(backup_dir)
+        backup_path = backup_root / f"backup_{timestamp}"
 
         try:
-            # Create backup directory
+            import shutil
+            import sqlite3
+
             backup_path.mkdir(parents=True, exist_ok=True)
 
-            # Copy database directories
-            import shutil
+            def safe_copy(src_file: Path, dest_file: Path):
+                dest_file.parent.mkdir(parents=True, exist_ok=True)
+                if src_file.suffix == '.db':
+                    src_conn = sqlite3.connect(f"file:{src_file}?mode=ro", uri=True)
+                    try:
+                        dest_conn = sqlite3.connect(str(dest_file))
+                        try:
+                            src_conn.backup(dest_conn)
+                        finally:
+                            dest_conn.close()
+                    finally:
+                        src_conn.close()
+                else:
+                    shutil.copy2(src_file, dest_file)
 
             db_dirs = ["master_db", "tenant_dbs", "KBM2_data"]
             backed_up = []
@@ -575,17 +690,104 @@ class SystemUpdateManager:
             for db_dir in db_dirs:
                 src = self.repo_path / db_dir
                 if src.exists() and src.is_dir():
-                    dest = backup_path / db_dir
-                    shutil.copytree(src, dest)
+                    for src_file in src.rglob('*'):
+                        if src_file.is_file():
+                            safe_copy(src_file, backup_path / db_dir / src_file.relative_to(src))
                     backed_up.append(db_dir)
 
             if not backed_up:
                 return False, "No database directories found to backup"
 
-            return True, f"Backup created at {backup_path} (backed up: {', '.join(backed_up)})"
+            pruned = self._prune_old_backups(backup_root)
+            message = f"Backup created at {backup_path} (backed up: {', '.join(backed_up)})"
+            if pruned:
+                message += f"; pruned {pruned} old backup(s)"
+            return True, message
 
         except Exception as e:
             return False, f"Failed to create backup: {str(e)}"
+
+    def preflight(self) -> Dict[str, any]:
+        """Health-check everything an update depends on, BEFORE updating.
+
+        Returns {'ok': bool, 'checks': [{name, ok, detail}, ...]}. Surfaced
+        in the System Updates UI so the operator can see exactly what would
+        break instead of finding out mid-update.
+        """
+        checks: List[Dict[str, any]] = []
+
+        def add(name: str, ok: bool, detail: str):
+            checks.append({"name": name, "ok": bool(ok), "detail": detail})
+
+        # 1) Docker CLI + socket + compose plugin
+        ok, msg = self.check_docker_available()
+        add("Docker access", ok, msg)
+
+        # 2) Compose project labels (sidecar targets the right project)
+        info = self._get_project_info()
+        add(
+            "Compose project detection",
+            bool(info.get('project_name') and info.get('working_dir')),
+            f"project={info.get('project_name')!r}, dir={info.get('working_dir')!r}, "
+            f"files={info.get('config_files')!r}",
+        )
+
+        # 3) Git repo reachable and on a real branch
+        version = self.get_current_version()
+        add("Git repository", "error" not in version,
+            version.get("error") or f"on {version.get('branch')} @ {version.get('commit_hash')}")
+        add("Update branch", True, f"updates track origin/{self._get_update_branch()}")
+
+        # 4) Every code package the app imports must be volume-mounted, or
+        #    `git pull` inside this container never reaches the host and the
+        #    next rebuild crash-loops on the missing package. This exact
+        #    failure has happened before — check it automatically now.
+        try:
+            mounted = set()
+            with open('/proc/self/mounts') as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) > 1 and parts[1].startswith('/app/'):
+                        mounted.add(parts[1][len('/app/'):].split('/')[0])
+            code_units = [
+                'app_multitenant.py', 'config.py', 'templates', 'static',
+                'auth', 'accounts', 'app_admin', 'inventory', 'checkout',
+                'main', 'contacts', 'properties', 'audits', 'smartlocks',
+                'exports', 'search', 'settings', 'helpcenter', 'utilities',
+                'middleware',
+            ]
+            missing = [u for u in code_units if u not in mounted]
+            if os.path.exists('/proc/self/mounts') and mounted:
+                add("Code volume mounts", not missing,
+                    "all code packages mounted" if not missing
+                    else f"NOT mounted (updates won't reach them): {', '.join(missing)} — "
+                         "add to compose.yaml volumes and re-run `docker compose up -d`")
+            else:
+                add("Code volume mounts", True, "not running under docker mounts (skipped)")
+        except Exception as e:
+            add("Code volume mounts", True, f"check skipped: {e}")
+
+        # 5) Backups dir writable (restart log + db backups land there)
+        backups = self.repo_path / 'backups'
+        try:
+            backups.mkdir(parents=True, exist_ok=True)
+            probe = backups / '.preflight_probe'
+            probe.write_text('ok')
+            probe.unlink()
+            add("Backups directory writable", True, str(backups))
+        except Exception as e:
+            add("Backups directory writable", False, f"{backups}: {e}")
+
+        # 6) Disk space (updates need room for backups + image layers)
+        try:
+            import shutil as _shutil
+            usage = _shutil.disk_usage(str(self.repo_path))
+            free_gb = usage.free / (1024 ** 3)
+            add("Disk space", free_gb >= 1.0, f"{free_gb:.1f} GB free")
+        except Exception as e:
+            add("Disk space", True, f"check skipped: {e}")
+
+        return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
     def perform_update(self, rebuild: bool = False) -> Dict[str, any]:
         """

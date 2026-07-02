@@ -97,6 +97,24 @@
   </div>
 </div>
 
+<!-- Update Health Check -->
+<div class="card" style="margin-bottom: 24px;">
+  <h2>Update Health Check</h2>
+  <div class="divider"></div>
+  <p class="muted text-small" style="margin-bottom: 12px;">
+    Verifies everything an update needs — Docker access, project detection, git state,
+    code volume mounts, backup directory, and disk space — <em>without changing anything</em>.
+    Run this first if updates have been failing.
+  </p>
+  <div id="preflight-results" style="display: none; margin-bottom: 12px;"></div>
+  <div class="toolbar">
+    <button type="button" class="btn" id="preflight-btn" onclick="runPreflight()"
+            data-tooltip="Safe to run any time — read-only checks">
+      Run Health Check
+    </button>
+  </div>
+</div>
+
 <!-- Update Check -->
 <div class="card" style="margin-bottom: 24px;">
   <h2>Check for Updates</h2>
@@ -211,6 +229,39 @@
 
 <script>
   // Check for updates
+  async function runPreflight() {
+    const btn = document.getElementById('preflight-btn');
+    const results = document.getElementById('preflight-results');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Checking...';
+    try {
+      const resp = await fetch('{{ url_for("app_admin.system_preflight") }}');
+      const data = await resp.json();
+      let html = '<table style="width:100%"><tbody>';
+      (data.checks || []).forEach(function (c) {
+        const mark = c.ok
+          ? '<span style="color:#4ade80; font-weight:700;">✓</span>'
+          : '<span style="color:#f87171; font-weight:700;">✗</span>';
+        html += '<tr><td style="width:24px; padding:6px 8px;">' + mark + '</td>' +
+                '<td style="padding:6px 8px; white-space:nowrap;"><strong>' + c.name + '</strong></td>' +
+                '<td style="padding:6px 8px;" class="muted text-small">' + c.detail + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      if (data.ok) {
+        html = '<p style="color:#4ade80; font-weight:600;">All checks passed — updates should work.</p>' + html;
+      } else {
+        html = '<p style="color:#f87171; font-weight:600;">Some checks failed — fix these before updating.</p>' + html;
+      }
+      results.innerHTML = html;
+      results.style.display = 'block';
+    } catch (err) {
+      results.innerHTML = '<p style="color:#f87171;">Health check request failed: ' + err + '</p>';
+      results.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Run Health Check';
+  }
+
   async function checkForUpdates() {
     const btn = document.getElementById('check-updates-btn');
     const statusDiv = document.getElementById('update-status');

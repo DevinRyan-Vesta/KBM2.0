@@ -388,6 +388,21 @@ def perform_update():
     return jsonify(result)
 
 
+@app_admin_bp.route('/admin/system/preflight')
+@login_required
+@app_admin_required
+@root_domain_only
+def system_preflight():
+    """
+    Update health check (AJAX endpoint): verifies docker access, compose
+    project detection, git state, code volume mounts, backups dir, and disk
+    space — everything an update needs — without changing anything.
+    """
+    from utilities.system_update import update_manager
+
+    return jsonify(update_manager.preflight())
+
+
 @app_admin_bp.route('/admin/system/logs')
 @login_required
 @app_admin_required

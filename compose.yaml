@@ -46,6 +46,7 @@ services:
       - ./exports:/app/exports
       - ./search:/app/search
       - ./settings:/app/settings
+      - ./helpcenter:/app/helpcenter
       - ./utilities:/app/utilities
       - ./middleware:/app/middleware
     networks:
