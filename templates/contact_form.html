@@ -44,9 +44,33 @@
     <h1>{{ page_title }}</h1>
   </div>
 
+  {% if duplicates %}
+  <div class="card" style="border-color: rgba(251, 191, 36, 0.45);">
+    <h3 style="margin-top: 0;">⚠️ Possible duplicate</h3>
+    <p class="muted text-small" style="margin: 0 0 10px;">
+      A contact with the same name or email already exists. If it's the same
+      person, use the existing record instead of creating another one.
+    </p>
+    <ul style="margin: 0 0 12px; padding-left: 20px;">
+      {% for dup in duplicates %}
+        <li>
+          <a href="{{ url_for('contacts.contact_detail', contact_id=dup.id) }}">{{ dup.name }}</a>
+          <span class="muted text-small">
+            ({{ (dup.contact_type or '')|title }}{% if dup.email %} · {{ dup.email }}{% endif %}{% if dup.phone %} · {{ dup.phone }}{% endif %})
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="muted text-small" style="margin: 0;">
+      Not the same person? Submit again with the button below to create it anyway.
+    </p>
+  </div>
+  {% endif %}
+
   <div class="card form-card">
     <form method="post" action="{{ form_action }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        {% if duplicates %}<input type="hidden" name="confirm_duplicate" value="1"/>{% endif %}
       <div class="form-grid two-column">
         <div class="form-field">
           <label for="name">Name *</label>

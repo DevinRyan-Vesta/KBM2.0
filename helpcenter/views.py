@@ -31,6 +31,8 @@ HELP_TOPICS = OrderedDict([
                 "summary": "Run key audits, enter counts, and apply corrections."}),
     ("reports", {"title": "Reports & Exports", "icon": "📊",
                  "summary": "Overdue, upcoming, low-stock reports and CSV/Excel/PDF exports."}),
+    ("calendar", {"title": "Calendar", "icon": "📅",
+                  "summary": "See checkouts and expected returns on a month view."}),
     ("properties", {"title": "Properties & Units", "icon": "🏘️",
                     "summary": "Manage properties, units, and what's assigned to them."}),
     ("contacts", {"title": "Contacts", "icon": "👤",
@@ -77,6 +79,7 @@ _ENDPOINT_PREFIX_MAP = [
 
 _BLUEPRINT_MAP = {
     "main": "getting-started",
+    "calendar": "calendar",
     "checkout": "checkout",
     "audits": "audits",
     "exports": "reports",

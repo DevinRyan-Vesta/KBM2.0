@@ -1,0 +1,23 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>What the calendar shows</h2>
+<p>The Calendar gives you a month view of checkout activity:</p>
+<ul>
+  <li><strong>Due back</strong> — items whose expected return date falls on that day.</li>
+  <li><strong>Checked out</strong> — items that went out that day.</li>
+  <li><strong>Overdue</strong> — anything past its return date is flagged in red,
+      both on its due day and in the overdue list at the top.</li>
+</ul>
+
+<h2>Getting around</h2>
+<ul>
+  <li>Use <strong>← / →</strong> to move between months and <strong>Today</strong> to jump back.</li>
+  <li>Click any item on a day to open its detail page.</li>
+</ul>
+
+<div class="help-callout tip">
+  <strong>Tip:</strong> the calendar is a planning view — the checkout data comes from
+  the same records as the Reports page, so anything overdue here also appears
+  in the Overdue Returns report (and in overdue reminder emails, if enabled).
+</div>
+{% endblock %}

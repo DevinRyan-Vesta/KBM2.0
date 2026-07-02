@@ -94,6 +94,32 @@ def create_contact():
                 flash(message, "error")
             return redirect(url_for("contacts.create_contact"))
 
+        # Duplicate check: same name (case-insensitive) or same email as an
+        # existing contact. Warn once with the matches shown; the re-rendered
+        # form carries confirm_duplicate so a second submit goes through.
+        if not request.form.get("confirm_duplicate"):
+            dup_filters = [func.lower(Contact.name) == name.lower()]
+            if email:
+                dup_filters.append(func.lower(Contact.email) == email.lower())
+            duplicates = tenant_query(Contact).filter(or_(*dup_filters)).all()
+            if duplicates:
+                from types import SimpleNamespace
+                entered = SimpleNamespace(
+                    name=name, contact_type=contact_type, company=company,
+                    email=email, phone=phone, notes=notes,
+                    user_id=staff_user.id if staff_user else None,
+                )
+                return render_template(
+                    "contact_form.html",
+                    contact=entered,
+                    contact_types=CONTACT_TYPES,
+                    staff_users=_get_available_staff_users(),
+                    form_action=url_for("contacts.create_contact"),
+                    page_title="Add Contact",
+                    submit_label="Create Anyway",
+                    duplicates=duplicates,
+                )
+
         contact = Contact(
             name=name,
             contact_type=contact_type,
