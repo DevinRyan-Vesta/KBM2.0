@@ -81,7 +81,7 @@
 
 **CRITICAL**: The following security items MUST be addressed before production:
 
-- [ ] **Secret Key**: Replace `SECRET_KEY=password123` in `.env.production` with a cryptographically secure random string
+- [ ] **Secret Key**: Set a cryptographically secure `SECRET_KEY` in `.env.production` — generate one with `python -c "import secrets; print(secrets.token_hex(32))"`. The app refuses to start in production without one. Any key that was ever committed to git must be treated as compromised and rotated.
   ```bash
   python -c "import secrets; print(secrets.token_hex(32))"
   ```
@@ -180,18 +180,9 @@
 
 #### 5. Application Configuration
 
-- [ ] **Session Configuration**: Configure secure sessions
-  ```python
-  app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS only
-  app.config['SESSION_COOKIE_HTTPONLY'] = True
-  app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-  app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
-  ```
+- [ ] **Session Configuration**: Secure sessions are applied from the environment (see `.env.production.template`). `SESSION_COOKIE_HTTPONLY` and `SESSION_COOKIE_SAMESITE=Lax` default on; set `SESSION_COOKIE_SECURE=true` whenever the app is served over HTTPS (it is with the provided Caddy/Traefik/Cloudflare setups). `PERMANENT_SESSION_LIFETIME` (seconds) controls the idle timeout, default 1800.
 
-- [ ] **File Upload Limits**: Set maximum upload sizes
-  ```python
-  app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
-  ```
+- [ ] **File Upload Limits**: `MAX_CONTENT_LENGTH` is applied from the environment, default 16 MB.
 
 - [ ] **Subdomain Configuration**: Configure allowed subdomains
   - Add validation for subdomain names

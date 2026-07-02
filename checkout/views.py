@@ -15,6 +15,7 @@ checkout_bp = Blueprint(
 
 @checkout_bp.get("/")
 @login_required
+@tenant_required
 def start():
     return render_template("checkout_start.html")
 
@@ -27,6 +28,7 @@ def checkout_ping():
 # API route to lookup items by ID (numeric or custom)
 @checkout_bp.get("/api/items/<item_id>")
 @login_required
+@tenant_required
 def api_get_item(item_id):
     """API endpoint to get item details by ID (numeric or custom_id) for the checkout page"""
     # Try to find by custom_id first
@@ -44,6 +46,7 @@ def api_get_item(item_id):
 # API route for autocomplete search
 @checkout_bp.get("/api/items/search")
 @login_required
+@tenant_required
 def api_search_items():
     """API endpoint for autocomplete search"""
     query = request.args.get('q', '').strip()
@@ -75,6 +78,7 @@ def api_search_items():
 # API route to search items by person name
 @checkout_bp.get("/api/items/by-person")
 @login_required
+@tenant_required
 def api_search_by_person():
     """API endpoint to find all items checked out to or assigned to a person"""
     name = request.args.get('name', '').strip()

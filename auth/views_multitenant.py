@@ -11,29 +11,7 @@ from utilities.tenant_manager import tenant_manager
 from middleware.tenant_middleware import tenant_required, app_admin_required
 from datetime import datetime, UTC
 
-# Rate limiting helper
-def apply_rate_limit(func):
-    """Apply rate limiting to a view function if available"""
-    try:
-        from flask_limiter import Limiter
-        from flask_limiter.util import get_remote_address
-        import os
-
-        # Only apply if rate limiting is enabled
-        if os.getenv('RATELIMIT_ENABLED', 'false').lower() in ('true', '1', 'yes'):
-            # Create a simple rate limiter for this view
-            from functools import wraps
-
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                # Simple in-memory rate limiting could be added here
-                # For now, just pass through
-                return func(*args, **kwargs)
-            return wrapper
-    except ImportError:
-        pass
-
-    return func
+from utilities.extensions import limiter
 
 # Define the blueprint
 auth_bp = Blueprint(
@@ -123,6 +101,7 @@ def login():
 
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("10 per minute; 50 per hour")
 def login_post():
     """Handle login form submission."""
     try:

@@ -28,7 +28,8 @@ def _is_lockbox(i: Item) -> bool:
     return i.type.lower() == "lockbox"
 
 def _require_admin():
-    if getattr(current_user, "role", "").lower() != "admin":
+    # Owners have every permission admins do (see auth and settings views).
+    if (getattr(current_user, "role", "") or "").lower() not in ("admin", "owner"):
         abort(403)
 
 
@@ -823,9 +824,8 @@ def update_lockbox_code(item_id: int):
 @login_required
 @tenant_required
 def delete_lockbox(item_id: int):
-    role = (getattr(current_user, "role", "") or "").lower()
-    if role == "agent":
-        abort(403)
+    # Deleting inventory is destructive — same admin/owner gate as bulk delete.
+    _require_admin()
 
     lb = tenant_query(Item).filter_by(id=item_id, type="Lockbox").first()
     if not lb:
@@ -1644,9 +1644,8 @@ def edit_key(item_id: int):
 @login_required
 @tenant_required
 def delete_key(item_id: int):
-    role = (getattr(current_user, "role", "") or "").lower()
-    if role == "agent":
-        abort(403)
+    # Deleting inventory is destructive — same admin/owner gate as bulk delete.
+    _require_admin()
 
     key = tenant_query(Item).filter_by(id=item_id, type="Key").first()
     if not key:
@@ -2078,9 +2077,8 @@ def edit_sign(item_id: int):
 @login_required
 @tenant_required
 def delete_sign(item_id: int):
-    role = (getattr(current_user, "role", "") or "").lower()
-    if role == "agent":
-        abort(403)
+    # Deleting inventory is destructive — same admin/owner gate as bulk delete.
+    _require_admin()
 
     sign = tenant_query(Item).filter_by(id=item_id, type="Sign").first()
     if not sign:

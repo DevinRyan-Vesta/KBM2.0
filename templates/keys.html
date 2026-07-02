@@ -1,23 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Keys - KBM
-<!-- Export Preview Modal -->
-<div id="export-preview-modal" class="modal-root">
-  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
-  <div class="modal-dialog" style="max-width: 900px;">
-    <h3>Export Preview</h3>
-    <div id="preview-content" class="modal-body">
-      <p class="muted">Loading preview...</p>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
-      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
-      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
-      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
-    </div>
-  </div>
-</div>
-
-{% endblock %}
+{% block title %}Keys - KBM{% endblock %}
 
 {% block content %}
 <style>
@@ -140,10 +122,10 @@
       {% endif %}
     </form>
     <div class="btn-group">
-      <button type="button" class="btn small" onclick="toggleFilters()">Filters ▾</button>
-      <button type="button" class="btn small" onclick="showExportMenu(event, 'keys')">Export ▾</button>
-      <a class="btn small" href="{{ url_for('inventory.import_keys') }}">Import</a>
-      <a class="btn primary" href="{{ url_for('inventory.add_key') }}">Add Key</a>
+      <button type="button" class="btn small" onclick="toggleFilters()" data-tooltip="Filter keys by status, property, or hook number">Filters ▾</button>
+      <button type="button" class="btn small" onclick="showExportMenu(event, 'keys')" data-tooltip="Download the key inventory as CSV, Excel, or PDF">Export ▾</button>
+      <a class="btn small" href="{{ url_for('inventory.import_keys') }}" data-tooltip="Bulk-load keys from a CSV or Excel spreadsheet">Import</a>
+      <a class="btn primary" href="{{ url_for('inventory.add_key') }}" data-tooltip="Add one key and its copies to inventory">Add Key</a>
     </div>
   </div>
 </div>
@@ -1264,23 +1246,5 @@
     }
   }
 </script>
-
-
-<!-- Export Preview Modal -->
-<div id="export-preview-modal" class="modal-root">
-  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
-  <div class="modal-dialog" style="max-width: 900px;">
-    <h3>Export Preview</h3>
-    <div id="preview-content" class="modal-body">
-      <p class="muted">Loading preview...</p>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
-      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
-      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
-      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
-    </div>
-  </div>
-</div>
 
 {% endblock %}

@@ -13,10 +13,17 @@ from utilities.database import db, Item, ItemCheckout, Contact, Property, Proper
 exports_bp = Blueprint("exports", __name__, template_folder="../templates")
 
 
+def _empty_export_response():
+    """Friendly response when a report has no rows: flash + bounce back
+    instead of a bare 400 text page."""
+    flash("Nothing to export — this report has no data yet.", "info")
+    return redirect(request.referrer or url_for("main.reports"))
+
+
 def generate_csv(data: List[Dict[str, Any]], filename: str) -> Response:
     """Generate CSV file from data"""
     if not data:
-        return Response("No data to export", status=400)
+        return _empty_export_response()
 
     output = StringIO()
     writer = csv.DictWriter(output, fieldnames=data[0].keys())
@@ -39,7 +46,7 @@ def generate_excel(data: List[Dict[str, Any]], filename: str) -> Response:
         return Response(error_msg, status=500)
 
     if not data:
-        return Response("No data to export", status=400)
+        return _empty_export_response()
 
     wb = Workbook()
     ws = wb.active
@@ -99,7 +106,7 @@ def generate_pdf(data: List[Dict[str, Any]], filename: str, title: str = "Report
         return Response(error_msg, status=500)
 
     if not data:
-        return Response("No data to export", status=400)
+        return _empty_export_response()
 
     output = BytesIO()
 
@@ -358,10 +365,14 @@ def export_items(item_type: str):
     """Export items (keys, lockboxes, signs) to CSV/Excel/PDF"""
     format_type = request.args.get("format", "csv").lower()
 
-    # Validate item type
-    valid_types = ["key", "lockbox", "sign"]
-    item_type_singular = item_type.rstrip('s').lower()
-    if item_type_singular not in valid_types:
+    # Validate item type (accept singular or plural forms)
+    type_map = {
+        "key": "key", "keys": "key",
+        "lockbox": "lockbox", "lockboxes": "lockbox",
+        "sign": "sign", "signs": "sign",
+    }
+    item_type_singular = type_map.get(item_type.lower())
+    if item_type_singular is None:
         flash("Invalid item type", "error")
         return redirect(url_for("main.home"))
 
@@ -519,7 +530,7 @@ def export_overdue_returns():
             'Address': checkout.address or (item.address if item else ''),
             'Checkout Date': checkout.checked_out_at.strftime('%Y-%m-%d %I:%M %p') if checkout.checked_out_at else '',
             'Expected Return': checkout.expected_return_date.strftime('%Y-%m-%d') if checkout.expected_return_date else '',
-            'Days Overdue': (today - checkout.expected_return_date).days if checkout.expected_return_date else 0,
+            'Days Overdue': (today - checkout.expected_return_date.date()).days if checkout.expected_return_date else 0,
             'Assignment Type': checkout.assignment_type or 'checkout',
         })
     
@@ -560,7 +571,7 @@ def export_upcoming_returns():
             'Address': checkout.address or (item.address if item else ''),
             'Checkout Date': checkout.checked_out_at.strftime('%Y-%m-%d %I:%M %p') if checkout.checked_out_at else '',
             'Expected Return': checkout.expected_return_date.strftime('%Y-%m-%d') if checkout.expected_return_date else '',
-            'Days Until Return': (checkout.expected_return_date - today).days if checkout.expected_return_date else 0,
+            'Days Until Return': (checkout.expected_return_date.date() - today).days if checkout.expected_return_date else 0,
             'Assignment Type': checkout.assignment_type or 'checkout',
         })
     

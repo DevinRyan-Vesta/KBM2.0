@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, url_for, redirect, g
+from flask import Blueprint, render_template, url_for, redirect, g, request
 from flask_login import login_required, current_user
 from utilities.database import db, User, Item, utc_now
 from utilities.tenant_manager import tenant_manager
@@ -25,9 +25,17 @@ def get_tenant_session():
 
 
 @main_bp.route("/", methods=["GET"])
-@login_required
-@tenant_required
 def home():
+    # Root domain has no tenant: show the public landing page (signup /
+    # login). The tenant dashboard below only exists on subdomains. This
+    # branch must run before any auth check, so visitors aren't bounced to
+    # a login form that can't help them.
+    if g.get("is_root_domain", False):
+        return render_template("landing.html")
+
+    if not current_user.is_authenticated:
+        return redirect(url_for("auth.login", next=request.url))
+
     # Calculate statistics for the dashboard
     session = get_tenant_session()
 

@@ -375,8 +375,9 @@ def delete_unit(property_id: int, unit_id: int):
     """Delete a property unit."""
     from flask_login import current_user
 
-    # Check if user is admin
-    if not hasattr(current_user, 'role') or current_user.role != 'admin':
+    # Admins and owners may delete units (owner outranks admin everywhere else).
+    role = (getattr(current_user, 'role', '') or '').lower()
+    if role not in ('admin', 'owner'):
         flash("You must be an admin to delete units.", "error")
         return redirect(url_for("properties.property_detail", property_id=property_id))
 

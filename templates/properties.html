@@ -1,69 +1,5 @@
 ﻿{% extends "base.html" %}
-{% block title %}Properties - KBM
-<!-- Export Menu -->
-<div id="export-menu" class="dropdown-menu" style="display: none;">
-  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
-  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
-  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
-</div>
-
-
-<script>
-  // Export menu functionality
-  let exportMenuData = null;
-
-  function showExportMenu(event, itemType) {
-    event.preventDefault();
-    const menu = document.getElementById('export-menu');
-    const button = event.target;
-    const rect = button.getBoundingClientRect();
-
-    menu.style.left = rect.left + 'px';
-    menu.style.top = (rect.bottom + 5) + 'px';
-    menu.style.display = 'block';
-    exportMenuData = itemType;
-
-    // Close menu on outside click
-    setTimeout(() => {
-      document.addEventListener('click', closeExportMenu);
-    }, 0);
-  }
-
-  function closeExportMenu(event) {
-    const menu = document.getElementById('export-menu');
-    if (event && menu.contains(event.target)) return;
-    menu.style.display = 'none';
-    document.removeEventListener('click', closeExportMenu);
-  }
-
-  function exportData(event, format) {
-    event.preventDefault();
-    if (!exportMenuData) return;
-
-    showExportPreview(exportMenuData, format);
-    closeExportMenu();
-  }
-</script>
-
-
-<!-- Export Preview Modal -->
-<div id="export-preview-modal" class="modal-root">
-  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
-  <div class="modal-dialog" style="max-width: 900px;">
-    <h3>Export Preview</h3>
-    <div id="preview-content" class="modal-body">
-      <p class="muted">Loading preview...</p>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
-      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
-      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
-      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
-    </div>
-  </div>
-</div>
-
-{% endblock %}
+{% block title %}Properties - KBM{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -76,9 +12,9 @@
         <a class="btn small" href="{{ url_for('properties.list_properties') }}">Clear</a>
       {% endif %}
     </form>
-    <a class="btn" href="{{ url_for('properties.import_properties') }}">Import</a>
+    <a class="btn" href="{{ url_for('properties.import_properties') }}" data-tooltip="Bulk-load properties from a CSV or Excel spreadsheet">Import</a>
     <a class="btn" href="{{ url_for('properties.import_units') }}">Import Units</a>
-    <a class="btn primary" href="{{ url_for('properties.create_property') }}">Add Property</a>
+    <a class="btn primary" href="{{ url_for('properties.create_property') }}" data-tooltip="Add a property; you can add units to it afterwards">Add Property</a>
   </div>
 </div>
 
@@ -122,69 +58,6 @@
       </div>
     </div>
   {% endfor %}
-</div>
-
-<!-- Export Menu -->
-<div id="export-menu" class="dropdown-menu" style="display: none;">
-  <a href="#" onclick="exportData(event, 'csv')">Export as CSV</a>
-  <a href="#" onclick="exportData(event, 'excel')">Export as Excel</a>
-  <a href="#" onclick="exportData(event, 'pdf')">Export as PDF</a>
-</div>
-
-
-<script>
-  // Export menu functionality
-  let exportMenuData = null;
-
-  function showExportMenu(event, itemType) {
-    event.preventDefault();
-    const menu = document.getElementById('export-menu');
-    const button = event.target;
-    const rect = button.getBoundingClientRect();
-
-    menu.style.left = rect.left + 'px';
-    menu.style.top = (rect.bottom + 5) + 'px';
-    menu.style.display = 'block';
-    exportMenuData = itemType;
-
-    // Close menu on outside click
-    setTimeout(() => {
-      document.addEventListener('click', closeExportMenu);
-    }, 0);
-  }
-
-  function closeExportMenu(event) {
-    const menu = document.getElementById('export-menu');
-    if (event && menu.contains(event.target)) return;
-    menu.style.display = 'none';
-    document.removeEventListener('click', closeExportMenu);
-  }
-
-  function exportData(event, format) {
-    event.preventDefault();
-    if (!exportMenuData) return;
-
-    showExportPreview(exportMenuData, format);
-    closeExportMenu();
-  }
-</script>
-
-
-<!-- Export Preview Modal -->
-<div id="export-preview-modal" class="modal-root">
-  <div class="modal-backdrop" data-modal-cancel="export-preview"></div>
-  <div class="modal-dialog" style="max-width: 900px;">
-    <h3>Export Preview</h3>
-    <div id="preview-content" class="modal-body">
-      <p class="muted">Loading preview...</p>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn ghost" data-modal-cancel="export-preview">Cancel</button>
-      <button type="button" id="download-csv" class="btn" onclick="downloadExport('csv')">Download CSV</button>
-      <button type="button" id="download-excel" class="btn" onclick="downloadExport('excel')">Download Excel</button>
-      <button type="button" id="download-pdf" class="btn primary" onclick="downloadExport('pdf')">Download PDF</button>
-    </div>
-  </div>
 </div>
 
 {% endblock %}

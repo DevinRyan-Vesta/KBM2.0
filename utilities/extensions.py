@@ -8,13 +8,15 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 
-# Global rate limiter. The app factory in `app_multitenant` calls
-# `limiter.init_app(app)` only when RATELIMIT_ENABLED is true; until then
-# every `@limiter.limit(...)` decorator becomes a no-op, which is the
-# behavior we want for dev / unconfigured environments.
+# Global rate limiter. The app factory in `app_multitenant` always calls
+# `limiter.init_app(app)`; set RATELIMIT_ENABLED=false in the environment to
+# disable enforcement (e.g. for local development or tests).
+#
+# No `default_limits` on purpose: only sensitive routes opt in with an
+# explicit `@limiter.limit(...)` (login, signup). A global default would
+# throttle normal page browsing for busy office users.
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://",
     strategy="fixed-window",
 )

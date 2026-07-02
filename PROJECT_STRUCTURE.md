@@ -905,7 +905,7 @@ Configuration is loaded in this order (later overrides earlier):
 **Example**:
 ```bash
 # .env
-SECRET_KEY=default-secret
+SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
 
 # .env.production
 SECRET_KEY=production-secret
