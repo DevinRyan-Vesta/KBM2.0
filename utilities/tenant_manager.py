@@ -152,21 +152,24 @@ class TenantManager:
         else:
             subdomain = account.subdomain
 
-        # Return cached session if available
+        # Return a session from the cached registry if available. We cache
+        # the scoped_session REGISTRY (not a Session instance): each request
+        # gets a clean thread-local Session and close_tenant_session()
+        # discards it at teardown. Sharing one Session object across
+        # requests/threads leaks identity-map state and isn't thread-safe.
         if subdomain in self._sessions:
             return self._sessions[subdomain]
 
         # Get engine
         engine = self.get_tenant_engine(account)
 
-        # Create session
+        # Create session registry (scoped_session proxies all Session methods)
         Session = scoped_session(sessionmaker(bind=engine))
-        session = Session()
 
-        # Cache the session
-        self._sessions[subdomain] = session
+        # Cache the registry
+        self._sessions[subdomain] = Session
 
-        return session
+        return Session
 
     def set_tenant_context(self, account):
         """
@@ -198,10 +201,15 @@ class TenantManager:
         return getattr(g, 'tenant_db_session', None)
 
     def close_tenant_session(self):
-        """Close the current tenant session if it exists."""
+        """Close and discard the current tenant session at request teardown."""
         session = getattr(g, 'tenant_db_session', None)
-        if session:
-            session.close()
+        if session is not None:
+            if hasattr(session, 'remove'):
+                # scoped_session registry: close + discard the thread-local
+                # Session so the next request starts fresh.
+                session.remove()
+            else:
+                session.close()
             g.pop('tenant_db_session', None)
 
     def query_tenant_db(self, model_class):
@@ -236,7 +244,11 @@ class TenantManager:
         subdomain = account.subdomain if hasattr(account, 'subdomain') else account
 
         if subdomain in self._sessions:
-            self._sessions[subdomain].close()
+            registry = self._sessions[subdomain]
+            if hasattr(registry, 'remove'):
+                registry.remove()
+            else:
+                registry.close()
             del self._sessions[subdomain]
 
         if subdomain in self._engines:

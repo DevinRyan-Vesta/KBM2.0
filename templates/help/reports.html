@@ -1,0 +1,31 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>The Reports page</h2>
+<p><strong>Reports</strong> in the sidebar gathers the questions you ask most, each in a tab:</p>
+<ul>
+  <li><strong>Overdue Returns</strong> — checkouts past their expected return date.</li>
+  <li><strong>Upcoming Returns</strong> — due back in the next 30 days.</li>
+  <li><strong>Long-Term Checkouts</strong> — out for more than 30 days.</li>
+  <li><strong>Low Keys</strong> — keys at or below the copy threshold from Settings.</li>
+  <li><strong>Checked-Out Keys</strong> — everything currently out, and with whom.</li>
+  <li><strong>Property Assignments</strong> — what's assigned where.</li>
+</ul>
+
+<h2>Exporting</h2>
+<p>Each report tab has an <strong>Export ▾</strong> button for CSV (spreadsheets),
+Excel (formatted workbook), or PDF (printing/email). Inventory lists
+(Lockboxes, Keys, Signs) have the same Export button on their own pages.</p>
+<div class="help-callout tip">
+  <strong>Tip:</strong> if a report is empty there's nothing to export — you'll get a
+  note instead of a file.
+</div>
+
+<h2>Email reminders</h2>
+<p>If email notifications are enabled in Settings, KBM can send overdue
+reminders automatically (with a configurable grace period), plus optional
+confirmation emails at checkout and check-in.</p>
+
+<h2>Activity Logs</h2>
+<p>Admins can see the full audit trail of who did what under
+<strong>Administration → Activity Logs</strong>, with CSV export.</p>
+{% endblock %}

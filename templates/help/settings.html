@@ -1,0 +1,33 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>Who can change settings</h2>
+<p>Settings apply to your whole company and are editable by <strong>admins and
+owners</strong> only, under <strong>Administration → Settings</strong>.</p>
+
+<h2>Email notifications</h2>
+<ul>
+  <li><strong>Master switch</strong> — turn all email on or off.</li>
+  <li><strong>On checkout / on check-in</strong> — confirmation emails to the contact
+      involved (they need an email address on their contact record).</li>
+  <li><strong>Overdue reminders</strong> — automatic emails when an expected return date
+      passes.</li>
+  <li><strong>Grace period</strong> — days past the return date before the first overdue
+      reminder goes out (0 = same day).</li>
+</ul>
+
+<h2>Thresholds</h2>
+<ul>
+  <li><strong>Low keys threshold</strong> — keys with this many total copies or fewer get
+      the red low-stock marker and appear in the Low Keys report. Default 4.</li>
+  <li><strong>Default checkout days</strong> — pre-fills the expected return date at
+      checkout (default 7). You can always override per checkout.</li>
+</ul>
+
+<h2>Receipts</h2>
+<p><strong>Receipt header</strong> and <strong>footer</strong> are free text printed on every
+receipt — company name and phone up top, return policy at the bottom.</p>
+
+<div class="help-callout tip">
+  <strong>Tip:</strong> settings take effect immediately — no restart needed.
+</div>
+{% endblock %}

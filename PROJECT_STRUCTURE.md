@@ -74,7 +74,6 @@ KBM2.0/
 ├── utilities/             # Core utilities (database, tenant manager)
 ├── KBM2_data/            # Database storage (SQLite files)
 ├── logs/                  # Application logs
-├── app.py                 # Original single-tenant entry point (legacy)
 ├── app_multitenant.py     # Multi-tenant entry point (MAIN)
 ├── config.py              # Configuration management
 ├── requirements.txt       # Python dependencies
@@ -905,7 +904,7 @@ Configuration is loaded in this order (later overrides earlier):
 **Example**:
 ```bash
 # .env
-SECRET_KEY=default-secret
+SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
 
 # .env.production
 SECRET_KEY=production-secret
@@ -1112,8 +1111,6 @@ log_activity(
 - [x] `.dockerignore` - Docker ignore rules
 
 **Not Required**:
-- `app.py` - Legacy single-tenant
-- `auth/views.py` - Legacy auth
 - `tests/` - Test files (but good to have)
 - `.git/` - Git history
 - `venv/`, `.venv/` - Virtual environments

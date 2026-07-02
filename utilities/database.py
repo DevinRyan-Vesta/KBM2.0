@@ -69,7 +69,7 @@ class Item(db.Model):
     def record_action(self, action: str, user: "User"):
         self.last_action = action
         self.last_action_at = utc_now()
-        self.last_action_by = user
+        self.last_action_by_id = getattr(user, "id", None)
 
     def to_dict(self):
         return {
@@ -335,7 +335,7 @@ class ItemCheckout(db.Model):
             "id": self.id,
             "item_id": self.item_id,
             "checked_out_to": self.checked_out_to,
-            "checked_out_by": self.checked_out_by.name if self.checked_out_by else None,
+            "checked_out_by_id": self.checked_out_by_id,
             "quantity": self.quantity,
             "purpose": self.purpose,
             "assignment_type": self.assignment_type,
@@ -343,7 +343,7 @@ class ItemCheckout(db.Model):
             "address": self.address,
             "checked_out_at": self.checked_out_at.isoformat() if self.checked_out_at else None,
             "checked_in_at": self.checked_in_at.isoformat() if self.checked_in_at else None,
-            "checked_in_by": self.checked_in_by.name if self.checked_in_by else None,
+            "checked_in_by_id": self.checked_in_by_id,
             "is_active": self.is_active,
         }
 

@@ -1,0 +1,44 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>What a lockbox record tracks</h2>
+<p>Each lockbox has a <strong>label</strong>, an auto-generated <strong>ID</strong> (like <code>LBA001</code>),
+its <strong>current and previous codes</strong>, an optional <strong>Supra ID</strong>, a storage
+<strong>location</strong>, a <strong>status</strong>, and (optionally) the <strong>property</strong> it's assigned to.</p>
+
+<h2>Adding a lockbox</h2>
+<ol>
+  <li>Go to <strong>Lockboxes → Add Lockbox</strong>.</li>
+  <li>Enter a label (e.g. "LB-12") and the <strong>initial code</strong> — both are required.</li>
+  <li>Save. To assign it to a property, open the new lockbox and use <strong>Edit</strong> —
+      assignment is deliberately a separate step from creation.</li>
+</ol>
+
+<h2>Checking out / in</h2>
+<ul>
+  <li>From the Lockboxes list, use the row's <strong>Check Out</strong> button, or use the
+      <strong>Check In/Out</strong> page and scan/type the lockbox ID.</li>
+  <li>Checking out records who took it and why.</li>
+  <li>When you check a lockbox back in you can enter a <strong>new code</strong> —
+      the old one is preserved as "previous code" so you can still get in if
+      the change hasn't been made physically yet.</li>
+</ul>
+
+<div class="help-callout tip">
+  <strong>Tip:</strong> Use <strong>bulk operations</strong> — tick the checkboxes on several rows
+  to update status or assignment in one go. Bulk delete is admin-only.
+</div>
+
+<h2>Codes</h2>
+<p>The <strong>current code</strong> is what opens the box today; <strong>previous code</strong> is
+kept automatically whenever the code changes. Code history matters after
+turnovers — if a contractor still has the old code, change the code and check
+the box back in with the new one.</p>
+
+<h2>Labels &amp; QR codes</h2>
+<p>Open any lockbox and use <strong>Print Label</strong> to get a printable label with a
+scannable code — scanning it on the Check In/Out page pulls the item up instantly.</p>
+
+<h2>Exporting</h2>
+<p>The <strong>Export ▾</strong> button on the Lockboxes list downloads the current
+inventory as CSV, Excel, or PDF.</p>
+{% endblock %}

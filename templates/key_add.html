@@ -84,22 +84,22 @@
         </div>
 
         <div class="form-field">
-          <label for="key_hook_number">Key Hook #</label>
+          <label for="key_hook_number">Key Hook # <span class="help-tip" data-tooltip="The numbered hook where this key hangs in your key box — used for audits and quick retrieval.">?</span></label>
           <input type="text" id="key_hook_number" name="key_hook_number" placeholder="Hook number in key box">
         </div>
 
         <div class="form-field">
-          <label for="keycode">Key Code</label>
+          <label for="keycode">Key Code <span class="help-tip" data-tooltip="The cut code stamped on the key (e.g. a 5-digit code) so a locksmith can duplicate it.">?</span></label>
           <input type="text" id="keycode" name="keycode" placeholder="5-digit cut code (if known)">
         </div>
 
         <div class="form-field">
-          <label for="total_copies">Total Copies *</label>
+          <label for="total_copies">Total Copies * <span class="help-tip" data-tooltip="How many physical copies of this key you own. Checkouts count against this number.">?</span></label>
           <input type="number" id="total_copies" name="total_copies" min="0" value="1" required>
         </div>
 
         <div class="form-field select-field">
-          <label for="master_key_id">Master Key</label>
+          <label for="master_key_id">Master Key <span class="help-tip" data-tooltip="If this key is part of a master key system, pick the master that also opens this door.">?</span></label>
           <select id="master_key_id" name="master_key_id">
             <option value="">-- None --</option>
             {% for key in master_keys %}

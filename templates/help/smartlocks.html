@@ -1,0 +1,26 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>What smart locks track</h2>
+<p>Smart locks are keypad/electronic locks installed at properties. KBM stores
+each lock's <strong>label</strong>, <strong>current code</strong>, the <strong>property and unit</strong> it's
+installed at, notes, and <strong>photos</strong> (e.g. of the install or the lock model).</p>
+
+<h2>Adding a smart lock</h2>
+<ol>
+  <li>Go to <strong>Smart Locks → Add</strong>.</li>
+  <li>Enter a label and the code, and link it to a property/unit.</li>
+</ol>
+
+<h2>Codes</h2>
+<p>When a code changes (turnover, contractor finished), edit the lock and enter
+the new code. Changes are recorded in the activity log, so you can see when a
+code was last rotated and by whom.</p>
+
+<h2>Photos</h2>
+<p>Open a lock's page to upload photos with captions. Photos are validated and
+stored safely — handy for remembering which unit door a lock is on.</p>
+
+<h2>Import / export</h2>
+<p>Bulk-load locks from a spreadsheet with <strong>Import</strong>, or download the current
+list with <strong>Export</strong> — see the Importing Data topic for the wizard walkthrough.</p>
+{% endblock %}

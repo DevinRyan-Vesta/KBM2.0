@@ -1,0 +1,37 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>Pieces and assembled units</h2>
+<p>Sign inventory comes in two flavors:</p>
+<ul>
+  <li><strong>Pieces</strong> — individual components: Frames, Signs, Name Riders,
+      Status Riders, and Bonus Riders. Each piece tracks its material and condition.</li>
+  <li><strong>Assembled Units</strong> — a set of pieces built into one deployable sign.
+      Assembling reserves the pieces so they can't be double-used.</li>
+</ul>
+
+<h2>Adding pieces</h2>
+<ol>
+  <li>Go to <strong>Signs → Add Sign</strong>.</li>
+  <li>Choose subtype <strong>Piece</strong> and the piece type (Frame, Sign, rider…).</li>
+  <li>For riders, enter the <strong>rider text</strong> (e.g. an agent name or "SOLD").</li>
+  <li>Record material and condition so you can find good stock quickly.</li>
+</ol>
+
+<h2>Building an assembled unit</h2>
+<ol>
+  <li>Go to <strong>Signs → Sign Builder</strong>.</li>
+  <li>Give the unit a label, then pick one available piece per slot.</li>
+  <li>Save — the pieces are now attached to the unit. To free them up again,
+      open the unit and disassemble it.</li>
+</ol>
+
+<h2>Deploying signs</h2>
+<p>Use <strong>Assign</strong> to place a sign at a property (long-term), or
+<strong>Check Out</strong> for temporary use. Both record who and where, so the Signs
+list always shows what's in the yard vs. what's in storage.</p>
+
+<div class="help-callout tip">
+  <strong>Tip:</strong> an assembled unit can't be deleted while it still has pieces —
+  disassemble it first. This keeps piece inventory honest.
+</div>
+{% endblock %}

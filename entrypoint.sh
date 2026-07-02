@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# The container is always a production deployment. Default ENV accordingly
+# so a missing/incomplete .env can't silently boot in development mode
+# (DEBUG on). An explicit ENV in the environment still wins.
+export ENV="${ENV:-production}"
+
 echo "========================================"
 echo "Starting KBM 2.0 Application"
 echo "========================================"

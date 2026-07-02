@@ -1,10 +1,12 @@
 # KBM 2.0 - Key & Lockbox Management System
 
-![Status](https://img.shields.io/badge/status-production_ready-green) ![Security](https://img.shields.io/badge/security-hardened-brightgreen) ![Python](https://img.shields.io/badge/python-3.11+-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue) ![Status](https://img.shields.io/badge/status-production_ready-green) ![Security](https://img.shields.io/badge/security-hardened-brightgreen) ![Python](https://img.shields.io/badge/python-3.11+-blue)
 
 **Multi-Tenant Property Management Solution**
 
 Complete web application for managing keys, lockboxes, signs, and smart locks for property management businesses.
+
+Current version: **2.1.0** — see [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ---
 
@@ -82,7 +84,18 @@ See [ToDo.txt](ToDo.txt) REFERENCE section for complete fix history.
 - 🏢 **Properties** - Manage properties, units, contacts
 - 📊 **Reports** - Activity logs and analytics
 - 📥 **Import/Export** - Bulk operations with Excel
-- 🔒 **Secure** - CSRF, rate limiting, encrypted sessions
+- ❓ **Built-in Help** - In-app Help Center with per-page context help and tooltips
+- 🔒 **Secure** - CSRF, login rate limiting, hardened sessions
+
+### Running the tests
+
+```bash
+pip install -r requirements.txt
+python -m pytest tests/
+```
+
+The suite boots the real multi-tenant app, provisions a test tenant, and
+exercises every page plus the core checkout/audit/export workflows.
 
 ---
 
@@ -223,7 +236,7 @@ python setup_multitenant.py
 ### 6. Create App Admin
 
 ```bash
-python create_admin.py
+python create_app_admin.py
 ```
 
 ### 7. Run Application

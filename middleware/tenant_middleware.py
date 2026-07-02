@@ -130,8 +130,19 @@ def tenant_required(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not tenant_manager.get_current_tenant():
+        tenant = tenant_manager.get_current_tenant()
+        if not tenant:
             return abort(404, description="This page is only accessible from a company subdomain")
+        # Defense in depth: a logged-in tenant user must belong to THIS
+        # tenant. Cookies are host-only today so this shouldn't trigger,
+        # but it guarantees cross-tenant isolation even if cookie scoping
+        # ever changes (e.g. SESSION_COOKIE_DOMAIN set to the apex).
+        from flask_login import current_user
+        if current_user.is_authenticated:
+            role = (getattr(current_user, "role", "") or "").lower()
+            account_id = getattr(current_user, "account_id", None)
+            if role != "app_admin" and account_id != tenant.id:
+                return abort(403, description="Your account does not have access to this company.")
         return f(*args, **kwargs)
     return decorated_function
 

@@ -1,5 +1,5 @@
 # app_multitenant.py - Multi-tenant version of the application
-from flask import Flask, render_template, current_app, url_for, g, redirect
+from flask import Flask, render_template, current_app, url_for, g, redirect, request
 from flask_migrate import Migrate
 from pathlib import Path
 from flask_login import LoginManager, current_user
@@ -34,6 +34,7 @@ from smartlocks import smartlocks_bp
 from exports import exports_bp
 from search import search_bp
 from settings import settings_bp
+from helpcenter import help_bp, topic_for_endpoint
 
 migrate_master = Migrate()
 migrate_tenant = Migrate()
@@ -63,6 +64,24 @@ def create_app():
     except ValueError:
         app.config["PERMANENT_SESSION_LIFETIME"] = 1800
     app.config.setdefault("SESSION_REFRESH_EACH_REQUEST", True)
+
+    # Session cookie hardening + request size cap. These were documented in
+    # .env.production.template but never actually read into config — Flask
+    # does not auto-map environment variables, so apply them explicitly.
+    # SESSION_COOKIE_SECURE stays opt-in (default false) because an office
+    # deployment behind plain HTTP would otherwise be unable to log in at
+    # all; every provided production template sets it to true.
+    app.config["SESSION_COOKIE_SECURE"] = os.getenv(
+        "SESSION_COOKIE_SECURE", "false"
+    ).lower() in ("true", "1", "yes")
+    app.config["SESSION_COOKIE_HTTPONLY"] = os.getenv(
+        "SESSION_COOKIE_HTTPONLY", "true"
+    ).lower() in ("true", "1", "yes")
+    app.config["SESSION_COOKIE_SAMESITE"] = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
+    try:
+        app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", str(16 * 1024 * 1024)))
+    except ValueError:
+        app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
     # 2) Set up master database path (use Docker volume mount)
     master_base_dir = Path("master_db")
@@ -117,6 +136,7 @@ def create_app():
     app.register_blueprint(audits_bp, url_prefix="/audits")
     app.register_blueprint(search_bp)
     app.register_blueprint(settings_bp, url_prefix="/settings")
+    app.register_blueprint(help_bp, url_prefix="/help")
 
     # 8) Debug helpers (DISABLED FOR SECURITY)
     # These routes are disabled for production security
@@ -243,9 +263,13 @@ def create_app():
     csrf.init_app(app)
 
     # 10b) Rate Limiting
-    # Only enable if configured in environment
-    if os.getenv('RATELIMIT_ENABLED', 'false').lower() in ('true', '1', 'yes'):
-        limiter.init_app(app)
+    # Always initialized so the @limiter.limit(...) decorators on login and
+    # signup are actually enforced. Set RATELIMIT_ENABLED=false to disable
+    # (local development / automated tests).
+    app.config["RATELIMIT_ENABLED"] = os.getenv(
+        'RATELIMIT_ENABLED', 'true'
+    ).lower() in ('true', '1', 'yes')
+    limiter.init_app(app)
 
     # 11) Error handlers
     @app.errorhandler(404)
@@ -262,6 +286,14 @@ def create_app():
     @app.errorhandler(500)
     def handle_500(error):
         return render_template("500.html", error=error), 500
+
+    @app.errorhandler(429)
+    def handle_429(error):
+        # Rate limit hit — currently only login and signup are limited, so a
+        # flash + bounce back to the form is friendlier than a bare error page.
+        from flask import request as _req, flash as _flash
+        _flash("Too many attempts. Please wait a minute and try again.", "error")
+        return redirect(_req.referrer or url_for("auth.login"))
 
     # 12) Context processors
     @app.context_processor
@@ -286,29 +318,27 @@ def create_app():
             except Exception:
                 tenant_settings = None
 
+        def help_url() -> str:
+            """URL of the help topic most relevant to the current page.
+            Falls back to the Help Center index."""
+            slug = topic_for_endpoint(request.endpoint)
+            if slug:
+                return url_for("help.topic", slug=slug)
+            return url_for("help.index")
+
         return dict(
             has_endpoint=has_endpoint,
             safe_url=safe_url,
             tenant=tenant,
             tenant_settings=tenant_settings,
-            is_root_domain=g.get('is_root_domain', False)
+            is_root_domain=g.get('is_root_domain', False),
+            help_url=help_url,
         )
 
-    # 13) Root domain landing page
-    @app.route('/')
-    def index():
-        """
-        Landing page.
-        - Root domain: Show signup/login
-        - Tenant domain: Redirect to main.home
-        """
-        if g.get('is_root_domain', False):
-            # Root domain - show landing/signup page
-            return render_template('landing.html')
-        else:
-            # Tenant domain - show tenant home
-            from main.views import home
-            return home()
+    # Note: the '/' route lives in main.home (main/views.py), which serves
+    # the public landing page on the root domain and the dashboard on tenant
+    # subdomains. A second @app.route('/') here would be shadowed by the
+    # blueprint rule and never match — don't add one.
 
     return app
 

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ meta.title }} — Help — KBM{% endblock %}
+
+{% block head %}
+<style>
+  .help-layout {
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .help-layout { grid-template-columns: 1fr; }
+    .help-nav { position: static; }
+  }
+  .help-nav {
+    position: sticky;
+    top: 88px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+  }
+  .help-nav a {
+    padding: 7px 10px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--color-muted);
+  }
+  .help-nav a.active,
+  .help-nav a:hover {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  .help-article h2 {
+    margin: 26px 0 10px;
+    font-size: 18px;
+  }
+  .help-article h2:first-child { margin-top: 0; }
+  .help-article p, .help-article li {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--color-text);
+  }
+  .help-article ol, .help-article ul { padding-left: 22px; }
+  .help-article li { margin-bottom: 6px; }
+  .help-article code {
+    background: rgba(148, 163, 184, 0.14);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-size: 13px;
+  }
+  .help-callout {
+    border-left: 3px solid var(--color-accent);
+    background: var(--color-accent-soft);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 14px;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  .help-callout.tip { border-left-color: #4ade80; background: rgba(74, 222, 128, 0.10); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ meta.icon }} {{ meta.title }}</h1>
+  <a class="btn ghost" href="{{ url_for('help.index') }}">← All help topics</a>
+</div>
+
+<div class="help-layout">
+  <nav class="help-nav card" aria-label="Help topics">
+    {% for s, t in topics.items() %}
+      <a href="{{ url_for('help.topic', slug=s) }}" class="{% if s == slug %}active{% endif %}">{{ t.icon }} {{ t.title }}</a>
+    {% endfor %}
+  </nav>
+  <article class="help-article card">
+    {% block help_content %}{% endblock %}
+  </article>
+</div>
+{% endblock %}

@@ -612,6 +612,28 @@
       document.getElementById(targetId).classList.add('active');
     });
   });
+
+  // Export dropdown toggles ("Export ▾" buttons). Each button's dropdown is
+  // the sibling #export-<slug> element; only one stays open at a time and
+  // clicking anywhere else closes it.
+  function closeAllReportExports() {
+    document.querySelectorAll('.report-export-dropdown.show')
+      .forEach(el => el.classList.remove('show'));
+  }
+
+  function toggleReportExport(event, slug) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dropdown = document.getElementById('export-' + slug);
+    if (!dropdown) return;
+    const wasOpen = dropdown.classList.contains('show');
+    closeAllReportExports();
+    if (!wasOpen) dropdown.classList.add('show');
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.report-export-btn')) closeAllReportExports();
+  });
 </script>
 
 {% endblock %}
