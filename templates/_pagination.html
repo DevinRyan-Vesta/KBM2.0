@@ -1,0 +1,36 @@
+{# Shared pagination footer bar.
+
+   Usage:
+     {% from "_pagination.html" import pagination_bar %}
+     {{ pagination_bar(pagination) }}
+
+   `pagination` is the dict returned by utilities.tenant_helpers.paginate_query.
+   Prev/Next links preserve every current query param (q, filters, per_page)
+   by re-encoding request.args with only `page` swapped out. The bar is
+   hidden entirely when everything fits on one page. #}
+{% macro pagination_bar(pg) %}
+  {% if pg and pg.total > pg.per_page %}
+    {% set start = (pg.page - 1) * pg.per_page + 1 %}
+    {% set end = [pg.page * pg.per_page, pg.total] | min %}
+    {% set prev_args = request.args.to_dict() %}
+    {% set _ = prev_args.update({'page': pg.page - 1}) %}
+    {% set next_args = request.args.to_dict() %}
+    {% set _ = next_args.update({'page': pg.page + 1}) %}
+    <div class="pagination-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 4px 4px; border-top: 1px solid var(--color-border); margin-top: 12px;">
+      <span class="muted">Showing {{ start }}&ndash;{{ end }} of {{ pg.total }}</span>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        {% if pg.has_prev %}
+          <a class="btn small" href="{{ request.path }}?{{ prev_args | urlencode }}">&larr; Prev</a>
+        {% else %}
+          <span class="btn small" aria-disabled="true" style="opacity: 0.45; pointer-events: none;">&larr; Prev</span>
+        {% endif %}
+        <span class="muted" style="white-space: nowrap;">Page {{ pg.page }} of {{ pg.pages }}</span>
+        {% if pg.has_next %}
+          <a class="btn small" href="{{ request.path }}?{{ next_args | urlencode }}">Next &rarr;</a>
+        {% else %}
+          <span class="btn small" aria-disabled="true" style="opacity: 0.45; pointer-events: none;">Next &rarr;</span>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+{% endmacro %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_pagination.html" import pagination_bar %}
 {% block title %}Keys - KBM{% endblock %}
 
 {% block content %}
@@ -351,6 +352,7 @@
         {% endfor %}
       </tbody>
     </table>
+    {{ pagination_bar(pagination) }}
   {% else %}
     <div class="empty-state">
       <h3>No keys yet</h3>

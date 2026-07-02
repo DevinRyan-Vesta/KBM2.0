@@ -3,7 +3,17 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from datetime import datetime
 from typing import Optional
-from utilities.tenant_helpers import tenant_query, tenant_add, tenant_commit, tenant_rollback, tenant_flush, get_tenant_session, tenant_delete
+from utilities.tenant_helpers import (
+    tenant_query,
+    tenant_add,
+    tenant_commit,
+    tenant_rollback,
+    tenant_flush,
+    get_tenant_session,
+    tenant_delete,
+    get_page_args,
+    paginate_query,
+)
 from middleware.tenant_middleware import tenant_required
 from utilities.database import (
     db,
@@ -117,8 +127,17 @@ def list_lockboxes():
         elif filter_assigned.lower() == "assigned":
             query = query.filter(Item.assigned_to.isnot(None), Item.assigned_to != "")
 
-    lockboxes = query.order_by(Item.id.desc()).all()
-    dynamic_statuses = {(lb.status or "").lower() for lb in lockboxes if lb.status}
+    page, per_page = get_page_args()
+    pagination = paginate_query(query.order_by(Item.id.desc()), page, per_page)
+    lockboxes = pagination["items"]
+
+    # Status choices come from all lockboxes (not just the current page) so
+    # the filter dropdown stays stable while paging.
+    dynamic_statuses = {
+        (row[0] or "").lower()
+        for row in tenant_query(Item.status).filter(Item.type == "Lockbox").distinct().all()
+        if row[0]
+    }
     status_choices = sorted(set(LOCKBOX_STATUS_OPTIONS).union(dynamic_statuses))
 
     properties = tenant_query(Property).order_by(Property.name.asc()).all()
@@ -148,6 +167,7 @@ def list_lockboxes():
     return render_template(
         "lockboxes.html",
         lockboxes=lockboxes,
+        pagination=pagination,
         q=q,
         filter_status=filter_status,
         filter_property=filter_property,
@@ -932,8 +952,17 @@ def list_keys():
         elif filter_assigned.lower() == "assigned":
             query = query.filter(Item.assigned_to.isnot(None), Item.assigned_to != "")
 
-    keys = query.order_by(Item.id.desc()).all()
-    dynamic_statuses = {(k.status or "").lower() for k in keys if k.status}
+    page, per_page = get_page_args()
+    pagination = paginate_query(query.order_by(Item.id.desc()), page, per_page)
+    keys = pagination["items"]
+
+    # Status choices come from all keys (not just the current page) so the
+    # filter dropdown stays stable while paging.
+    dynamic_statuses = {
+        (row[0] or "").lower()
+        for row in tenant_query(Item.status).filter(Item.type == "Key").distinct().all()
+        if row[0]
+    }
     status_choices = sorted(set(KEY_STATUS_OPTIONS).union(dynamic_statuses))
 
     properties = tenant_query(Property).order_by(Property.name.asc()).all()
@@ -986,6 +1015,7 @@ def list_keys():
         property_select_options=property_select_options,
         property_map=property_map,
         property_units_map=property_units_map,
+        pagination=pagination,
     )
 
 
@@ -1748,7 +1778,9 @@ def list_signs():
         elif filter_assigned.lower() == "assigned":
             query = query.filter(Item.assigned_to.isnot(None), Item.assigned_to != "")
 
-    signs = query.order_by(Item.id.desc()).all()
+    page, per_page = get_page_args()
+    pagination = paginate_query(query.order_by(Item.id.desc()), page, per_page)
+    signs = pagination["items"]
     dynamic_statuses = {(s.status or "").lower() for s in signs if s.status}
     status_choices = sorted(set(SIGN_STATUS_OPTIONS).union(dynamic_statuses))
 
@@ -1785,6 +1817,7 @@ def list_signs():
         piece_types=SIGN_PIECE_TYPES,
         condition_options=SIGN_CONDITION_OPTIONS,
         available_pieces=available_pieces,
+        pagination=pagination,
     )
 
 
@@ -2528,11 +2561,16 @@ def receipt_lookup():
     query = (request.args.get("q") or "").strip()
 
     if query:
-        results = _receipt_search_query(query).limit(50).all()
+        page, per_page = get_page_args()
+        pagination = paginate_query(_receipt_search_query(query), page, per_page)
+        results = pagination["items"]
     else:
+        # No search: just the 10 most recent — no paging needed.
+        pagination = None
         results = _receipt_search_query("").limit(10).all()
 
-    return render_template("receipt_lookup.html", results=results, query=query)
+    return render_template("receipt_lookup.html", results=results, query=query,
+                           pagination=pagination)
 
 
 @inventory_bp.route("/receipts/export", methods=["GET"])

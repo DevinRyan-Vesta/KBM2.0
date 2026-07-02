@@ -117,6 +117,102 @@
   </div>
 </div>
 
+<!-- Analytics -->
+<style>
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    height: 140px;
+    padding-top: 8px;
+  }
+  .chart-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    min-width: 0;
+  }
+  .chart-bar-count { font-size: 12px; color: var(--color-muted); margin-bottom: 4px; }
+  .chart-bar {
+    width: 100%;
+    max-width: 42px;
+    border-radius: 6px 6px 2px 2px;
+    background: linear-gradient(180deg, var(--color-accent), rgba(229, 57, 53, 0.55));
+    min-height: 2px;
+  }
+  .chart-bar.empty { background: rgba(148, 163, 184, 0.15); }
+  .chart-bar-label {
+    font-size: 11px;
+    color: var(--color-muted);
+    margin-top: 6px;
+    white-space: nowrap;
+  }
+  .status-track {
+    display: flex;
+    height: 14px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(148, 163, 184, 0.12);
+  }
+  .status-track .seg-available   { background: #4ade80; }
+  .status-track .seg-checked-out { background: #fbbf24; }
+  .status-track .seg-assigned    { background: #38bdf8; }
+  body.light .status-track .seg-available   { background: #15803d; }
+  body.light .status-track .seg-checked-out { background: #b45309; }
+  body.light .status-track .seg-assigned    { background: #0284c7; }
+  .status-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+  .status-legend span { font-size: 12px; color: var(--color-muted); display: inline-flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+</style>
+<div class="grid cols-2" style="margin-top: 24px;">
+  <div class="card">
+    <h3>
+      Checkouts per Week
+      {% if overdue_checkout_count > 0 %}
+        <span class="tag warn" data-tooltip="Active checkouts past their expected return date — see the Overdue Returns report">{{ overdue_checkout_count }} overdue</span>
+      {% endif %}
+    </h3>
+    <div class="chart-bars" role="img" aria-label="Checkouts per week, last 8 weeks">
+      {% for week in checkout_weeks %}
+        <div class="chart-bar-col" title="{{ week.count }} checkout{{ '' if week.count == 1 else 's' }} the week of {{ week.label }}">
+          <div class="chart-bar-count">{{ week.count or '' }}</div>
+          <div class="chart-bar {{ 'empty' if not week.count }}" style="height: {{ [week.pct, 2] | max }}%;"></div>
+          <div class="chart-bar-label">{{ week.label }}</div>
+        </div>
+      {% endfor %}
+    </div>
+    <p class="muted text-small" style="margin: 10px 0 0;">Items and key copies checked out per week, last 8 weeks.</p>
+  </div>
+
+  <div class="card">
+    <h3>Inventory by Status</h3>
+    {% for row in inventory_status_rows %}
+      <div style="margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span class="text-small"><strong>{{ row.name }}</strong></span>
+          <span class="muted text-small">{{ row.total }} {{ row.unit }}</span>
+        </div>
+        <div class="status-track">
+          {% for seg in row.segments %}
+            {% if seg.pct > 0 %}
+              <div class="{{ seg.cls }}" style="width: {{ seg.pct }}%;"
+                   title="{{ seg.label }}: {{ seg.count }} ({{ seg.pct }}%)"></div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+    <div class="status-legend">
+      <span><span class="legend-dot" style="background:#4ade80;"></span> Available</span>
+      <span><span class="legend-dot" style="background:#fbbf24;"></span> Checked out</span>
+      <span><span class="legend-dot" style="background:#38bdf8;"></span> Assigned</span>
+    </div>
+  </div>
+</div>
+
 <!-- Alerts and Tracking -->
 <div class="grid cols-2" style="margin-top: 24px;">
   <div class="card">

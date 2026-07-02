@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, url_for, redirect, g, request
 from flask_login import login_required, current_user
-from utilities.database import db, User, Item, utc_now
+from utilities.database import db, User, Item, ItemCheckout, utc_now
 from utilities.tenant_manager import tenant_manager
 from middleware.tenant_middleware import tenant_required
 from datetime import timedelta
@@ -103,6 +103,102 @@ def home():
         )
     ).order_by(Item.last_action_at.asc()).limit(10).all()
 
+    # --- Dashboard analytics -------------------------------------------
+    # Checkouts per week: last 8 ISO weeks (Mon-Sun), including the current
+    # week. Buckets are computed in Python so we don't need any
+    # dialect-specific SQL date math (tenant DBs are SQLite).
+    current_week_start = (today - timedelta(days=today.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    week_starts = [current_week_start - timedelta(weeks=offset) for offset in range(7, -1, -1)]
+    week_counts = {week_start: 0 for week_start in week_starts}
+    recent_checkout_times = session.query(ItemCheckout.checked_out_at).filter(
+        ItemCheckout.checked_out_at >= week_starts[0]
+    ).all()
+    for (checked_out_at,) in recent_checkout_times:
+        if not checked_out_at:
+            continue
+        bucket = (checked_out_at - timedelta(days=checked_out_at.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        if bucket in week_counts:
+            week_counts[bucket] += 1
+
+    # Bar heights as a percent of the busiest week; guard divide-by-zero
+    # when there were no checkouts at all. Tiny-but-nonzero weeks get a
+    # visible floor so a 1-count bar doesn't vanish.
+    max_week_count = max(week_counts.values(), default=0)
+    checkout_weeks = []
+    for week_start in week_starts:
+        count = week_counts[week_start]
+        pct = round(count / max_week_count * 100) if max_week_count else 0
+        if count and pct < 4:
+            pct = 4
+        checkout_weeks.append({
+            "label": f"{week_start.strftime('%b')} {week_start.day}",
+            "count": count,
+            "pct": pct,
+        })
+
+    # Overdue: active checkouts already past their expected return date.
+    overdue_checkout_count = session.query(ItemCheckout).filter(
+        ItemCheckout.is_active.is_(True),
+        ItemCheckout.expected_return_date.isnot(None),
+        ItemCheckout.expected_return_date < today,
+    ).count()
+
+    # Inventory by status: proportions per item type. Keys are measured in
+    # copies (that's what available/checked-out mean for key sets); the
+    # others in items. Percentages are precomputed here so the template
+    # only renders widths (divide-by-zero guarded when total is 0). The
+    # unfilled remainder of a track is any other status (maintenance,
+    # retired, ...).
+    sign_assigned = session.query(Item).filter_by(type="Sign", status="assigned").count()
+    key_copies_total = int(key_available_count) + int(key_checked_out_count)
+
+    def status_segments(total, pairs):
+        return [
+            {
+                "label": label,
+                "cls": cls,
+                "count": int(count),
+                "pct": round((count / total) * 100, 1) if total else 0,
+            }
+            for label, cls, count in pairs
+        ]
+
+    inventory_status_rows = [
+        {
+            "name": "Lockboxes",
+            "unit": "lockboxes",
+            "total": lockbox_total,
+            "segments": status_segments(lockbox_total, [
+                ("Available", "seg-available", lockbox_available),
+                ("Checked out", "seg-checked-out", lockbox_checked_out),
+                ("Assigned", "seg-assigned", lockbox_assigned),
+            ]),
+        },
+        {
+            "name": "Keys",
+            "unit": "copies",
+            "total": key_copies_total,
+            "segments": status_segments(key_copies_total, [
+                ("Available", "seg-available", key_available_count),
+                ("Checked out", "seg-checked-out", key_checked_out_count),
+            ]),
+        },
+        {
+            "name": "Signs",
+            "unit": "signs",
+            "total": sign_total,
+            "segments": status_segments(sign_total, [
+                ("Available", "seg-available", sign_available),
+                ("Checked out", "seg-checked-out", sign_checked_out),
+                ("Assigned", "seg-assigned", sign_assigned),
+            ]),
+        },
+    ]
+
     return render_template(
         "home.html",
         # Lockbox stats
@@ -123,6 +219,10 @@ def home():
         upcoming_returns=upcoming_returns,
         overdue_items=overdue_items,
         long_checkout_items=long_checkout_items,
+        # Analytics
+        checkout_weeks=checkout_weeks,
+        overdue_checkout_count=overdue_checkout_count,
+        inventory_status_rows=inventory_status_rows,
     )
 
 

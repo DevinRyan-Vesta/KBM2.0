@@ -12,32 +12,18 @@ OUTSTANDING — HIGH PRIORITY
 [ ] Rotate SECRET_KEY on every existing deployment. Old keys were committed
     to git history and must be treated as compromised. Production now refuses
     to boot without one (v2.1.0), but rotation on the VPS is a manual step.
+    (Owner decision 2026-07-02: deferred — do at the next production deploy.)
 
 [ ] Reduce the blast radius of the self-updater: the app container mounts
     the Docker socket (root-equivalent on the host) so the System Updates UI
     can rebuild containers. Consider moving the updater to a separate
     admin-only sidecar, or an explicit "maintenance mode" that is off by
-    default.
-
-[ ] Stronger login identity: login is PIN-only and account-wide. Rate
-    limiting was added in v2.1.0, but consider email+PIN (or username+PIN)
-    login and a higher minimum PIN length for app admins.
-
-[ ] CI pipeline: run the pytest suite automatically on every PR
-    (GitHub Actions). The suite exists (tests/, 55 tests) — it just needs
-    a workflow file.
+    default. (The updater itself was overhauled and health-checked in
+    v2.1.0 — this item is only about reducing its privileges.)
 
 ========================================
 OUTSTANDING — MEDIUM PRIORITY
 ========================================
-
-[ ] Dashboard analytics — simple charts on Home: checkouts per week,
-    inventory by status, overdue trend.
-
-[ ] Calendar view — expected returns and checkouts on a month grid.
-
-[ ] In-app notifications — bell icon with recent alerts (overdue items,
-    low-stock keys) so staff see problems without opening Reports.
 
 [ ] Report scheduling — email selected reports on a schedule
     (daily/weekly/monthly). The overdue-reminder cron
@@ -46,12 +32,8 @@ OUTSTANDING — MEDIUM PRIORITY
 [ ] Photo uploads for items and properties (smart locks already support
     photos with validation — reuse that implementation).
 
-[ ] Duplicate detection when creating items/contacts interactively
-    (the import wizard already flags duplicates; the single-record forms
-    don't).
-
-[ ] Pagination on large list pages (keys/lockboxes/receipts currently render
-    everything; fine for hundreds, slow for thousands).
+[ ] Duplicate detection on item creation (contacts got it in v2.1.0; keys/
+    lockboxes/signs single-record forms could warn on matching labels too).
 
 [ ] Loading states on slow actions (imports, exports, bulk operations).
 
@@ -60,7 +42,6 @@ OUTSTANDING — LONG TERM
 ========================================
 
 [ ] Role-based permissions refinement — read-only role, checkout-only role.
-[ ] Two-factor authentication for app admins.
 [ ] Self-service PIN reset (email link) so admins don't have to reset PINs.
 [ ] REST API with token auth for integrations.
 [ ] Export column customization (choose which fields to include).
@@ -82,7 +63,21 @@ OUTSTANDING — LONG TERM
 COMPLETED (verified 2026-07-02 unless noted)
 ========================================
 
+Declined by owner (2026-07-02) — login must stay instant and painless:
+[✗] Email+PIN / username+PIN login (staying PIN-only with rate limiting)
+[✗] Two-factor authentication
+
 v2.1.0 (see CHANGELOG.md for details):
+[✓] Self-updater made reliable — invisible-log, compose-path, and missing-
+    mount root causes fixed; preflight "Run Health Check" button added
+[✓] CI pipeline — GitHub Actions runs the test suite on every PR
+[✓] Dashboard analytics — checkouts/week chart, inventory-by-status bars,
+    overdue counter
+[✓] Calendar view — month grid of returns and checkouts
+[✓] In-app notifications — topbar bell for overdue returns and low keys
+[✓] Duplicate detection on contact creation
+[✓] Pagination on Keys, Lockboxes, Signs, Receipts, and Activity Logs
+[✓] PWA manifest (install to phone/tablet home screen)
 [✓] Built-in Help Center + context-sensitive per-page help + tooltips
     (was: "User Documentation - In-app help, tooltips, user manual")
 [✓] Unit tests — 55-test end-to-end pytest suite

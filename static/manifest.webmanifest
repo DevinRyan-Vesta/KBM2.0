@@ -1,0 +1,17 @@
+{
+  "name": "KBM — Keybox Manager",
+  "short_name": "KBM",
+  "description": "Track lockboxes, keys, and signs: who has what and when it's due back.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#101418",
+  "theme_color": "#e53935",
+  "icons": [
+    {
+      "src": "/static/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

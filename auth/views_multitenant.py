@@ -422,16 +422,16 @@ def activity_logs():
     """Activity logs page for tenant."""
     _require_admin()
 
-    from utilities.tenant_helpers import tenant_query
+    from utilities.tenant_helpers import tenant_query, get_page_args, paginate_query
     from utilities.database import ActivityLog
 
-    logs = (
-        tenant_query(ActivityLog)
-        .order_by(ActivityLog.created_at.desc())
-        .limit(200)
-        .all()
+    page, per_page = get_page_args()
+    pagination = paginate_query(
+        tenant_query(ActivityLog).order_by(ActivityLog.created_at.desc()),
+        page, per_page,
     )
-    return render_template("activity_logs.html", logs=logs)
+    return render_template("activity_logs.html", logs=pagination["items"],
+                           pagination=pagination)
 
 
 @auth_bp.route("/activity-logs/export", methods=["GET"])

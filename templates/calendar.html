@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Calendar - KBM{% endblock %}
+
+{% block content %}
+<style>
+  .cal-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .overdue-card {
+    border-color: rgba(248, 113, 113, 0.35);
+    margin-bottom: 24px;
+  }
+  .overdue-card h2 {
+    color: var(--color-danger);
+  }
+  .overdue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .overdue-list-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .overdue-date {
+    color: var(--color-danger);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .cal-weekday {
+    padding: 6px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-muted);
+    text-align: center;
+  }
+  .cal-day {
+    min-height: 110px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: rgba(148, 163, 184, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  body.light .cal-day {
+    background: rgba(15, 23, 42, 0.02);
+  }
+  .cal-day.empty {
+    background: transparent;
+    border-style: dashed;
+    opacity: 0.35;
+  }
+  .cal-day.today {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+  }
+  .cal-day.overdue {
+    border-color: rgba(248, 113, 113, 0.5);
+    background: rgba(248, 113, 113, 0.08);
+  }
+  .cal-day-num {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .cal-day.today .cal-day-num {
+    color: var(--color-accent);
+  }
+  .cal-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .cal-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--color-muted);
+  }
+  .cal-badge.due {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  .cal-badge.late {
+    background: rgba(248, 113, 113, 0.18);
+    color: var(--color-danger);
+  }
+  .cal-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+    overflow: hidden;
+  }
+  .cal-item {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cal-item .who {
+    color: var(--color-muted);
+  }
+  .cal-item.late a {
+    color: var(--color-danger);
+  }
+  @media (max-width: 900px) {
+    .cal-day { min-height: 80px; }
+    .cal-item .who { display: none; }
+  }
+</style>
+
+<div class="page-header">
+  <h1>📅 Calendar</h1>
+  <div class="cal-nav">
+    <a class="btn ghost" href="{{ url_for('calendar.calendar_view', year=prev_year, month=prev_month) }}">← {{ prev_month }}/{{ prev_year }}</a>
+    <a class="btn" href="{{ url_for('calendar.calendar_view') }}">Today</a>
+    <a class="btn ghost" href="{{ url_for('calendar.calendar_view', year=next_year, month=next_month) }}">{{ next_month }}/{{ next_year }} →</a>
+  </div>
+</div>
+
+{% if overdue %}
+<div class="card overdue-card">
+  <h2>⚠️ Overdue ({{ overdue|length }})</h2>
+  <div class="overdue-list">
+    {% for co in overdue %}
+      <div class="overdue-list-row">
+        <span class="overdue-date">{{ co.expected_return_date.strftime('%b %-d, %Y') }}</span>
+        {% if co.item %}
+          <a href="{{ url_for('inventory.item_details', item_id=co.item.id) }}">{{ co.item.custom_id or co.item.label }}</a>
+        {% endif %}
+        <span class="who">→ {{ co.checked_out_to }}</span>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>{{ month_name }} {{ year }}</h2>
+  <div class="cal-grid">
+    {% for name in weekday_names %}
+      <div class="cal-weekday">{{ name }}</div>
+    {% endfor %}
+    {% for week in weeks %}
+      {% for day in week %}
+        {% if day is none %}
+          <div class="cal-day empty"></div>
+        {% else %}
+          <div class="cal-day{% if day.is_today %} today{% endif %}{% if day.is_overdue %} overdue{% endif %}">
+            <div class="cal-day-num">{{ day.day }}</div>
+            {% if day.due or day.out %}
+              <div class="cal-badges">
+                {% if day.due %}
+                  <span class="cal-badge {{ 'late' if day.is_overdue else 'due' }}">{{ day.due|length }} due</span>
+                {% endif %}
+                {% if day.out %}
+                  <span class="cal-badge">{{ day.out|length }} out</span>
+                {% endif %}
+              </div>
+              <div class="cal-items">
+                {% for co in day.due %}
+                  <div class="cal-item{% if day.is_overdue %} late{% endif %}" title="Due back: {{ co.item.label if co.item else '?' }} — {{ co.checked_out_to }}">
+                    {% if co.item %}
+                      ↩ <a href="{{ url_for('inventory.item_details', item_id=co.item.id) }}">{{ co.item.custom_id or co.item.label }}</a>
+                    {% else %}
+                      ↩ ?
+                    {% endif %}
+                    <span class="who">{{ co.checked_out_to }}</span>
+                  </div>
+                {% endfor %}
+                {% for co in day.out %}
+                  <div class="cal-item" title="Checked out: {{ co.item.label if co.item else '?' }} — {{ co.checked_out_to }}">
+                    {% if co.item %}
+                      ↗ <a href="{{ url_for('inventory.item_details', item_id=co.item.id) }}">{{ co.item.custom_id or co.item.label }}</a>
+                    {% else %}
+                      ↗ ?
+                    {% endif %}
+                    <span class="who">{{ co.checked_out_to }}</span>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

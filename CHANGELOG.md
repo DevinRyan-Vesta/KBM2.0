@@ -29,6 +29,26 @@ found in a full-codebase audit, security hardening, and repo cleanup.
 - **Favicon** (red key mark, SVG).
 - **Keyboard shortcut**: press `/` anywhere to focus the global search.
 - **CI workflow**: GitHub Actions runs the test suite on every pull request.
+- **Dashboard analytics**: checkouts-per-week bar chart, inventory-by-status
+  bars, and an overdue counter on the home dashboard (pure CSS, no JS libs).
+- **Calendar view**: month grid of expected returns and checkouts with
+  overdue highlighting (sidebar → Operations → Calendar).
+- **Notification bell**: topbar alert count for overdue returns and
+  low-stock keys, linking to the relevant reports.
+- **Duplicate detection**: creating a contact with a matching name or email
+  shows the existing records and asks for one-click confirmation.
+- **Pagination** on Keys, Lockboxes, Signs, Receipts search, and Activity
+  Logs (50 per page, preserves search and filters in the links).
+- **PWA manifest**: the app can be installed to a phone/tablet home screen.
+- **Self-updater overhaul** — root causes of the recurring update failures
+  fixed: sidecar restart logs were invisible (written outside the mounted
+  dirs), absolute compose-file paths broke inside the sidecar, and the
+  helpcenter package was missing from the volume mounts. Plus: a new
+  "Run Health Check" button that verifies docker access, project detection,
+  git state, code mounts, backups, and disk space before you update;
+  SQLite-safe backups with 10-backup retention; detached-HEAD-safe branch
+  detection (UPDATE_BRANCH env override); no more network dependency on
+  pulling alpine. 13 dedicated unit tests.
 - `ToDo.txt` reorganized into a live roadmap (stale entries verified and
   closed; new improvement ideas added).
 - This changelog.

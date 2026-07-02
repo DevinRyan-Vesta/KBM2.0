@@ -30,6 +30,7 @@ from main import main_bp
 from contacts import contacts_bp
 from properties import properties_bp
 from audits import audits_bp
+from calendarview import calendar_bp
 from smartlocks import smartlocks_bp
 from exports import exports_bp
 from search import search_bp
@@ -134,6 +135,7 @@ def create_app():
     app.register_blueprint(smartlocks_bp, url_prefix="/smart-locks")
     app.register_blueprint(exports_bp, url_prefix="/exports")
     app.register_blueprint(audits_bp, url_prefix="/audits")
+    app.register_blueprint(calendar_bp, url_prefix="/calendar")
     app.register_blueprint(search_bp)
     app.register_blueprint(settings_bp, url_prefix="/settings")
     app.register_blueprint(help_bp, url_prefix="/help")
@@ -326,6 +328,35 @@ def create_app():
                 return url_for("help.topic", slug=slug)
             return url_for("help.index")
 
+        def notification_alerts():
+            """Attention items for the topbar bell: overdue returns and
+            low-stock keys. Called at most once per page render (the bell
+            markup calls it a single time); two cheap COUNT queries against
+            the tenant DB. Returns None outside a tenant context or for
+            anonymous users so the bell simply doesn't render."""
+            if tenant is None or not current_user.is_authenticated:
+                return None
+            try:
+                from utilities.database import Item, ItemCheckout, utc_now, get_tenant_settings as _gts
+                session = tenant_manager.get_current_session()
+                overdue = session.query(ItemCheckout).filter(
+                    ItemCheckout.is_active.is_(True),
+                    ItemCheckout.expected_return_date.isnot(None),
+                    ItemCheckout.expected_return_date < utc_now(),
+                ).count()
+                threshold = _gts().low_keys_threshold
+                low_keys = session.query(Item).filter(
+                    Item.type == "Key",
+                    Item.total_copies <= threshold,
+                ).count()
+                return {
+                    "overdue": overdue,
+                    "low_keys": low_keys,
+                    "total": overdue + low_keys,
+                }
+            except Exception:
+                return None
+
         return dict(
             has_endpoint=has_endpoint,
             safe_url=safe_url,
@@ -333,6 +364,7 @@ def create_app():
             tenant_settings=tenant_settings,
             is_root_domain=g.get('is_root_domain', False),
             help_url=help_url,
+            notification_alerts=notification_alerts,
         )
 
     # Note: the '/' route lives in main.home (main/views.py), which serves
