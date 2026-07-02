@@ -1,0 +1,35 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>Properties</h2>
+<p>Properties are the addresses your inventory belongs to. Each property has a
+name, type (single family, multi-family, …), full address, and optional notes.
+The property page shows everything assigned to it: keys, lockboxes, signs, and
+smart locks.</p>
+
+<h2>Adding a property</h2>
+<ol>
+  <li>Go to <strong>Properties → Add Property</strong>.</li>
+  <li>Name and street address are required; city/state/ZIP help searches and exports.</li>
+</ol>
+
+<h2>Units</h2>
+<p>Multi-family properties can have <strong>units</strong> (e.g. "Unit 1A"). Add them from
+the property's page. Keys and smart locks can be linked to a specific unit,
+so "which key opens 12 Maple St Unit 3B?" is one search away.</p>
+
+<h2>Linking inventory</h2>
+<ul>
+  <li>When adding a <strong>key</strong>, pick the property (and unit) it opens.</li>
+  <li><strong>Lockboxes</strong> are assigned to a property from their detail page after creation.</li>
+  <li><strong>Signs</strong> get assigned to a property when deployed.</li>
+</ul>
+
+<div class="help-callout">
+  Deleting a unit requires an admin, and inventory linked to it keeps working —
+  the link is simply cleared.
+</div>
+
+<h2>Importing many at once</h2>
+<p>Use <strong>Import</strong> (properties) or <strong>Import Units</strong> from the Properties page
+to load a spreadsheet — see the Importing Data topic.</p>
+{% endblock %}

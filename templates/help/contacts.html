@@ -1,0 +1,33 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>Contact types</h2>
+<p>Contacts are the people you hand things to. Four types:</p>
+<ul>
+  <li><strong>Staff</strong> — your own team. A staff contact can be linked to their KBM
+      user account.</li>
+  <li><strong>Contractor</strong> — vendors, maintenance, cleaners.</li>
+  <li><strong>Tenant</strong> — residents who hold keys long-term.</li>
+  <li><strong>Agent</strong> — outside agents borrowing lockboxes/keys for showings.</li>
+</ul>
+
+<h2>Why link checkouts to contacts</h2>
+<ul>
+  <li>The contact's page shows <strong>everything they currently have</strong> and their history.</li>
+  <li>If the contact has an email and notifications are enabled, they get
+      automatic <strong>checkout confirmations and overdue reminders</strong>.</li>
+  <li>Names stay consistent — no more "Bob", "Robert", and "bob smith" being
+      three different people in your reports.</li>
+</ul>
+
+<h2>Adding a contact</h2>
+<ol>
+  <li>Go to <strong>Contacts → Add Contact</strong>.</li>
+  <li>Name and type are required; add email and phone so notifications and
+      receipts work.</li>
+</ol>
+
+<div class="help-callout tip">
+  <strong>Tip:</strong> at checkout you can pick a contact from the dropdown instead of
+  typing a name — do this whenever the person will hold items regularly.
+</div>
+{% endblock %}

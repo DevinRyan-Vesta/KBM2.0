@@ -1,74 +1,114 @@
+"""Pytest fixtures for the multi-tenant KBM app.
+
+Boots the real production app factory (app_multitenant.create_app) against a
+temp directory, provisions one tenant account ("acme") with an admin user,
+and exposes logged-in test clients. Tenant routing is exercised the same way
+production works: via the Host header (acme.localhost vs localhost).
+"""
 import os
+import shutil
+import sys
+import tempfile
 from pathlib import Path
-from types import SimpleNamespace
-from uuid import uuid4
 
 import pytest
 
-from app import create_app
-from utilities.database import db, Item, User
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+TENANT_HOST = "acme.localhost"
+ROOT_HOST = "localhost"
+TENANT_PIN = "9999"
+APP_ADMIN_PIN = "8888"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def app():
-    db_name = f"test_{uuid4().hex}.db"
+    workdir = tempfile.mkdtemp(prefix="kbm-tests-")
+    old_cwd = os.getcwd()
+    os.chdir(workdir)  # master_db/ and tenant_dbs/ are created relative to cwd
+
     os.environ["ENV"] = "testing"
-    os.environ["DATABASE_URI"] = f"sqlite:///{db_name}"
+    os.environ["SERVER_NAME"] = "localhost"
+    os.environ["BASE_DOMAIN"] = "localhost"
+    os.environ["AUTO_CREATE_SCHEMA"] = "true"
+    os.environ["RATELIMIT_ENABLED"] = "false"
+
+    from app_multitenant import create_app
 
     application = create_app()
-    application.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+    application.config.update(
+        TESTING=True,
+        WTF_CSRF_ENABLED=False,
+        SERVER_NAME=None,  # let the test client set Host per request
+    )
+
+    from utilities.master_database import master_db, Account, MasterUser
+    from utilities.tenant_manager import tenant_manager
 
     with application.app_context():
-        db.create_all()
-        yield application
-        db.session.remove()
-        db.drop_all()
+        master_db.create_all()
+        account = Account(
+            subdomain="acme",
+            company_name="Acme Test Co",
+            status="active",
+            database_path="tenant_dbs/acme.db",
+        )
+        master_db.session.add(account)
+        master_db.session.commit()
+        tenant_manager.create_tenant_database(account)
 
-    db_path = Path.home() / "KBM2_data" / db_name
-    if db_path.exists():
-        db_path.unlink()
+        admin = MasterUser(
+            account_id=account.id,
+            name="Test Admin",
+            email="admin@acme.test",
+            role="admin",
+            is_active=True,
+        )
+        admin.set_pin(TENANT_PIN)
+        app_admin = MasterUser(
+            account_id=None,
+            name="App Admin",
+            email="root@kbm.test",
+            role="app_admin",
+            is_active=True,
+        )
+        app_admin.set_pin(APP_ADMIN_PIN)
+        master_db.session.add_all([admin, app_admin])
+        master_db.session.commit()
 
-    os.environ.pop("DATABASE_URI", None)
-    os.environ.pop("ENV", None)
+    yield application
+
+    os.chdir(old_cwd)
+    shutil.rmtree(workdir, ignore_errors=True)
 
 
 @pytest.fixture
 def client(app):
+    """Anonymous client (no session)."""
     return app.test_client()
 
 
 @pytest.fixture
-def admin_user(app):
-    with app.app_context():
-        user = User(name="Test Admin", email="admin@example.com", role="admin")
-        user.set_pin("1234")
-        db.session.add(user)
-        db.session.commit()
-        return SimpleNamespace(id=user.id)
+def tenant_client(app):
+    """Client logged in as the tenant admin, on the tenant subdomain."""
+    c = app.test_client()
+    resp = c.post(
+        "/auth/login",
+        data={"pin": TENANT_PIN},
+        headers={"Host": TENANT_HOST},
+    )
+    assert resp.status_code == 302
+    return c
 
 
 @pytest.fixture
-def auth_client(client, app, admin_user):
-    response = client.post("/auth/login", data={"pin": "1234"}, follow_redirects=True)
-    assert response.status_code == 200
-    return client
-
-
-@pytest.fixture
-def sample_lockbox(app, admin_user):
-    with app.app_context():
-        user = db.session.get(User, admin_user.id)
-        custom_id = Item.generate_custom_id("Lockbox")
-        item = Item(
-            type="Lockbox",
-            custom_id=custom_id,
-            label="LB-Alpha",
-            location="Main Office",
-            status="available",
-            code_current="4321",
-        )
-        if user is not None:
-            item.record_action("created", user)
-        db.session.add(item)
-        db.session.commit()
-        return SimpleNamespace(id=item.id, custom_id=item.custom_id, label=item.label)
+def admin_client(app):
+    """Client logged in as the app admin, on the root domain."""
+    c = app.test_client()
+    resp = c.post(
+        "/auth/login",
+        data={"pin": APP_ADMIN_PIN},
+        headers={"Host": ROOT_HOST},
+    )
+    assert resp.status_code == 302
+    return c

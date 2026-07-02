@@ -1,0 +1,40 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>Roles</h2>
+<ul>
+  <li><strong>Owner / Admin</strong> — full control: manage users, edit and delete inventory,
+      run audits, change settings, view activity logs.</li>
+  <li><strong>User / Staff</strong> — day-to-day work: add inventory, check items in and out,
+      manage properties and contacts.</li>
+  <li><strong>Agent</strong> — limited access for outside agents.</li>
+</ul>
+
+<h2>Adding a user (admins)</h2>
+<ol>
+  <li>Go to <strong>Administration → Users → Add User</strong>.</li>
+  <li>Enter name, email, role, and a <strong>PIN</strong>.</li>
+</ol>
+
+<h2>PINs</h2>
+<ul>
+  <li>Everyone logs in with just their PIN, so each PIN must be <strong>unique within
+      your company</strong> — KBM enforces this.</li>
+  <li>Minimum 4 characters; longer is safer. Avoid obvious ones (1234, birth years).</li>
+  <li>Users can change their own PIN from <strong>Profile</strong>; admins can reset anyone's
+      from the Users page.</li>
+</ul>
+
+<div class="help-callout">
+  Because activity is recorded per user, shared PINs defeat the audit trail.
+  One person, one PIN.
+</div>
+
+<h2>Deactivating someone</h2>
+<p>When staff leave, <strong>deactivate</strong> their user rather than deleting it — their
+history stays intact but they can no longer log in.</p>
+
+<h2>Activity Logs</h2>
+<p><strong>Administration → Activity Logs</strong> shows every meaningful action — logins,
+checkouts, edits, deletions, settings changes — with who, what, and when.
+Filter it or export to CSV.</p>
+{% endblock %}

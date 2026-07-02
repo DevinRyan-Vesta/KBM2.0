@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Help Center — KBM{% endblock %}
+
+{% block head %}
+<style>
+  .help-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .help-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    padding: 18px;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .help-card:hover {
+    border-color: rgba(229, 57, 53, 0.45);
+    transform: translateY(-2px);
+    color: inherit;
+  }
+  .help-card .icon { font-size: 26px; }
+  .help-card h3 { margin: 10px 0 6px; font-size: 15px; }
+  .help-card p { margin: 0; font-size: 13px; color: var(--color-muted); line-height: 1.5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>❓ Help Center</h1>
+</div>
+
+<p class="muted" style="max-width: 720px; margin-top: -8px;">
+  Guides for everything in KBM. You can also click the <strong>? Help</strong>
+  button in the top bar on any page to jump straight to the guide for the page
+  you're on, and hover over buttons marked with tooltips for quick hints.
+</p>
+
+<div class="help-grid" style="margin-top: 18px;">
+  {% for slug, t in topics.items() %}
+    <a class="help-card" href="{{ url_for('help.topic', slug=slug) }}">
+      <span class="icon">{{ t.icon }}</span>
+      <h3>{{ t.title }}</h3>
+      <p>{{ t.summary }}</p>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

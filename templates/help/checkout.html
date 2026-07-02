@@ -1,0 +1,34 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>The fast lane</h2>
+<p>The <strong>Check In/Out</strong> page is built for speed at the front desk:
+scan a label, hit Enter, done. It works for lockboxes, keys, and signs.</p>
+
+<h2>Finding the item</h2>
+<ul>
+  <li><strong>Scan</strong> the QR/barcode on the item's printed label, or</li>
+  <li><strong>Type</strong> its ID (e.g. <code>KA042</code>) or start typing the label/address —
+      autocomplete suggests matches as you type.</li>
+  <li>You can also search <strong>by person</strong> to see everything a name currently
+      has checked out or assigned — handy when someone returns a pile of keys.</li>
+</ul>
+
+<h2>Checking out</h2>
+<ol>
+  <li>Pull up the item. Its details and current status appear.</li>
+  <li>Fill in who's taking it — pick an existing <strong>contact</strong> (they'll get an
+      email confirmation if notifications are on) or just type a name.</li>
+  <li>For keys, set <strong>how many copies</strong>.</li>
+  <li>Set the purpose and <strong>expected return date</strong> — this drives the
+      overdue/upcoming reports and email reminders.</li>
+</ol>
+
+<h2>Checking in</h2>
+<p>Pull up the item and choose check in. For keys, enter how many copies came
+back. For lockboxes you can set a <strong>new code</strong> at the same time.</p>
+
+<div class="help-callout tip">
+  <strong>Tip:</strong> after every checkout you're offered a printable <strong>receipt</strong>.
+  If the person wants one later, find it under <strong>Receipts</strong>.
+</div>
+{% endblock %}

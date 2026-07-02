@@ -1044,12 +1044,12 @@ az webapp config appsettings set --name kbm-app --resource-group kbm-rg --settin
 
 ```bash
 # For Docker deployment
-docker-compose exec kbm-app python create_admin.py
+docker-compose exec kbm-app python create_app_admin.py
 
 # For traditional deployment
 cd /home/kbmapp/KBM2.0
 source .venv/bin/activate
-python create_admin.py
+python create_app_admin.py
 ```
 
 Follow the prompts to create an application administrator account.

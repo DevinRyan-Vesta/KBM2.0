@@ -12,7 +12,7 @@
     <a href="{{ url_for('audits.reorganize_keys') }}" class="btn">Reorganize Keys</a>
     <form method="POST" action="{{ url_for('audits.create_audit') }}" style="display: inline;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-      <button type="submit" class="btn primary">Create New Audit</button>
+      <button type="submit" class="btn primary" data-tooltip="Snapshot every key in inventory so you can count the physical key box against it">Create New Audit</button>
     </form>
   </div>
 </div>

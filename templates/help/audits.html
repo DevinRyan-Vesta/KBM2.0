@@ -1,0 +1,32 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>Why audit</h2>
+<p>An audit reconciles the key box on the wall with what KBM thinks is there.
+Run one monthly, after staff changes, or any time counts feel off.</p>
+
+<h2>Running an audit (admins)</h2>
+<ol>
+  <li>Go to <strong>Audits</strong> and click <strong>Create Audit</strong>. KBM snapshots every key
+      in inventory, ordered by hook number.</li>
+  <li>Optionally <strong>Print</strong> the audit sheet and walk the key box with a pen —
+      or enter counts directly on the <strong>Input Results</strong> screen.</li>
+  <li>For each hook, record how many copies are physically present.</li>
+  <li><strong>Complete</strong> the audit when every row is entered.</li>
+  <li>Review the differences, then <strong>Apply</strong> to update the system counts
+      to match reality. Applying is logged, so there's a record of every correction.</li>
+</ol>
+
+<div class="help-callout">
+  Audits are snapshots — keys added after the audit started won't appear in it.
+  Finish and apply an audit reasonably promptly, or discrepancies pile up.
+</div>
+
+<h2>Low Copy Report</h2>
+<p>Lists every key whose total copies are at or below the threshold set in
+Settings — your "go cut more keys" shopping list. Exportable as CSV.</p>
+
+<h2>Reorganize</h2>
+<p>The <strong>Reorganize</strong> tool helps re-number key hooks (e.g. after physically
+rearranging the key box) by assigning new hook positions in bulk, grouped by
+property.</p>
+{% endblock %}

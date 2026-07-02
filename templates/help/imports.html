@@ -1,0 +1,32 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>What you can import</h2>
+<p>Keys, lockboxes, signs, properties, property units, and smart locks can all
+be bulk-loaded from <strong>CSV or Excel</strong> (.csv, .xlsx, .xls) files. Each list
+page has its own <strong>Import</strong> button.</p>
+
+<h2>The import wizard</h2>
+<ol>
+  <li><strong>Upload</strong> — pick your file. Need a starting point? Download the
+      blank <strong>template</strong> from the upload page to see the expected columns.</li>
+  <li><strong>Map columns</strong> — tell KBM which of your spreadsheet's columns is the
+      label, hook number, code, address, and so on. KBM guesses matches from
+      your header names; correct anything it got wrong.</li>
+  <li><strong>Review</strong> — a preview of what will be created, with problems flagged
+      before anything is saved: duplicates of existing records, rows missing
+      required fields, and unknown property names (with fuzzy-match suggestions
+      and the option to create the property on the fly).</li>
+  <li><strong>Process</strong> — the rows are imported, and you get a results summary of
+      what was created and what was skipped.</li>
+</ol>
+
+<div class="help-callout">
+  Imports never overwrite existing records — duplicate rows are flagged in the
+  review step so you can decide what to do.
+</div>
+
+<div class="help-callout tip">
+  <strong>Tip:</strong> keep one row per key <em>type</em> — the "total copies" column covers
+  multiple physical copies of the same key.
+</div>
+{% endblock %}

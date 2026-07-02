@@ -74,10 +74,10 @@
       {% endif %}
     </form>
     <div class="btn-group">
-      <button type="button" class="btn small" onclick="toggleFilters()">Filters ▾</button>
-      <button type="button" class="btn small" onclick="showExportMenu(event, 'lockboxes')">Export ▾</button>
-      <a class="btn small" href="{{ url_for('inventory.import_lockboxes') }}">Import</a>
-      <a class="btn primary" href="{{ url_for('inventory.add_lockbox') }}">Add Lockbox</a>
+      <button type="button" class="btn small" onclick="toggleFilters()" data-tooltip="Filter lockboxes by status, property, or location">Filters ▾</button>
+      <button type="button" class="btn small" onclick="showExportMenu(event, 'lockboxes')" data-tooltip="Download the lockbox inventory as CSV, Excel, or PDF">Export ▾</button>
+      <a class="btn small" href="{{ url_for('inventory.import_lockboxes') }}" data-tooltip="Bulk-load lockboxes from a CSV or Excel spreadsheet">Import</a>
+      <a class="btn primary" href="{{ url_for('inventory.add_lockbox') }}" data-tooltip="Add a lockbox — you can assign it to a property afterwards">Add Lockbox</a>
     </div>
   </div>
 </div>

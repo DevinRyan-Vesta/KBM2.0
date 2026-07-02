@@ -1,0 +1,41 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>How keys work in KBM</h2>
+<p>A key record represents <em>all copies</em> of one key. It tracks the
+<strong>total number of copies</strong>, how many are currently <strong>checked out</strong>,
+the <strong>key hook number</strong> where it hangs in your key box, an optional
+<strong>key code</strong> (the cut code), and the <strong>property/unit</strong> it opens.</p>
+
+<h2>Adding a key</h2>
+<ol>
+  <li>Go to <strong>Keys → Add Key</strong>.</li>
+  <li>Enter a label, how many copies you have, and the hook number where it lives.</li>
+  <li>Optionally link it to a property/unit — the address fills in automatically.</li>
+  <li>Optionally set a <strong>master key</strong> if this key is part of a master system.</li>
+</ol>
+
+<h2>Checking copies out and in</h2>
+<ul>
+  <li>Use the row's <strong>Check Out</strong> button or the <strong>Check In/Out</strong> page.</li>
+  <li>Choose <strong>how many copies</strong>, who's taking them (pick a contact or type a name),
+      the purpose, and the expected return date.</li>
+  <li>Each checkout creates a record you can print a <strong>receipt</strong> for, and shows up
+      under the key's active checkouts until it's returned.</li>
+  <li>Check-in asks how many copies came back — partial returns are fine.</li>
+</ul>
+
+<h2>Assigning vs. checking out</h2>
+<p><strong>Check out</strong> is temporary (has an expected return date).
+<strong>Assign</strong> is long-term — e.g. a tenant or contractor keeps a copy indefinitely.
+Assigned copies are tracked separately so they don't show up as overdue.</p>
+
+<div class="help-callout">
+  A red dot next to a key means its total copies are at or below the
+  <strong>low-keys threshold</strong> set in Settings — time to cut more copies.
+  The <strong>Low Copy Report</strong> under Audits lists them all.
+</div>
+
+<h2>Auditing your key box</h2>
+<p>Use <strong>Audits</strong> to run a physical count of every hook and reconcile the
+system with reality — see the Audits help topic.</p>
+{% endblock %}

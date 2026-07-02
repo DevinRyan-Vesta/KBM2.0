@@ -1,0 +1,47 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>Welcome to KBM</h2>
+<p>KBM (Keybox Manager) tracks your office's <strong>lockboxes, keys, and signs</strong> —
+where they are, who has them, and when they're due back. It also manages the
+properties they belong to, your contacts, and smart lock codes.</p>
+
+<h2>Logging in</h2>
+<ol>
+  <li>Open your company's KBM address in a browser.</li>
+  <li>Enter your personal <strong>PIN</strong>. Every user has their own unique PIN —
+      don't share it, since all activity is recorded under the PIN that's logged in.</li>
+</ol>
+<div class="help-callout">
+  For security you'll be signed out automatically after a period of inactivity
+  (30 minutes by default). A warning appears shortly before — click anywhere to stay signed in.
+</div>
+
+<h2>Finding your way around</h2>
+<ul>
+  <li><strong>Home</strong> — the dashboard: counts of lockboxes, keys, and signs by status,
+      plus items due back soon.</li>
+  <li><strong>Inventory</strong> (Lockboxes / Keys / Signs) — full lists with search, filters,
+      and per-item actions.</li>
+  <li><strong>Operations</strong> — Check In/Out (the fast lane), Receipts, Audits, and Reports.</li>
+  <li><strong>Management</strong> — Properties, Contacts, and Smart Locks.</li>
+  <li><strong>Administration</strong> (admins only) — Users, Activity Logs, and Settings.</li>
+</ul>
+
+<h2>Three ways to get help</h2>
+<ul>
+  <li>The <strong>? Help</strong> button in the top bar opens the guide for the page you're on.</li>
+  <li><strong>Tooltips</strong>: hover over buttons and the small <span class="help-tip" data-tooltip="Like this one!">?</span>
+      markers for a quick explanation.</li>
+  <li>The <strong>Help Center</strong> link in the sidebar lists every guide (you're here now).</li>
+</ul>
+
+<h2>The 60-second tour of a typical day</h2>
+<ol>
+  <li>An agent needs a key: open <strong>Check In/Out</strong>, scan or type the key's ID,
+      choose how many copies and who's taking them, set the expected return date, done.
+      A receipt is offered automatically.</li>
+  <li>The key comes back: same page, check it back in.</li>
+  <li>End of week: open <strong>Reports</strong> to see anything overdue,
+      and export it to Excel or PDF if needed.</li>
+</ol>
+{% endblock %}

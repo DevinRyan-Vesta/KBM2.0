@@ -55,7 +55,7 @@
         </div>
 
         <div class="form-field">
-          <label for="sign_subtype">Sign Type *</label>
+          <label for="sign_subtype">Sign Type * <span class="help-tip" data-tooltip="Piece = a single component (frame, sign, rider). Assembled units are built from pieces in the Sign Builder.">?</span></label>
           <select id="sign_subtype" name="sign_subtype" required onchange="togglePieceFields()">
             <option value="">-- Select Type --</option>
             <option value="Piece">Individual Piece</option>
@@ -74,7 +74,7 @@
         </div>
 
         <div class="form-field" id="rider_text_field" style="display: none;">
-          <label for="rider_text">Rider Text</label>
+          <label for="rider_text">Rider Text <span class="help-tip" data-tooltip="What the rider says — an agent name, SOLD, PENDING, etc.">?</span></label>
           <input type="text" id="rider_text" name="rider_text" placeholder="Text on rider (for Name/Status/Bonus riders)">
         </div>
 
