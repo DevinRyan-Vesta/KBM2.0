@@ -16,15 +16,18 @@ manage properties and contacts) can be done through the API.</p>
       project repository: walkthroughs and copy-paste examples.</li>
 </ul>
 
-<h2>Getting an API token</h2>
+<h2>Getting an API key</h2>
+<p>The easiest way is in the app: open <strong>API Keys</strong> (in the sidebar,
+or under Administration for admins), give the key a name, pick an expiry, and
+click <strong>Create API Key</strong>.</p>
 <ol>
-  <li>Send a <code>POST</code> request to <code>/api/v1/auth/tokens</code> on your
-      company's address with your login <strong>email</strong> and <strong>PIN</strong>.</li>
-  <li>Copy the returned <code>token</code> — it is shown <strong>only once</strong>.
+  <li>Copy the key right away — it is shown <strong>only once</strong>.
       Store it somewhere safe, like a password manager.</li>
   <li>Send it with every request as a header:
       <code>Authorization: Bearer kbm_…</code></li>
 </ol>
+<p>Programmatic alternative: <code>POST /api/v1/auth/tokens</code> with your login
+<strong>email</strong> and <strong>PIN</strong> returns a new key without using the UI.</p>
 
 <div class="help-callout">
   <strong>Permissions follow your role.</strong> A token can do exactly what the
@@ -32,14 +35,15 @@ manage properties and contacts) can be done through the API.</p>
   admin or owner token. Deactivating a user immediately disables their tokens.
 </div>
 
-<h2>Managing tokens</h2>
+<h2>Managing keys</h2>
 <ul>
-  <li><strong>List</strong> — <code>GET /api/v1/auth/tokens</code> (admins see every
-      token in the account, including who created it and when it was last used).</li>
-  <li><strong>Revoke</strong> — <code>DELETE /api/v1/auth/tokens/&lt;id&gt;</code>.
-      Takes effect immediately.</li>
-  <li><strong>Expiry</strong> — pass <code>expires_in_days</code> when creating a token
-      to make it expire automatically.</li>
+  <li><strong>In the app</strong> — the API Keys page lists your keys (admins see
+      every key in the account with its owner and last-used time) and has a
+      Revoke button for each. Revoking takes effect immediately.</li>
+  <li><strong>Via the API</strong> — <code>GET /api/v1/auth/tokens</code> to list,
+      <code>DELETE /api/v1/auth/tokens/&lt;id&gt;</code> to revoke.</li>
+  <li><strong>Expiry</strong> — choose an expiry when creating a key (or pass
+      <code>expires_in_days</code> via the API) to make it expire automatically.</li>
 </ul>
 
 <h2>Good to know</h2>

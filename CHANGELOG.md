@@ -4,6 +4,22 @@ All notable changes to KBM (Keybox Manager) are documented here.
 Versioning: MAJOR.MINOR.PATCH. The running version is shown in the app
 sidebar and defined as `APP_VERSION` in `config.py`.
 
+## [2.3.0] — 2026-07-13
+
+### Added
+- **API Keys management page** (`/settings/api-keys`, linked from the
+  sidebar): create keys with a name and optional expiry (30/90/365 days or
+  never), copy the key from a show-once reveal box, and revoke keys with
+  one click. Every logged-in user manages their own keys; admins see all
+  keys in the account with owner and last-used time. Key creation and
+  revocation are recorded in the tenant activity log.
+- Sidebar links: "API Keys" in the Administration section (admins) and in
+  the sidebar footer (all users). The in-app "? Help" button on the page
+  opens the API help topic, updated to describe the new UI.
+- Tests for the page (`tests/test_api_keys_ui.py`): show-once behavior,
+  UI-minted keys authenticating against the API, revocation, and
+  cross-user permission checks.
+
 ## [2.2.0] — 2026-07-13
 
 Full REST API release.
