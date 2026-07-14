@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KBM API Reference</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --card: #ffffff; --text: #1e2430; --muted: #61708b;
+    --border: #e3e7ee; --accent: #2563eb;
+    --get: #2563eb; --post: #16a34a; --patch: #d97706; --delete: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.55; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { margin: 0 0 4px; font-size: 1.7rem; }
+  .subtitle { color: var(--muted); margin-bottom: 24px; }
+  .intro { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+           padding: 18px 22px; margin-bottom: 28px; white-space: pre-wrap; }
+  .intro code, .op code { background: #eef1f6; padding: 1px 5px; border-radius: 4px; font-size: .9em; }
+  h2.tag { margin: 34px 0 10px; font-size: 1.2rem; border-bottom: 2px solid var(--border); padding-bottom: 6px; }
+  .op { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+        margin-bottom: 10px; overflow: hidden; }
+  .op-header { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; }
+  .op-header:hover { background: #fafbfd; }
+  .method { font-weight: 700; font-size: .75rem; padding: 3px 9px; border-radius: 5px;
+            color: #fff; min-width: 56px; text-align: center; letter-spacing: .5px; }
+  .m-get { background: var(--get); } .m-post { background: var(--post); }
+  .m-patch { background: var(--patch); } .m-delete { background: var(--delete); }
+  .path { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .9rem; }
+  .summary { color: var(--muted); font-size: .88rem; margin-left: auto; text-align: right; }
+  .op-body { display: none; padding: 4px 16px 14px; border-top: 1px solid var(--border); font-size: .9rem; }
+  .op.open .op-body { display: block; }
+  .op-body h4 { margin: 12px 0 6px; font-size: .82rem; text-transform: uppercase;
+                letter-spacing: .6px; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { text-align: left; padding: 4px 10px 4px 0; vertical-align: top; }
+  th { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; }
+  .name { font-family: ui-monospace, Consolas, monospace; }
+  .badge { color: var(--muted); font-size: .8rem; }
+  .req { color: var(--delete); font-size: .78rem; font-weight: 600; }
+  .desc { margin: 8px 0 0; }
+  footer { margin-top: 40px; color: var(--muted); font-size: .85rem; }
+  a { color: var(--accent); }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #12151c; --card: #1a1f2a; --text: #e6eaf2; --muted: #94a3b8; --border: #2a3242; }
+    .op-header:hover { background: #1e2431; }
+    .intro code, .op code { background: #252d3d; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>{{ spec.info.title }} <span class="badge">v{{ spec.info.version }}</span></h1>
+  <div class="subtitle">Interactive reference &middot; <a href="openapi.json">openapi.json</a></div>
+  <div class="intro">{{ intro_html or spec.info.description }}</div>
+
+  {% for tag in spec.tags %}
+    <h2 class="tag">{{ tag.name }}</h2>
+    {% for path, methods in spec.paths.items() %}
+      {% for method, op in methods.items() %}
+        {% if op.tags and op.tags[0] == tag.name %}
+        <div class="op">
+          <div class="op-header" onclick="this.parentElement.classList.toggle('open')">
+            <span class="method m-{{ method }}">{{ method | upper }}</span>
+            <span class="path">{{ path }}</span>
+            <span class="summary">{{ op.summary }}</span>
+          </div>
+          <div class="op-body">
+            {% if op.description %}<p class="desc">{{ op.description }}</p>{% endif %}
+            {% if not op.security %}<p class="badge">No authentication required{% if 'tokens' in path and method == 'post' %} (credentials in body){% endif %}.</p>{% endif %}
+            {% if op.parameters %}
+              <h4>Parameters</h4>
+              <table>
+                <tr><th>Name</th><th>In</th><th>Type</th><th></th></tr>
+                {% for p in op.parameters %}
+                <tr>
+                  <td class="name">{{ p.name }}</td>
+                  <td class="badge">{{ p['in'] }}</td>
+                  <td class="badge">{{ p.schema.type }}{% if p.schema.enum %} ({{ p.schema.enum | join(' | ') }}){% endif %}</td>
+                  <td class="badge">{% if p.required %}<span class="req">required</span> {% endif %}{{ p.description or '' }}</td>
+                </tr>
+                {% endfor %}
+              </table>
+            {% endif %}
+            {% if op.requestBody %}
+              {% set schema = op.requestBody.content['application/json'].schema %}
+              <h4>Body (application/json)</h4>
+              <table>
+                <tr><th>Field</th><th>Type</th><th></th></tr>
+                {% for fname, fschema in schema.properties.items() %}
+                <tr>
+                  <td class="name">{{ fname }}</td>
+                  <td class="badge">{{ fschema.type }}{% if fschema.enum %} ({{ fschema.enum | join(' | ') }}){% endif %}</td>
+                  <td class="badge">
+                    {% if schema.required and fname in schema.required %}<span class="req">required</span>{% endif %}
+                    {{ fschema.description or '' }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </table>
+            {% endif %}
+            <h4>Responses</h4>
+            <table>
+              {% for status, resp in op.responses.items() %}
+              <tr><td class="name">{{ status }}</td><td class="badge">{{ resp.description }}</td></tr>
+              {% endfor %}
+            </table>
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  {% endfor %}
+
+  <footer>KBM API v{{ spec.info.version }} &middot; errors follow
+    <code>{"error": {"code", "message"}}</code></footer>
+</div>
+</body>
+</html>

@@ -17,7 +17,7 @@ if env_file:
     load_dotenv(env_file)
 
 # Application version — keep in sync with CHANGELOG.md.
-APP_VERSION = "2.1.0"
+APP_VERSION = "2.2.0"
 
 
 class Config:

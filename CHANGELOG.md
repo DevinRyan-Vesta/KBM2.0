@@ -4,6 +4,31 @@ All notable changes to KBM (Keybox Manager) are documented here.
 Versioning: MAJOR.MINOR.PATCH. The running version is shown in the app
 sidebar and defined as `APP_VERSION` in `config.py`.
 
+## [2.2.0] — 2026-07-13
+
+Full REST API release.
+
+### Added
+- **REST API v1** at `/api/v1` covering the whole app: items (lockboxes,
+  keys, signs) with checkout / check-in / assign actions that mirror the web
+  flows exactly, checkout history, properties + units, contacts, smart
+  locks, audits (read), users, tenant settings, activity logs, and an
+  inventory stats summary. App admins get a cross-tenant `/api/v1/accounts`
+  endpoint on the root domain.
+- **API tokens**: `POST /api/v1/auth/tokens` exchanges a login email + PIN
+  for a long-lived Bearer token (rate-limited; optional expiry; stored
+  hashed in the master DB, shown once). Tokens inherit the user's role;
+  list/revoke endpoints included. New `api_tokens` table is created
+  automatically on boot.
+- **API reference docs** at `/api/v1/docs` (interactive, self-contained)
+  plus a machine-readable OpenAPI 3.0 spec at `/api/v1/openapi.json`.
+- **API test suite** (`tests/test_api.py`, 20 tests) exercising the token
+  lifecycle, every resource family, role gating, and tenant isolation.
+- All API writes create the same activity-log entries as the web UI, and
+  key checkouts/check-ins trigger the same email notifications.
+- JSON error responses (`{"error": {"code", "message"}}`) for every `/api/`
+  path, including 404/405/429 raised outside the blueprint.
+
 ## [2.1.0] — 2026-07-02
 
 Deployment-readiness release: built-in Help Center, a round of bug fixes
