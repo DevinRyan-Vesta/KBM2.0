@@ -1,0 +1,78 @@
+# Compose override for running KBM behind an EXISTING, EXTERNAL Traefik that is
+# already on the host (e.g. a shared/central Traefik that owns ports 80/443 and
+# fronts other apps too). This is different from compose.traefik.yaml, which
+# starts KBM's OWN Traefik — you can't do that when another proxy already holds
+# 80/443.
+#
+# Enable by setting COMPOSE_FILE in .env:
+#
+#     COMPOSE_FILE=compose.yaml:compose.external-traefik.yaml
+#
+# What it does, relative to the base compose.yaml:
+#   - Disables the bundled Caddy (it would fail to bind 80/443).
+#   - Publishes the app on 127.0.0.1:8000 so a HOST-NETWORK external Traefik can
+#     reach the tenant-gate forwardauth endpoint (it can't resolve `python-app`
+#     by docker DNS because it isn't on the app's docker network).
+#   - Restates the full Traefik label set so the external Traefik routes:
+#       * apex  -> app           (router kbm-root,    priority 100)
+#       * www   -> 308 to apex    (router kbm-www,     priority 100)
+#       * *.tenant subdomains    (router kbm-tenants, priority 1, forwardauth-gated)
+#     all using the `cfdns` cert resolver (Cloudflare DNS-01 wildcard). The
+#     external Traefik must define a resolver named `cfdns`; see TRAEFIK.md.
+#
+# The in-app updater records the active config_files on the container and
+# reconstructs this same merge on every `up -d`, so updates never silently
+# fall back to Caddy.
+
+services:
+  caddy:
+    profiles: ["disabled"]
+
+  python-app:
+    # Loopback publish for the host-network external Traefik's forwardauth call.
+    ports:
+      - "127.0.0.1:8000:8000"
+    labels:
+      - "traefik.enable=true"
+      # Explicit, project-prefixed network name so the external Traefik picks
+      # the right container IP without guessing.
+      - "traefik.docker.network=kbm_appnet"
+      - "traefik.http.services.kbm-app.loadbalancer.server.port=8000"
+
+      # Router: apex (main site). Priority above kbm-tenants so the apex is
+      # never gated as a tenant.
+      - "traefik.http.routers.kbm-root.rule=Host(`${BASE_DOMAIN}`)"
+      - "traefik.http.routers.kbm-root.priority=100"
+      - "traefik.http.routers.kbm-root.entrypoints=websecure"
+      - "traefik.http.routers.kbm-root.tls=true"
+      - "traefik.http.routers.kbm-root.tls.certresolver=cfdns"
+      - "traefik.http.routers.kbm-root.tls.domains[0].main=${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-root.tls.domains[0].sans=*.${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-root.service=kbm-app"
+
+      # Router: www -> apex 308 redirect (the app treats any subdomain, incl.
+      # "www", as a tenant, so it must be redirected rather than routed).
+      - "traefik.http.routers.kbm-www.rule=Host(`www.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.kbm-www.priority=100"
+      - "traefik.http.routers.kbm-www.entrypoints=websecure"
+      - "traefik.http.routers.kbm-www.tls=true"
+      - "traefik.http.routers.kbm-www.tls.certresolver=cfdns"
+      - "traefik.http.routers.kbm-www.service=kbm-app"
+      - "traefik.http.routers.kbm-www.middlewares=kbm-wwwredirect"
+      - "traefik.http.middlewares.kbm-wwwredirect.redirectregex.regex=^https?://www\\.${BASE_DOMAIN}/(.*)"
+      - "traefik.http.middlewares.kbm-wwwredirect.redirectregex.replacement=https://${BASE_DOMAIN}/$${1}"
+      - "traefik.http.middlewares.kbm-wwwredirect.redirectregex.permanent=true"
+
+      # Router: wildcard tenant subdomains (one *.${BASE_DOMAIN} cert via DNS-01).
+      - "traefik.http.routers.kbm-tenants.rule=HostRegexp(`^[a-z0-9-]+\\.${BASE_DOMAIN}$`)"
+      - "traefik.http.routers.kbm-tenants.priority=1"
+      - "traefik.http.routers.kbm-tenants.entrypoints=websecure"
+      - "traefik.http.routers.kbm-tenants.tls=true"
+      - "traefik.http.routers.kbm-tenants.tls.certresolver=cfdns"
+      - "traefik.http.routers.kbm-tenants.tls.domains[0].main=${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-tenants.tls.domains[0].sans=*.${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-tenants.service=kbm-app"
+      - "traefik.http.routers.kbm-tenants.middlewares=tenant-gate@docker"
+      # Host-network Traefik reaches the app via the loopback publish above.
+      - "traefik.http.middlewares.tenant-gate.forwardauth.address=http://127.0.0.1:8000/_internal/check-domain?secret=${INTERNAL_API_SECRET}"
+      - "traefik.http.middlewares.tenant-gate.forwardauth.trustForwardHeader=true"
