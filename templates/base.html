@@ -1261,7 +1261,10 @@
               <a href="{{ url_for('auth.activity_logs') }}" class="{% if request.endpoint == 'auth.activity_logs' %}active{% endif %}">
                 <span class="nav-icon">📋</span> Activity Logs
               </a>
-              <a href="{{ url_for('settings.settings_page') }}" class="{% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}">
+              <a href="{{ url_for('settings.api_keys') }}" class="{% if request.endpoint and request.endpoint.startswith('settings.api_key') %}active{% endif %}">
+                <span class="nav-icon">🔑</span> API Keys
+              </a>
+              <a href="{{ url_for('settings.settings_page') }}" class="{% if request.endpoint in ('settings.settings_page', 'settings.save_settings') %}active{% endif %}">
                 <span class="nav-icon">⚙️</span> Settings
               </a>
             </div>
@@ -1277,6 +1280,9 @@
             <div class="toolbar toolbar-column">
               <a class="btn ghost" href="{{ url_for('help.index') }}">❓ Help Center</a>
               <a class="btn ghost" href="{{ url_for('auth.profile') }}">Profile</a>
+              {% if not is_root_domain %}
+              <a class="btn ghost" href="{{ url_for('settings.api_keys') }}">🔑 API Keys</a>
+              {% endif %}
               <button class="btn ghost" type="button" data-theme-toggle>Toggle Dark Mode</button>
               <a class="btn danger" href="{{ url_for('auth.logout') }}">Logout</a>
             </div>

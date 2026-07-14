@@ -75,6 +75,9 @@ _ENDPOINT_PREFIX_MAP = [
     ("auth.edit_user", "users-roles"),
     ("auth.activity_logs", "users-roles"),
     ("auth.export_activity_logs", "users-roles"),
+    ("settings.api_key", "api"),
+    ("settings.create_api_key", "api"),
+    ("settings.revoke_api_key", "api"),
 ]
 
 _BLUEPRINT_MAP = {
