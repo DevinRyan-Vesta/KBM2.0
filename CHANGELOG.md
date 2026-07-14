@@ -22,6 +22,11 @@ Full REST API release.
   automatically on boot.
 - **API reference docs** at `/api/v1/docs` (interactive, self-contained)
   plus a machine-readable OpenAPI 3.0 spec at `/api/v1/openapi.json`.
+- **API integration guide** (`API_DOCUMENTATION.md`) for external apps:
+  auth walkthrough, conventions, per-resource examples in curl / Python /
+  JavaScript / PowerShell, and common integration recipes.
+- **"API & Integrations" Help Center topic** so admins can discover the
+  API and token management from inside the app.
 - **API test suite** (`tests/test_api.py`, 20 tests) exercising the token
   lifecycle, every resource family, role gating, and tenant isolation.
 - All API writes create the same activity-log entries as the web UI, and

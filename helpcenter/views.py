@@ -45,6 +45,8 @@ HELP_TOPICS = OrderedDict([
                      "summary": "Add users, set PINs, understand permissions, review activity."}),
     ("settings", {"title": "Settings", "icon": "⚙️",
                   "summary": "Email notifications, thresholds, and receipt text."}),
+    ("api", {"title": "API & Integrations", "icon": "🔌",
+             "summary": "Connect other apps to KBM with the REST API."}),
 ])
 
 
