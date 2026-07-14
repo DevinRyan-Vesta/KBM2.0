@@ -1,12 +1,12 @@
 # KBM 2.0 - Key & Lockbox Management System
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue) ![Status](https://img.shields.io/badge/status-production_ready-green) ![Security](https://img.shields.io/badge/security-hardened-brightgreen) ![Python](https://img.shields.io/badge/python-3.11+-blue)
+![Version](https://img.shields.io/badge/version-2.2.0-blue) ![Status](https://img.shields.io/badge/status-production_ready-green) ![Security](https://img.shields.io/badge/security-hardened-brightgreen) ![Python](https://img.shields.io/badge/python-3.11+-blue)
 
 **Multi-Tenant Property Management Solution**
 
 Complete web application for managing keys, lockboxes, signs, and smart locks for property management businesses.
 
-Current version: **2.1.0** — see [CHANGELOG.md](CHANGELOG.md) for the full version history.
+Current version: **2.2.0** — see [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ---
 
@@ -53,9 +53,10 @@ python app_multitenant.py
 5. **[SYSTEM_UPDATES_GUIDE.md](SYSTEM_UPDATES_GUIDE.md)** - Web-based system update interface
 6. **[PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)** - Technical architecture and code documentation
 7. **[USER_QUICKSTART_GUIDE.md](USER_QUICKSTART_GUIDE.md)** - End-user manual and feature guide
-8. **[DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md)** - Development process and guidelines
-9. **[BACKUP_GUIDE.md](BACKUP_GUIDE.md)** - Backup and restoration procedures
-10. **[ToDo.txt](ToDo.txt)** - Project tracking and fix history
+8. **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - REST API integration guide for external apps (also served live at `/api/v1/docs`)
+9. **[DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md)** - Development process and guidelines
+10. **[BACKUP_GUIDE.md](BACKUP_GUIDE.md)** - Backup and restoration procedures
+11. **[ToDo.txt](ToDo.txt)** - Project tracking and fix history
 
 ---
 
@@ -84,6 +85,7 @@ See [ToDo.txt](ToDo.txt) REFERENCE section for complete fix history.
 - 🏢 **Properties** - Manage properties, units, contacts
 - 📊 **Reports** - Activity logs and analytics
 - 📥 **Import/Export** - Bulk operations with Excel
+- 🔌 **REST API** - Token-authenticated API at `/api/v1` for external integrations ([guide](API_DOCUMENTATION.md), live docs at `/api/v1/docs`)
 - ❓ **Built-in Help** - In-app Help Center with per-page context help and tooltips
 - 🔒 **Secure** - CSRF, login rate limiting, hardened sessions
 

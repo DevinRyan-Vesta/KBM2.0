@@ -141,6 +141,71 @@ class MasterUser(master_db.Model, UserMixin):
     )
 
 
+class ApiToken(master_db.Model):
+    """
+    Bearer token for the REST API (/api/v1).
+
+    The raw token is only shown once at creation. We store a SHA-256 hash —
+    tokens are 256-bit random secrets, so a fast hash is fine (no need for a
+    slow KDF like the PIN hashes). token_prefix is the short public part used
+    for indexed lookup and for identifying tokens in list views.
+
+    Token format: kbm_<prefix>_<secret>
+    """
+    __tablename__ = "api_tokens"
+
+    id = master_db.Column(master_db.Integer, primary_key=True)
+    # NULL account_id = app_admin token (not bound to one tenant)
+    account_id = master_db.Column(master_db.Integer, master_db.ForeignKey("accounts.id"), nullable=True, index=True)
+    user_id = master_db.Column(master_db.Integer, master_db.ForeignKey("master_users.id"), nullable=False, index=True)
+
+    name = master_db.Column(master_db.String(120), nullable=False, default="API Token")
+    token_prefix = master_db.Column(master_db.String(16), nullable=False, unique=True, index=True)
+    token_hash = master_db.Column(master_db.String(64), nullable=False)
+
+    created_at = master_db.Column(master_db.DateTime, nullable=False, default=utc_now)
+    expires_at = master_db.Column(master_db.DateTime, nullable=True)
+    last_used_at = master_db.Column(master_db.DateTime, nullable=True)
+    revoked_at = master_db.Column(master_db.DateTime, nullable=True)
+
+    user = master_db.relationship("MasterUser", foreign_keys=[user_id])
+
+    TOKEN_ENV_PREFIX = "kbm"
+
+    @staticmethod
+    def generate() -> tuple[str, str, str]:
+        """Return (raw_token, prefix, sha256_hash). Raw token is shown once."""
+        import hashlib
+        prefix = secrets.token_hex(4)  # 8 chars, public identifier
+        secret = secrets.token_urlsafe(32)
+        raw = f"{ApiToken.TOKEN_ENV_PREFIX}_{prefix}_{secret}"
+        return raw, prefix, hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def hash_raw(raw: str) -> str:
+        import hashlib
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    def is_valid(self) -> bool:
+        if self.revoked_at is not None:
+            return False
+        if self.expires_at is not None and self.expires_at < utc_now():
+            return False
+        return True
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "token_prefix": self.token_prefix,
+            "user_id": self.user_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
+            "revoked": self.revoked_at is not None,
+        }
+
+
 class Invitation(master_db.Model):
     """
     Invitation system for adding users to accounts.

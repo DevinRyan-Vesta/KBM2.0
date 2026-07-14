@@ -106,6 +106,16 @@ def create_app():
             master_db.create_all()
             print("Master database schema created")
 
+    # 6b) Ensure the api_tokens table exists (added in 2.2.0). checkfirst
+    # makes this a no-op on every boot after the first — safe for existing
+    # deployments that never run AUTO_CREATE_SCHEMA.
+    try:
+        from utilities.master_database import ApiToken
+        with app.app_context():
+            ApiToken.__table__.create(master_db.engine, checkfirst=True)
+    except Exception as e:
+        print(f"WARNING: could not ensure api_tokens table: {e}")
+
     # 6a) Apply pending tenant DB schema upgrades. Idempotent: each upgrade
     # checks whether its column/table is already present and only acts if
     # missing. Safe to run on every boot. See utilities/tenant_schema.py.
@@ -137,6 +147,11 @@ def create_app():
     app.register_blueprint(search_bp)
     app.register_blueprint(settings_bp, url_prefix="/settings")
     app.register_blueprint(help_bp, url_prefix="/help")
+
+    # REST API v1. Token-authenticated (Bearer), stateless — CSRF exemption
+    # happens below once csrf is initialized.
+    from api import api_bp
+    app.register_blueprint(api_bp, url_prefix="/api/v1")
 
     # 8) Debug helpers (DISABLED FOR SECURITY)
     # These routes are disabled for production security
@@ -261,6 +276,10 @@ def create_app():
     # protection — it just removes the redundant clock.
     app.config.setdefault("WTF_CSRF_TIME_LIMIT", None)
     csrf.init_app(app)
+    # The API authenticates every request with a Bearer token, so CSRF
+    # protection (a browser-session concern) doesn't apply.
+    from api import api_bp as _api_bp
+    csrf.exempt(_api_bp)
 
     # 10b) Rate Limiting
     # Always initialized so the @limiter.limit(...) decorators on login and
@@ -272,8 +291,17 @@ def create_app():
     limiter.init_app(app)
 
     # 11) Error handlers
+    def _wants_json(error=None):
+        # API clients get JSON errors, browsers get the HTML error pages.
+        return request.path.startswith("/api/")
+
+    def _json_error(status: int, code: str, message: str):
+        return {"error": {"code": code, "message": message}}, status
+
     @app.errorhandler(404)
     def handle_404(error):
+        if _wants_json():
+            return _json_error(404, "not_found", getattr(error, "description", None) or "Resource not found.")
         # If app admin is on root domain and hits 404, redirect to dashboard
         if current_user.is_authenticated and getattr(current_user, 'role', '') == 'app_admin' and g.get('is_root_domain', False):
             return redirect(url_for('app_admin.dashboard'))
@@ -281,14 +309,26 @@ def create_app():
 
     @app.errorhandler(403)
     def handle_403(error):
+        if _wants_json():
+            return _json_error(403, "forbidden", getattr(error, "description", None) or "Forbidden.")
         return render_template("403.html", error=error), 403
+
+    @app.errorhandler(405)
+    def handle_405(error):
+        if _wants_json():
+            return _json_error(405, "method_not_allowed", "Method not allowed for this endpoint.")
+        return render_template("404.html", error=error), 405
 
     @app.errorhandler(500)
     def handle_500(error):
+        if _wants_json():
+            return _json_error(500, "internal_error", "Internal server error.")
         return render_template("500.html", error=error), 500
 
     @app.errorhandler(429)
     def handle_429(error):
+        if _wants_json():
+            return _json_error(429, "rate_limited", "Too many requests. Slow down and retry shortly.")
         # Rate limit hit — currently only login and signup are limited, so a
         # flash + bounce back to the form is friendlier than a bare error page.
         from flask import request as _req, flash as _flash

@@ -1,0 +1,59 @@
+{% extends "help/_topic.html" %}
+{% block help_content %}
+<h2>What the API is for</h2>
+<p>KBM has a full REST API so other software — spreadsheets, automation tools
+like Zapier or Make, your CRM, or custom scripts — can read and update your
+data. Anything you can do in the app (create items, check keys in and out,
+manage properties and contacts) can be done through the API.</p>
+
+<h2>Where to find the technical docs</h2>
+<ul>
+  <li><strong>Interactive reference</strong> — <a href="/api/v1/docs" target="_blank">/api/v1/docs</a>:
+      every endpoint with parameters, fields, and responses.</li>
+  <li><strong>OpenAPI spec</strong> — <code>/api/v1/openapi.json</code>: import into
+      Postman, Insomnia, or a code generator.</li>
+  <li><strong>Integration guide</strong> — <code>API_DOCUMENTATION.md</code> in the
+      project repository: walkthroughs and copy-paste examples.</li>
+</ul>
+
+<h2>Getting an API token</h2>
+<ol>
+  <li>Send a <code>POST</code> request to <code>/api/v1/auth/tokens</code> on your
+      company's address with your login <strong>email</strong> and <strong>PIN</strong>.</li>
+  <li>Copy the returned <code>token</code> — it is shown <strong>only once</strong>.
+      Store it somewhere safe, like a password manager.</li>
+  <li>Send it with every request as a header:
+      <code>Authorization: Bearer kbm_…</code></li>
+</ol>
+
+<div class="help-callout">
+  <strong>Permissions follow your role.</strong> A token can do exactly what the
+  user who created it can do. Deletes, user management, and settings need an
+  admin or owner token. Deactivating a user immediately disables their tokens.
+</div>
+
+<h2>Managing tokens</h2>
+<ul>
+  <li><strong>List</strong> — <code>GET /api/v1/auth/tokens</code> (admins see every
+      token in the account, including who created it and when it was last used).</li>
+  <li><strong>Revoke</strong> — <code>DELETE /api/v1/auth/tokens/&lt;id&gt;</code>.
+      Takes effect immediately.</li>
+  <li><strong>Expiry</strong> — pass <code>expires_in_days</code> when creating a token
+      to make it expire automatically.</li>
+</ul>
+
+<h2>Good to know</h2>
+<ul>
+  <li>Every change made through the API shows up in <strong>Activity Logs</strong>,
+      attributed to the token's user — same audit trail as the web app.</li>
+  <li>Key checkouts through the API send the same <strong>email notifications</strong>
+      you've configured in Settings.</li>
+  <li>Treat tokens like passwords: one token per integration, revoke anything
+      you no longer use.</li>
+</ul>
+
+<div class="help-callout tip">
+  <strong>Tip:</strong> test your token with <code>GET /api/v1/me</code> — it returns
+  the user and token the API sees, which makes setup problems obvious.
+</div>
+{% endblock %}
