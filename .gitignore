@@ -111,3 +111,4 @@ credentials/
 # bind mount target exists, but acme.json never gets committed.
 traefik/letsencrypt/acme.json
 traefik/letsencrypt/*.json
+.claude/
