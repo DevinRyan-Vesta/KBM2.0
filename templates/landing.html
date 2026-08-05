@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VKeys — Key, Lockbox &amp; Sign Management for Real Estate Teams</title>
-<meta name="description" content="VKeys tracks every key, lockbox, and sign your brokerage owns — who has it, where it is, and when it's due back.">
+<title>VKeys | Key, Lockbox &amp; Sign Management for Real Estate Teams</title>
+<meta name="description" content="VKeys tracks every key, lockbox, and sign your brokerage owns - who has it, where it is, and when it's due back.">
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <style>
   :root {
@@ -165,11 +165,11 @@
     <section class="hero">
       <div class="wrap">
         <span class="eyebrow"><i data-lucide="sparkles"></i> Launching soon</span>
-        <h1>Every key, lockbox, and sign your team owns — <span class="accent">accounted for</span>.</h1>
+        <h1>Every key, lockbox, and sign your team owns, <span class="accent">accounted for</span>.</h1>
         <p class="sub">
           VKeys is inventory management built for real estate brokerages and property
           managers. Track keys and their copies, rotate lockbox codes, manage signs and
-          smart locks — and always know who has what and when it's due back.
+          smart locks - and always know who has what and when it's due back.
         </p>
         <div class="hero-actions">
           <a class="btn-primary" href="#subscribe"><i data-lucide="bell"></i> Notify me at launch</a>
@@ -190,7 +190,7 @@
       <div class="wrap">
         <div class="section-head">
           <h2>Purpose-built for field inventory</h2>
-          <p>Not a spreadsheet, not a generic asset tracker — a system shaped around how real estate teams actually move keys, lockboxes, and signs.</p>
+          <p>Not a spreadsheet, not a generic asset tracker - a system shaped around how real estate teams actually move keys, lockboxes, and signs.</p>
         </div>
         <div class="grid">
           <div class="card">
@@ -206,7 +206,7 @@
           <div class="card">
             <span class="icon"><i data-lucide="signpost"></i></span>
             <h3>Signs &amp; smart locks</h3>
-            <p>Track sign pieces and assembled units, riders and condition — plus smart lock codes tied to properties.</p>
+            <p>Track sign pieces and assembled units, riders and condition - plus smart lock codes tied to properties.</p>
           </div>
           <div class="card">
             <span class="icon"><i data-lucide="building"></i></span>
@@ -221,7 +221,7 @@
           <div class="card">
             <span class="icon"><i data-lucide="plug"></i></span>
             <h3>API &amp; integrations</h3>
-            <p>A complete REST API connects VKeys to your CRM, spreadsheets, or automation tools — everything the app can do, your software can too.</p>
+            <p>A complete REST API connects VKeys to your CRM, spreadsheets, or automation tools - everything the app can do, your software can too.</p>
           </div>
         </div>
       </div>
@@ -256,7 +256,7 @@
       <div class="wrap">
         <div class="sub-box">
           <h2>Be first through the door</h2>
-          <p>Leave your email and we'll send one note when VKeys opens up. No spam, no drip campaign — just the launch.</p>
+          <p>Leave your email and we'll send one note when VKeys opens up. No spam, no drip campaign - just the launch.</p>
           <form class="sub-form" method="post" action="{{ url_for('main.subscribe') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label class="hp" aria-hidden="true">Leave this field empty
@@ -266,9 +266,9 @@
             <button type="submit">Notify me</button>
           </form>
           {% if subscribed %}
-          <div class="notice ok">You're on the list — we'll be in touch when VKeys launches.</div>
+          <div class="notice ok">You're on the list - we'll be in touch when VKeys launches.</div>
           {% elif request.args.get('subscribed') == '0' %}
-          <div class="notice err">That email didn't look right — mind trying again?</div>
+          <div class="notice err">That email didn't look right - mind trying again?</div>
           {% endif %}
         </div>
       </div>
