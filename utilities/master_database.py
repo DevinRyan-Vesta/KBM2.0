@@ -19,6 +19,45 @@ def utc_now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
+# Subdomains tenants may never register. Covers the hosts the platform itself
+# uses (www, admin, api), mail/DNS infrastructure names (so a tenant can never
+# impersonate smtp.<domain> or receive its mail), and common service names we
+# may want later. Checked by Account.validate_subdomain, i.e. every signup
+# path; the tenant middleware also special-cases 'www' and 'admin'.
+RESERVED_SUBDOMAINS = frozenset({
+    # platform hosts
+    'www', 'admin', 'api', 'app', 'mcp', 'localhost',
+    # environments
+    'dev', 'test', 'staging', 'beta', 'demo', 'sandbox', 'internal', 'preview',
+    # mail / DNS infrastructure
+    'mail', 'smtp', 'imap', 'pop', 'pop3', 'mx', 'mx1', 'mx2', 'webmail',
+    'email', 'ns', 'ns1', 'ns2', 'ns3', 'ns4', 'dns', 'autodiscover',
+    'autoconfig', 'dmarc', 'mta-sts', 'spf', 'dkim', 'bounce', 'bounces',
+    'newsletter', 'notifications', 'notify', 'noreply', 'no-reply', 'send',
+    'postmaster', 'hostmaster', 'webmaster', 'abuse',
+    # security-sensitive / trust-adjacent
+    'secure', 'security', 'ssl', 'vpn', 'sso', 'oauth', 'id', 'identity',
+    'login', 'signin', 'signup', 'register', 'auth', 'account', 'accounts',
+    'password', 'verify', 'validation',
+    # billing / commerce
+    'billing', 'pay', 'payment', 'payments', 'invoice', 'invoices', 'store',
+    'shop', 'checkout',
+    # content / support
+    'help', 'support', 'docs', 'doc', 'documentation', 'blog', 'news',
+    'status', 'about', 'contact', 'info', 'legal', 'privacy', 'terms',
+    'press', 'media', 'kb', 'wiki', 'faq', 'feedback', 'community', 'forum',
+    # infrastructure / tooling
+    'ftp', 'sftp', 'cdn', 'static', 'assets', 'img', 'images', 'files',
+    'download', 'downloads', 'upload', 'uploads', 'backup', 'backups',
+    'git', 'gitlab', 'github', 'ci', 'build', 'deploy', 'registry',
+    'monitor', 'monitoring', 'metrics', 'logs', 'grafana', 'prometheus',
+    'db', 'database', 'redis', 'cache', 'search', 'proxy', 'gateway',
+    'server', 'host', 'root', 'system', 'sys', 'portal', 'dashboard',
+    'console', 'panel', 'cpanel', 'whm', 'webdisk', 'cpcalendars',
+    'cpcontacts',
+})
+
+
 class Account(master_db.Model):
     """
     Represents a company/tenant account.
@@ -78,8 +117,7 @@ class Account(master_db.Model):
             return False, "Subdomain must contain only lowercase letters, numbers, and hyphens (cannot start or end with hyphen)"
 
         # Check reserved subdomains
-        reserved = ['www', 'admin', 'api', 'app', 'mail', 'ftp', 'localhost', 'staging', 'dev', 'test']
-        if subdomain in reserved:
+        if subdomain in RESERVED_SUBDOMAINS:
             return False, f"'{subdomain}' is a reserved subdomain"
 
         # Check availability
@@ -261,4 +299,24 @@ class Invitation(master_db.Model):
             "created_at": self.created_at.isoformat(),
             "expires_at": self.expires_at.isoformat(),
             "invited_by": self.invited_by.name if self.invited_by else None,
+        }
+
+
+class LandingSubscriber(master_db.Model):
+    """
+    Email addresses captured by the public landing page's "notify me when
+    the app goes live" form. Lives in the master DB (no tenant context on
+    the apex). Viewable/exportable by app admins.
+    """
+    __tablename__ = "landing_subscribers"
+
+    id = master_db.Column(master_db.Integer, primary_key=True)
+    email = master_db.Column(master_db.String(255), unique=True, nullable=False, index=True)
+    created_at = master_db.Column(master_db.DateTime, nullable=False, default=utc_now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "created_at": self.created_at.isoformat(),
         }

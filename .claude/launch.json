@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kbm",
+      "runtimeExecutable": "C:\\Users\\dryan\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe",
+      "runtimeArgs": ["app_multitenant.py"],
+      "port": 5000
+    }
+  ]
+}

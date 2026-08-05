@@ -5,6 +5,7 @@
     <title>{% block title %}KBM{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <style>
       :root {
         --color-bg: #101418;
@@ -1198,6 +1199,9 @@
               </a>
               <a href="{{ url_for('app_admin.list_app_admins') }}" class="{% if request.endpoint in ['app_admin.list_app_admins', 'app_admin.create_app_admin'] %}active{% endif %}">
                 <span class="nav-icon">👥</span> Administrators
+              </a>
+              <a href="{{ url_for('app_admin.list_subscribers') }}" class="{% if request.endpoint == 'app_admin.list_subscribers' %}active{% endif %}">
+                <span class="nav-icon">📬</span> Subscribers
               </a>
             </div>
             <div class="nav-section">

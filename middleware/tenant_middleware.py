@@ -3,10 +3,33 @@ Tenant middleware for subdomain-based routing.
 Extracts subdomain from request and sets tenant context.
 """
 
-from flask import request, g, abort, redirect, url_for
+from flask import request, g, abort, redirect, url_for, current_app
 from utilities.master_database import master_db, Account
 from utilities.tenant_manager import tenant_manager
 from functools import wraps
+import os
+
+# Subdomain that hosts the app-admin interface (admin.<BASE_DOMAIN>). It is
+# on the reserved list so it can never collide with a tenant.
+ADMIN_SUBDOMAIN = "admin"
+
+
+def _external_scheme() -> str:
+    """Scheme for building absolute cross-host URLs (www→apex, apex→admin).
+
+    Behind Traefik/Caddy the app sees plain http, so request.scheme would
+    produce http:// links that bounce through another redirect. APP_URL_SCHEME
+    (already used for email links) is authoritative when set.
+    """
+    return os.getenv("APP_URL_SCHEME") or request.scheme
+
+
+def admin_host_url(path: str = "/") -> str:
+    """Absolute URL for a path on the admin host (admin.<BASE_DOMAIN>)."""
+    base = current_app.config.get("BASE_DOMAIN") or request.host
+    if not path.startswith("/"):
+        path = "/" + path
+    return f"{_external_scheme()}://{ADMIN_SUBDOMAIN}.{base}{path}"
 
 
 class TenantMiddleware:
@@ -86,8 +109,36 @@ class TenantMiddleware:
         # Extract subdomain
         subdomain = self.extract_subdomain(request)
 
+        # "www" is not a tenant — permanently redirect to the apex,
+        # preserving path and query. (Without this, www 404s as an unknown
+        # account.)
+        if subdomain == "www":
+            host = request.host
+            apex_host = host[4:] if host.lower().startswith("www.") else host
+            path = request.full_path if request.query_string else request.path
+            return redirect(f"{_external_scheme()}://{apex_host}{path.rstrip('?')}", code=301)
+
+        # admin.<BASE_DOMAIN> hosts the app-admin interface. It behaves like
+        # the root domain (no tenant context) but is flagged so views can
+        # route admin traffic here and keep the apex as the public site.
+        if subdomain == ADMIN_SUBDOMAIN:
+            g.is_root_domain = True
+            g.is_admin_host = True
+            g.tenant = None
+            g.tenant_db_session = None
+            g.subdomain = None
+            return
+
         # Mark whether this is a root domain request
         g.is_root_domain = subdomain is None
+        g.is_admin_host = False
+
+        # Old bookmarks: /admin/* on the apex belongs on the admin host.
+        # Redirect here (before any auth decorator) so anonymous visitors
+        # land directly on the admin sign-in, not a two-hop login bounce.
+        if g.is_root_domain and request.path.startswith("/admin"):
+            path = request.full_path if request.query_string else request.path
+            return redirect(admin_host_url(path.rstrip("?")), code=301)
 
         if subdomain:
             # Look up account in master database
@@ -183,6 +234,12 @@ def app_admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         from flask_login import current_user
+
+        # The admin interface lives on admin.<BASE_DOMAIN>; the apex is the
+        # public site. Old bookmarks to apex /admin/* land here — move them.
+        if g.get('is_root_domain', False) and not g.get('is_admin_host', False):
+            path = request.full_path if request.query_string else request.path
+            return redirect(admin_host_url(path.rstrip('?')), code=301)
 
         if not current_user.is_authenticated:
             return redirect(url_for('auth.login'))

@@ -88,6 +88,12 @@ def login_shortcut():
 @auth_bp.route("/login", methods=["GET"])
 def login():
     """Display login form."""
+    # App-admin sign-in lives on admin.<BASE_DOMAIN>. On the public apex
+    # there is nothing to log in to — send stale bookmarks to the admin host.
+    if g.get("is_root_domain", False) and not g.get("is_admin_host", False):
+        from middleware.tenant_middleware import admin_host_url
+        return redirect(admin_host_url("/auth/login"), code=301)
+
     if current_user.is_authenticated:
         # Redirect based on user role
         if current_user.role == "app_admin":
@@ -104,6 +110,10 @@ def login():
 @limiter.limit("10 per minute; 50 per hour")
 def login_post():
     """Handle login form submission."""
+    # Mirror the GET guard: app-admin sign-in only happens on the admin host.
+    if g.get("is_root_domain", False) and not g.get("is_admin_host", False):
+        from middleware.tenant_middleware import admin_host_url
+        return redirect(admin_host_url("/auth/login"), code=301)
     try:
         pin = (request.form.get("pin") or "").strip()
         remember = bool(request.form.get("remember", False))

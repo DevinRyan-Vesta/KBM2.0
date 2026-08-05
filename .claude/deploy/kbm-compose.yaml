@@ -1,0 +1,91 @@
+services:
+  python-app:
+    build:
+      context: .
+    image: kbm-python-app
+    container_name: python-app
+    restart: unless-stopped
+    init: true
+    env_file:
+      - .env
+    expose:
+      - "8000"
+    # Loopback publish so the host-network central Traefik (traefik-treh) can
+    # reach the tenant-gate forwardauth endpoint at http://127.0.0.1:8000.
+    # Inbound app traffic is routed by Traefik to the container IP via the
+    # docker provider (same mechanism homebox uses), so no published port is
+    # needed for that path.
+    ports:
+      - "127.0.0.1:8000:8000"
+    group_add:
+      - "${DOCKER_GID:-999}"
+    volumes:
+      - ./.git:/app/.git
+      - ./compose.yaml:/app/compose.yaml:ro
+      - ./.env:/app/.env:ro
+      - ./master_db:/app/master_db
+      - ./tenant_dbs:/app/tenant_dbs
+      - ./backups:/app/backups
+      - ./uploads:/app/uploads
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./app_multitenant.py:/app/app_multitenant.py
+      - ./config.py:/app/config.py
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./audits:/app/audits
+      - ./auth:/app/auth
+      - ./inventory:/app/inventory
+      - ./checkout:/app/checkout
+      - ./contacts:/app/contacts
+      - ./properties:/app/properties
+      - ./smartlocks:/app/smartlocks
+      - ./accounts:/app/accounts
+      - ./app_admin:/app/app_admin
+      - ./main:/app/main
+      - ./exports:/app/exports
+      - ./search:/app/search
+      - ./settings:/app/settings
+      - ./utilities:/app/utilities
+      - ./middleware:/app/middleware
+    # ---- Traefik routing labels (consumed by the central traefik-treh) ----
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.kbm-app.loadbalancer.server.port=8000"
+
+      # Router: apex domain (main site). Higher priority than kbm-tenants so the
+      # apex is never gated as a tenant.
+      - "traefik.http.routers.kbm-root.rule=Host(`${BASE_DOMAIN}`)"
+      - "traefik.http.routers.kbm-root.priority=100"
+      - "traefik.http.routers.kbm-root.entrypoints=websecure"
+      - "traefik.http.routers.kbm-root.tls=true"
+      - "traefik.http.routers.kbm-root.tls.certresolver=cfdns"
+      - "traefik.http.routers.kbm-root.tls.domains[0].main=${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-root.tls.domains[0].sans=*.${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-root.service=kbm-app"
+
+      # Router: www -> apex 308 redirect. The app's tenant middleware treats any
+      # subdomain (incl. "www") as a tenant, so www must be redirected to the
+      # apex rather than routed to the app. Priority above kbm-tenants.
+      - "traefik.http.routers.kbm-www.rule=Host(`www.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.kbm-www.priority=100"
+      - "traefik.http.routers.kbm-www.entrypoints=websecure"
+      - "traefik.http.routers.kbm-www.tls=true"
+      - "traefik.http.routers.kbm-www.tls.certresolver=cfdns"
+      - "traefik.http.routers.kbm-www.service=kbm-app"
+      - "traefik.http.routers.kbm-www.middlewares=kbm-wwwredirect"
+      - "traefik.http.middlewares.kbm-wwwredirect.redirectregex.regex=^https?://www\\.${BASE_DOMAIN}/(.*)"
+      - "traefik.http.middlewares.kbm-wwwredirect.redirectregex.replacement=https://${BASE_DOMAIN}/$${1}"
+      - "traefik.http.middlewares.kbm-wwwredirect.redirectregex.permanent=true"
+
+      # Router: wildcard tenant subdomains (one *.${BASE_DOMAIN} cert via DNS-01)
+      - "traefik.http.routers.kbm-tenants.rule=HostRegexp(`^[a-z0-9-]+\\.${BASE_DOMAIN}$`)"
+      - "traefik.http.routers.kbm-tenants.priority=1"
+      - "traefik.http.routers.kbm-tenants.entrypoints=websecure"
+      - "traefik.http.routers.kbm-tenants.tls=true"
+      - "traefik.http.routers.kbm-tenants.tls.certresolver=cfdns"
+      - "traefik.http.routers.kbm-tenants.tls.domains[0].main=${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-tenants.tls.domains[0].sans=*.${BASE_DOMAIN}"
+      - "traefik.http.routers.kbm-tenants.service=kbm-app"
+      - "traefik.http.routers.kbm-tenants.middlewares=tenant-gate@docker"
+      - "traefik.http.middlewares.tenant-gate.forwardauth.address=http://127.0.0.1:8000/_internal/check-domain?secret=${INTERNAL_API_SECRET}"
+      - "traefik.http.middlewares.tenant-gate.forwardauth.trustForwardHeader=true"

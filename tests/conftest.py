@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 TENANT_HOST = "acme.localhost"
 ROOT_HOST = "localhost"
+ADMIN_HOST = "admin.localhost"  # app-admin interface lives on admin.<domain>
 TENANT_PIN = "9999"
 APP_ADMIN_PIN = "8888"
 
@@ -103,12 +104,12 @@ def tenant_client(app):
 
 @pytest.fixture
 def admin_client(app):
-    """Client logged in as the app admin, on the root domain."""
+    """Client logged in as the app admin, on the admin host."""
     c = app.test_client()
     resp = c.post(
         "/auth/login",
         data={"pin": APP_ADMIN_PIN},
-        headers={"Host": ROOT_HOST},
+        headers={"Host": ADMIN_HOST},
     )
     assert resp.status_code == 302
     return c

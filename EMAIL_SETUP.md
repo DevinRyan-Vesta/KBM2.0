@@ -15,8 +15,8 @@ Free up to 100 emails/day, no credit card required. Best deliverability for
 a small project.
 
 1. Sign up at <https://resend.com>.
-2. **Add and verify your domain** (`buywithvesta.com`):
-   - Domains → Add Domain → enter `buywithvesta.com`.
+2. **Add and verify your domain** (`vkeys.app`):
+   - Domains → Add Domain → enter `vkeys.app`.
    - Resend gives you a few DNS records (SPF, DKIM, optionally DMARC). Add
      them at your DNS provider (Cloudflare, Hostinger DNS — wherever your
      records live now).
@@ -33,7 +33,7 @@ a small project.
    SMTP_USE_STARTTLS=false
    SMTP_USERNAME=resend
    SMTP_PASSWORD=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-   SMTP_FROM=notifications@buywithvesta.com
+   SMTP_FROM=notifications@vkeys.app
    SMTP_FROM_NAME=Vesta KBM
    ```
 5. Restart the app. Either via the in-app updater (App Admin → System
