@@ -30,6 +30,19 @@ Notes:
 [✓] Clicking View on a contact gives "Something Went Wrong" error - FIXED
 [✓] System update UI doesn't properly restart containers - FIXED
 
+--- 2026-08-05: vkeys.app migration + VKeys rebrand release (v2.4.0) ---
+[✓] Domain migrated to vkeys.app (vkeys.io and buywithvesta.com redirect to it, subdomain-preserving)
+[✓] Public marketing landing page on vkeys.app (light theme, Vesta red, email capture form -> Admin > Subscribers with CSV export)
+[✓] App-admin interface moved to admin.vkeys.app (apex /admin/* and /auth/login redirect there)
+[✓] www no longer 404s - redirects to the apex
+[✓] ~120 reserved subdomains (www, admin, smtp, mx, billing, status, ...) blocked from tenant signup
+[✓] Email notifications LIVE via Resend (notifications@vkeys.app, domain verified, SMTP configured in prod)
+[✓] MCP server (mcp_server/) - manage inventory from Claude ("add a key for 12 Maple St")
+[✓] UI rebranded KBM -> VKeys; Lucide icons replace emoji; light theme is the default
+[✓] Contrast fixes: lockbox code chips readable in light mode and not stacked; visited-link color no longer bleeds into buttons
+[✓] Properties can be deleted from the web UI (admin/owner; blocked while items are linked)
+[✓] Activity log shows real user names instead of "System"
+
 === TODO ===
 
 ========================================
@@ -54,7 +67,7 @@ MEDIUM PRIORITY - User Experience
 
 [✓] Advanced Filtering - Add filters to list pages (filter by property, status, date range, assigned user) - FIXED
 
-[ ] Global Search - Search across all modules from one place
+[✓] Global Search - Search across all modules from one place - DONE (topbar search + results page)
 
 [ ] Dashboard Analytics - Visual charts showing inventory usage, checkout patterns, availability trends
 
@@ -68,9 +81,10 @@ MEDIUM PRIORITY - User Experience
 MEDIUM PRIORITY - Notifications & Automation
 ========================================
 
-[ ] Email Notifications - Send emails for checkouts, checkins, overdue items
+[✓] Email Notifications - Send emails for checkouts, checkins, overdue items - DONE (Resend, notifications@vkeys.app, per-tenant toggles in Settings)
 
 [ ] Overdue Reminders - Automated reminders for items past their expected return date
+    (script exists: utilities/send_overdue_reminders.py - still needs a cron/scheduler on the VPS)
 
 [ ] Report Scheduling - Auto-generate and email reports on schedule (daily/weekly/monthly)
 
@@ -98,7 +112,7 @@ LONG TERM
 
 [ ] Add customization options for company accounts
 
-[ ] Add Favicon
+[✓] Add Favicon - DONE (red key mark, static/favicon.svg)
 
 [ ] Customization for reports and exports
 
@@ -120,17 +134,25 @@ LONG TERM
 
 [ ] Confirmation Dialogs - Ask "Are you sure?" before deleting items
 
-[ ] Toast Notifications - Non-intrusive success/error messages that auto-dismiss
+[✓] Toast Notifications - Non-intrusive success/error messages that auto-dismiss - DONE
 
 [ ] Keyboard Shortcuts - Speed up common actions for power users
 
 [ ] Export Format Customization - Let users choose which columns to include in exports
 
-[ ] Unit Tests - Automated testing for core functionality
+[✓] Unit Tests - Automated testing for core functionality - DONE (tests/, ~100 tests)
 
-[ ] Local Development Environment - Set up way to test changes locally before deploying to production
+[✓] Local Development Environment - Set up way to test changes locally before deploying to production - DONE (pip install -r requirements.txt && python -m pytest tests/)
 
-[ ] API Endpoints - RESTful API for integrations with other systems
+[✓] API Endpoints - RESTful API for integrations with other systems - DONE (/api/v1, docs at /api/v1/docs)
+
+[ ] Remote MCP endpoint - host the MCP server on the VPS as a streamable-HTTP
+    endpoint (e.g. https://mcp.vkeys.app behind Traefik; "mcp" subdomain is
+    already reserved and wildcard DNS already points at the VPS) so Claude's
+    phone/web apps can use it as a custom claude.ai connector. Needs auth
+    in front: OAuth ideally, or a long URL secret as a stopgap while the app
+    isn't publicly launched. The local stdio server (mcp_server/) stays for
+    desktop use.
 
 [ ] Performance Optimization - Caching, query optimization for larger datasets
 
