@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Lockboxes - KBM{% endblock %}
+{% block title %}Lockboxes - VKeys{% endblock %}
 
 {% block content %}
 <style>
@@ -16,8 +16,9 @@
   }
   .bulkbar.show { display: flex; }
   .select-col { width: 40px; }
-  .codes { display: flex; gap: 12px; align-items: flex-start; }
-  .code-chip { display: inline-flex; flex-direction: column; gap: 4px; }
+  .codes { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  /* Label and code sit side by side (not stacked) and never wrap. */
+  .code-chip { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; white-space: nowrap; }
   .code-chip span {
     display: inline-flex;
     align-items: center;
@@ -26,9 +27,13 @@
     border-radius: 10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     font-size: 13px;
+    white-space: nowrap;
   }
   .code-chip span.current { background: rgba(229, 57, 53, 0.18); color: #ffb4b4; }
   .code-chip span.previous { background: rgba(148, 163, 184, 0.12); color: var(--color-muted); }
+  /* Dark red text on the light theme — light pink on pink is unreadable. */
+  body.light .code-chip span.current { background: rgba(198, 40, 40, 0.12); color: #991b1b; }
+  body.light .code-chip span.previous { background: rgba(100, 116, 139, 0.12); color: #475569; }
   .code-chip .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
 
   .row-buttons { display: flex; flex-wrap: wrap; gap: 8px; }

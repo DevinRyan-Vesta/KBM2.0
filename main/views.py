@@ -24,14 +24,61 @@ def get_tenant_session():
     return session
 
 
+from utilities.extensions import limiter
+
+
+@main_bp.route("/favicon.ico")
+def favicon_ico():
+    """Legacy favicon path (bots and old browsers request it directly)."""
+    return redirect(url_for("static", filename="favicon.svg"), code=301)
+
+
+@main_bp.route("/subscribe", methods=["POST"])
+@limiter.limit("5 per minute; 20 per hour")
+def subscribe():
+    """Landing-page email capture ("notify me when the app goes live").
+
+    Public-apex only. Stores the address in the master DB; duplicates are
+    silently accepted so the form never leaks whether an email is known.
+    """
+    from flask import abort
+    from utilities.master_database import master_db, LandingSubscriber
+    import re
+
+    if not g.get("is_root_domain", False) or g.get("is_admin_host", False):
+        abort(404)
+
+    # Honeypot: hidden field real users never fill. Bots that do get a
+    # fake success and nothing is stored.
+    if (request.form.get("website") or "").strip():
+        return redirect(url_for("main.home", subscribed="1") + "#subscribe")
+
+    email = (request.form.get("email") or "").strip().lower()
+    if not email or len(email) > 255 or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return redirect(url_for("main.home", subscribed="0") + "#subscribe")
+
+    if not LandingSubscriber.query.filter_by(email=email).first():
+        master_db.session.add(LandingSubscriber(email=email))
+        master_db.session.commit()
+
+    return redirect(url_for("main.home", subscribed="1") + "#subscribe")
+
+
 @main_bp.route("/", methods=["GET"])
 def home():
-    # Root domain has no tenant: show the public landing page (signup /
-    # login). The tenant dashboard below only exists on subdomains. This
-    # branch must run before any auth check, so visitors aren't bounced to
-    # a login form that can't help them.
+    # admin.<BASE_DOMAIN> is the app-admin interface: no landing page there,
+    # go straight to the dashboard (or the sign-in form).
+    if g.get("is_admin_host", False):
+        if current_user.is_authenticated and getattr(current_user, "role", "") == "app_admin":
+            return redirect(url_for("app_admin.dashboard"))
+        return redirect(url_for("auth.login"))
+
+    # Root domain has no tenant: show the public landing page. The tenant
+    # dashboard below only exists on subdomains. This branch must run before
+    # any auth check, so visitors aren't bounced to a login form that can't
+    # help them.
     if g.get("is_root_domain", False):
-        return render_template("landing.html")
+        return render_template("landing.html", subscribed=request.args.get("subscribed") == "1")
 
     if not current_user.is_authenticated:
         return redirect(url_for("auth.login", next=request.url))

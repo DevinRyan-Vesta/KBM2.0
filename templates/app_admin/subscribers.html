@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Subscribers - App Admin{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h1>Landing Page Subscribers</h1>
+    {% if subscribers %}
+    <a href="{{ url_for('app_admin.list_subscribers', format='csv') }}" class="btn btn-secondary">Export CSV</a>
+    {% endif %}
+  </div>
+
+  <p style="color: var(--text-muted, #64748b); margin-bottom: 1.5rem;">
+    Emails captured by the public landing page's &ldquo;notify me when the app goes live&rdquo; form.
+    {{ subscribers|length }} total.
+  </p>
+
+  {% if subscribers %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Subscribed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in subscribers %}
+      <tr>
+        <td>{{ s.email }}</td>
+        <td>{{ s.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No subscribers yet. They'll appear here as soon as someone signs up on the landing page.</p>
+  {% endif %}
+</div>
+{% endblock %}

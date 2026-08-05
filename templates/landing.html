@@ -1,104 +1,292 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VKeys — Key, Lockbox &amp; Sign Management for Real Estate Teams</title>
+<meta name="description" content="VKeys tracks every key, lockbox, and sign your brokerage owns — who has it, where it is, and when it's due back.">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<style>
+  :root {
+    --red: #c62828;
+    --red-dark: #a01f1f;
+    --red-soft: #fdeeee;
+    --ink: #1a202c;
+    --slate: #4a5568;
+    --muted: #718096;
+    --line: #e6e9ee;
+    --bg: #ffffff;
+    --bg-soft: #f7f8fa;
+    --ok-bg: #e8f5ec;
+    --ok-text: #1d6b34;
+    --err-bg: #fdeeee;
+    --err-text: #a01f1f;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  svg.lucide { width: 20px; height: 20px; vertical-align: -0.25em; }
 
-{% block title %}Welcome to KBM - Key & Lockbox Management{% endblock %}
+  /* Header */
+  header.site {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.3rem; letter-spacing: -0.02em; color: var(--ink); text-decoration: none; }
+  .logo img { width: 32px; height: 32px; border-radius: 8px; }
+  .header-cta {
+    display: inline-block; background: var(--red); color: #fff; text-decoration: none;
+    font-weight: 600; font-size: 0.92rem; padding: 9px 18px; border-radius: 8px;
+  }
+  .header-cta:hover { background: var(--red-dark); }
 
-{% block content %}
-<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-    <!-- Hero Section -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 text-center">
-        <h1 class="text-5xl font-bold text-gray-900 mb-6">
-            Key & Lockbox Management System
-        </h1>
-        <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Streamline your real estate inventory management. Track keys, lockboxes, signs, and more with our intuitive platform.
+  /* Hero */
+  .hero { padding: 84px 0 64px; text-align: center; }
+  .hero .eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--red-soft); color: var(--red-dark);
+    font-size: 0.82rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+    border-radius: 999px; padding: 5px 14px; margin-bottom: 22px;
+  }
+  .hero .eyebrow svg.lucide { width: 14px; height: 14px; }
+  .hero h1 {
+    font-size: clamp(2.1rem, 5vw, 3.4rem); line-height: 1.12; font-weight: 800;
+    letter-spacing: -0.03em; max-width: 820px; margin: 0 auto 22px;
+  }
+  .hero h1 .accent { color: var(--red); }
+  .hero p.sub { font-size: 1.15rem; color: var(--slate); max-width: 620px; margin: 0 auto 32px; }
+  .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--red); color: #fff; text-decoration: none; font-weight: 600;
+    padding: 13px 26px; border-radius: 10px; font-size: 1rem; border: 0; cursor: pointer;
+  }
+  .btn-primary:hover { background: var(--red-dark); }
+  .btn-quiet {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--slate); text-decoration: none; font-weight: 600;
+    padding: 13px 22px; border-radius: 10px; font-size: 1rem;
+    border: 1px solid var(--line); background: #fff;
+  }
+  .btn-quiet:hover { border-color: #cbd2dc; color: var(--ink); }
+
+  /* Stats band */
+  .band { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--bg-soft); }
+  .band-inner { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 56px; padding: 22px 0; color: var(--slate); font-size: 0.95rem; }
+  .band-inner span { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .band-inner svg.lucide { color: var(--red); width: 17px; height: 17px; }
+
+  /* Features */
+  section.features { padding: 72px 0 20px; }
+  .section-head { text-align: center; max-width: 640px; margin: 0 auto 44px; }
+  .section-head h2 { font-size: 1.9rem; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .section-head p { color: var(--slate); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 26px;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .card:hover { border-color: #d9dee6; box-shadow: 0 6px 24px rgba(26, 32, 44, 0.06); }
+  .card .icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 10px;
+    background: var(--red-soft); color: var(--red); margin-bottom: 14px;
+  }
+  .card h3 { font-size: 1.06rem; margin-bottom: 6px; letter-spacing: -0.01em; }
+  .card p { color: var(--slate); font-size: 0.95rem; }
+
+  /* How it works */
+  section.how { padding: 72px 0 28px; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; counter-reset: step; }
+  .step { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 14px; padding: 26px; }
+  .step .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 999px; background: var(--red); color: #fff;
+    font-weight: 700; font-size: 0.9rem; margin-bottom: 12px;
+  }
+  .step h3 { font-size: 1.02rem; margin-bottom: 6px; }
+  .step p { color: var(--slate); font-size: 0.94rem; }
+
+  /* Subscribe */
+  section.subscribe { padding: 76px 0 88px; }
+  .sub-box {
+    background: linear-gradient(135deg, var(--red) 0%, #9d1c1c 100%);
+    border-radius: 20px; padding: 52px 32px; text-align: center; color: #fff;
+  }
+  .sub-box h2 { font-size: 1.75rem; letter-spacing: -0.02em; margin-bottom: 10px; }
+  .sub-box p { color: rgba(255, 255, 255, 0.85); margin-bottom: 26px; max-width: 480px; margin-left: auto; margin-right: auto; }
+  form.sub-form { display: flex; gap: 10px; max-width: 460px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+  .sub-form input[type="email"] {
+    flex: 1 1 250px; padding: 13px 16px; font-size: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12); color: #fff;
+  }
+  .sub-form input[type="email"]::placeholder { color: rgba(255, 255, 255, 0.65); }
+  .sub-form input[type="email"]:focus { outline: 2px solid #fff; border-color: transparent; background: rgba(255, 255, 255, 0.18); }
+  .sub-form button {
+    padding: 13px 24px; font-size: 1rem; font-weight: 600; border: 0; border-radius: 10px;
+    background: #fff; color: var(--red-dark); cursor: pointer;
+  }
+  .sub-form button:hover { background: #fbeaea; }
+  .hp { position: absolute; left: -9999px; opacity: 0; height: 0; width: 0; }
+  .notice { max-width: 460px; margin: 18px auto 0; padding: 11px 16px; border-radius: 10px; font-size: 0.95rem; }
+  .notice.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .notice.err { background: #fff; color: var(--err-text); }
+
+  /* Footer */
+  footer.site { border-top: 1px solid var(--line); padding: 34px 0 44px; }
+  .footer-inner { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; color: var(--muted); font-size: 0.9rem; }
+  .footer-inner .logo { font-size: 1.05rem; }
+  .footer-inner .logo img { width: 24px; height: 24px; }
+  footer.site code { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-size: 0.86em; }
+</style>
+</head>
+<body>
+  <header class="site">
+    <div class="wrap header-inner">
+      <a class="logo" href="/">
+        <img src="{{ url_for('static', filename='favicon.svg') }}" alt="VKeys logo">
+        <span>VKeys</span>
+      </a>
+      <a class="header-cta" href="#subscribe">Get early access</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <span class="eyebrow"><i data-lucide="sparkles"></i> Launching soon</span>
+        <h1>Every key, lockbox, and sign your team owns — <span class="accent">accounted for</span>.</h1>
+        <p class="sub">
+          VKeys is inventory management built for real estate brokerages and property
+          managers. Track keys and their copies, rotate lockbox codes, manage signs and
+          smart locks — and always know who has what and when it's due back.
         </p>
-
-        <div class="flex justify-center gap-4">
-            <a href="{{ url_for('accounts.signup') }}" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg">
-                Create Free Account
-            </a>
-            <a href="{{ url_for('auth.login') }}" class="px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors shadow-lg border-2 border-blue-600">
-                App Admin Login
-            </a>
+        <div class="hero-actions">
+          <a class="btn-primary" href="#subscribe"><i data-lucide="bell"></i> Notify me at launch</a>
+          <a class="btn-quiet" href="#features">See what it does</a>
         </div>
+      </div>
+    </section>
+
+    <div class="band">
+      <div class="wrap band-inner">
+        <span><i data-lucide="shield-check"></i> Company data fully isolated per account</span>
+        <span><i data-lucide="file-clock"></i> Complete audit trail on every action</span>
+        <span><i data-lucide="plug"></i> Full REST API for integrations</span>
+      </div>
     </div>
 
-    <!-- Features Section -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 class="text-3xl font-bold text-center text-gray-900 mb-12">
-            Everything You Need
-        </h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Feature 1 -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="text-blue-600 text-4xl mb-4">🔑</div>
-                <h3 class="text-xl font-semibold mb-2">Key Management</h3>
-                <p class="text-gray-600">
-                    Track keys, copies, and assignments. Know who has what, when, and why.
-                </p>
-            </div>
-
-            <!-- Feature 2 -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="text-blue-600 text-4xl mb-4">🔒</div>
-                <h3 class="text-xl font-semibold mb-2">Lockbox Tracking</h3>
-                <p class="text-gray-600">
-                    Manage lockboxes with codes, locations, and property assignments.
-                </p>
-            </div>
-
-            <!-- Feature 3 -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="text-blue-600 text-4xl mb-4">🏠</div>
-                <h3 class="text-xl font-semibold mb-2">Property Integration</h3>
-                <p class="text-gray-600">
-                    Link items to properties and units. Manage smart locks and access codes.
-                </p>
-            </div>
-
-            <!-- Feature 4 -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="text-blue-600 text-4xl mb-4">👥</div>
-                <h3 class="text-xl font-semibold mb-2">Team Collaboration</h3>
-                <p class="text-gray-600">
-                    Invite team members, assign roles, and track activity across your organization.
-                </p>
-            </div>
-
-            <!-- Feature 5 -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="text-blue-600 text-4xl mb-4">📊</div>
-                <h3 class="text-xl font-semibold mb-2">Reporting & Export</h3>
-                <p class="text-gray-600">
-                    Generate reports, export data, and keep records for compliance.
-                </p>
-            </div>
-
-            <!-- Feature 6 -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <div class="text-blue-600 text-4xl mb-4">🌐</div>
-                <h3 class="text-xl font-semibold mb-2">Multi-Tenant</h3>
-                <p class="text-gray-600">
-                    Each company gets its own secure subdomain and isolated database.
-                </p>
-            </div>
+    <section class="features" id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Purpose-built for field inventory</h2>
+          <p>Not a spreadsheet, not a generic asset tracker — a system shaped around how real estate teams actually move keys, lockboxes, and signs.</p>
         </div>
-    </div>
-
-    <!-- CTA Section -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <div class="bg-blue-600 rounded-2xl p-12 text-white">
-            <h2 class="text-3xl font-bold mb-4">
-                Ready to Get Started?
-            </h2>
-            <p class="text-xl mb-8 opacity-90">
-                Create your account in less than 2 minutes. No credit card required.
-            </p>
-            <a href="{{ url_for('accounts.signup') }}" class="inline-block px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors shadow-lg">
-                Create Your Account Now
-            </a>
+        <div class="grid">
+          <div class="card">
+            <span class="icon"><i data-lucide="key-round"></i></span>
+            <h3>Keys &amp; copies</h3>
+            <p>Check keys in and out by the copy, assign them to tenants, contractors, or properties, and get flagged the moment one is overdue.</p>
+          </div>
+          <div class="card">
+            <span class="icon"><i data-lucide="lock"></i></span>
+            <h3>Lockboxes &amp; codes</h3>
+            <p>Codes rotate automatically on every checkout, with the current and previous code always on record.</p>
+          </div>
+          <div class="card">
+            <span class="icon"><i data-lucide="signpost"></i></span>
+            <h3>Signs &amp; smart locks</h3>
+            <p>Track sign pieces and assembled units, riders and condition — plus smart lock codes tied to properties.</p>
+          </div>
+          <div class="card">
+            <span class="icon"><i data-lucide="building"></i></span>
+            <h3>Properties &amp; contacts</h3>
+            <p>Link every item to a property, unit, and contact, so checkout history follows the people and places involved.</p>
+          </div>
+          <div class="card">
+            <span class="icon"><i data-lucide="receipt-text"></i></span>
+            <h3>Receipts &amp; audits</h3>
+            <p>Automatic checkout receipts, activity logs, and physical inventory audits keep your records clean and defensible.</p>
+          </div>
+          <div class="card">
+            <span class="icon"><i data-lucide="plug"></i></span>
+            <h3>API &amp; integrations</h3>
+            <p>A complete REST API connects VKeys to your CRM, spreadsheets, or automation tools — everything the app can do, your software can too.</p>
+          </div>
         </div>
+      </div>
+    </section>
+
+    <section class="how">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Up and running in an afternoon</h2>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <span class="num">1</span>
+            <h3>Load your inventory</h3>
+            <p>Import keys, lockboxes, and signs from a spreadsheet, or add them as you go. Link them to your properties.</p>
+          </div>
+          <div class="step">
+            <span class="num">2</span>
+            <h3>Check items in and out</h3>
+            <p>Agents and staff record checkouts in seconds. Contacts get email notifications, and receipts print automatically.</p>
+          </div>
+          <div class="step">
+            <span class="num">3</span>
+            <h3>Stay audit-ready</h3>
+            <p>Overdue flags, low-copy alerts, and one-click reports mean nothing slips through the cracks.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="subscribe" id="subscribe">
+      <div class="wrap">
+        <div class="sub-box">
+          <h2>Be first through the door</h2>
+          <p>Leave your email and we'll send one note when VKeys opens up. No spam, no drip campaign — just the launch.</p>
+          <form class="sub-form" method="post" action="{{ url_for('main.subscribe') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="hp" aria-hidden="true">Leave this field empty
+              <input type="text" name="website" tabindex="-1" autocomplete="off">
+            </label>
+            <input type="email" name="email" placeholder="you@company.com" required maxlength="255" aria-label="Email address">
+            <button type="submit">Notify me</button>
+          </form>
+          {% if subscribed %}
+          <div class="notice ok">You're on the list — we'll be in touch when VKeys launches.</div>
+          {% elif request.args.get('subscribed') == '0' %}
+          <div class="notice err">That email didn't look right — mind trying again?</div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    <div class="wrap footer-inner">
+      <a class="logo" href="/">
+        <img src="{{ url_for('static', filename='favicon.svg') }}" alt="">
+        <span>VKeys</span>
+      </a>
+      <div>Already a customer? Sign in at <code>yourcompany.{{ config.BASE_DOMAIN or 'vkeys.app' }}</code></div>
+      <div>&copy; 2026 VKeys. All rights reserved.</div>
     </div>
-</div>
-{% endblock %}
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/lucide.min.js') }}"></script>
+  <script>if (window.lucide) lucide.createIcons();</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Keys - KBM{% endblock %}
+{% block title %}Keys - VKeys{% endblock %}
 
 {% block content %}
 <style>
@@ -18,13 +18,14 @@
   .select-col { width: 40px; }
   .row-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
   .actions-col { width: 360px; }
-  .copy-info { display: flex; gap: 8px; align-items: center; }
+  .copy-info { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
   .copy-badge {
     display: inline-flex;
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 12px;
     font-weight: 600;
+    white-space: nowrap;
   }
   .copy-badge.full   { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
   .copy-badge.low    { background: rgba(248, 113, 113, 0.18); color: var(--color-danger); }

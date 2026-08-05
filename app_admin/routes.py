@@ -444,3 +444,32 @@ def restart_log():
 
     log_content = update_manager.get_restart_log()
     return jsonify({"log": log_content})
+
+
+@app_admin_bp.route('/admin/subscribers')
+@login_required
+@app_admin_required
+@root_domain_only
+def list_subscribers():
+    """Landing-page email subscribers ("notify me when the app goes live")."""
+    from utilities.master_database import LandingSubscriber
+    subscribers = LandingSubscriber.query.order_by(
+        LandingSubscriber.created_at.desc()
+    ).all()
+
+    if request.args.get('format') == 'csv':
+        import csv
+        import io
+        from flask import Response
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(['email', 'subscribed_at'])
+        for s in subscribers:
+            writer.writerow([s.email, s.created_at.isoformat()])
+        return Response(
+            buf.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=subscribers.csv'},
+        )
+
+    return render_template('app_admin/subscribers.html', subscribers=subscribers)

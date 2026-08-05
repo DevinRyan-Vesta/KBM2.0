@@ -9,6 +9,7 @@ import pytest
 
 TENANT = {"Host": "acme.localhost"}
 ROOT = {"Host": "localhost"}
+ADMIN = {"Host": "admin.localhost"}
 
 REDIRECT_OK = (200, 302)
 
@@ -164,14 +165,111 @@ ADMIN_PAGES = ["/admin/dashboard", "/admin/accounts", "/admin/app-admins", "/adm
 
 @pytest.mark.parametrize("path", ADMIN_PAGES)
 def test_admin_page_renders(admin_client, path):
-    resp = admin_client.get(path, headers=ROOT)
+    resp = admin_client.get(path, headers=ADMIN)
     assert resp.status_code == 200, f"{path} -> {resp.status_code}"
 
 
 @pytest.mark.parametrize("path", ADMIN_PAGES)
 def test_admin_pages_blocked_for_tenant_user(tenant_client, path):
-    resp = tenant_client.get(path, headers=ROOT)
+    resp = tenant_client.get(path, headers=ADMIN)
     assert resp.status_code in (302, 403)
+
+
+# --- Host-based routing (apex / www / admin split) ---
+
+def test_www_redirects_to_apex(client):
+    resp = client.get("/some/path?x=1", headers={"Host": "www.localhost"})
+    assert resp.status_code == 301
+    assert "//localhost/some/path?x=1" in resp.headers["Location"]
+
+
+def test_apex_login_redirects_to_admin_host(client):
+    resp = client.get("/auth/login", headers=ROOT)
+    assert resp.status_code == 301
+    assert "admin.localhost/auth/login" in resp.headers["Location"]
+
+
+def test_apex_admin_paths_redirect_to_admin_host(client):
+    resp = client.get("/admin/dashboard", headers=ROOT)
+    assert resp.status_code == 301
+    assert "admin.localhost/admin/dashboard" in resp.headers["Location"]
+
+
+def test_admin_host_root_redirects_to_login(client):
+    resp = client.get("/", headers=ADMIN)
+    assert resp.status_code == 302
+    assert "/auth/login" in resp.headers["Location"]
+
+
+def test_admin_host_root_redirects_to_dashboard_when_authed(admin_client):
+    resp = admin_client.get("/", headers=ADMIN)
+    assert resp.status_code == 302
+    assert "/admin/dashboard" in resp.headers["Location"]
+
+
+def test_admin_login_page_renders(client):
+    resp = client.get("/auth/login", headers=ADMIN)
+    assert resp.status_code == 200
+
+
+# --- Landing page subscribe ---
+
+def test_landing_page_has_subscribe_form(client):
+    resp = client.get("/", headers=ROOT)
+    assert resp.status_code == 200
+    assert b"/subscribe" in resp.data
+
+
+def test_subscribe_stores_email(client, app):
+    resp = client.post("/subscribe", data={"email": "lead@example.com"}, headers=ROOT)
+    assert resp.status_code == 302
+    assert "subscribed=1" in resp.headers["Location"]
+    from utilities.master_database import LandingSubscriber
+    with app.app_context():
+        assert LandingSubscriber.query.filter_by(email="lead@example.com").count() == 1
+    # Duplicate is silently accepted, not double-stored
+    client.post("/subscribe", data={"email": "lead@example.com"}, headers=ROOT)
+    with app.app_context():
+        assert LandingSubscriber.query.filter_by(email="lead@example.com").count() == 1
+
+
+def test_subscribe_rejects_bad_email(client):
+    resp = client.post("/subscribe", data={"email": "not-an-email"}, headers=ROOT)
+    assert resp.status_code == 302
+    assert "subscribed=0" in resp.headers["Location"]
+
+
+def test_subscribe_honeypot_swallows_bots(client, app):
+    resp = client.post(
+        "/subscribe",
+        data={"email": "bot@example.com", "website": "http://spam"},
+        headers=ROOT,
+    )
+    assert resp.status_code == 302
+    from utilities.master_database import LandingSubscriber
+    with app.app_context():
+        assert LandingSubscriber.query.filter_by(email="bot@example.com").count() == 0
+
+
+def test_subscribe_not_available_on_tenant(client):
+    resp = client.post("/subscribe", data={"email": "x@example.com"}, headers=TENANT)
+    assert resp.status_code == 404
+
+
+def test_subscribers_page_renders_for_admin(admin_client):
+    resp = admin_client.get("/admin/subscribers", headers=ADMIN)
+    assert resp.status_code == 200
+
+
+# --- Reserved subdomains ---
+
+@pytest.mark.parametrize("name", ["www", "admin", "smtp", "mail", "api", "status", "billing"])
+def test_reserved_subdomains_rejected_at_signup(app, name):
+    from utilities.master_database import Account
+    with app.app_context():
+        ok, msg = Account.validate_subdomain(name)
+    assert not ok
+    assert "reserved" in msg
 
 
 # --- Help Center ---
@@ -216,3 +314,35 @@ def test_help_button_present_on_pages(tenant_client):
     assert b"/help/keys" in resp.data
     resp = tenant_client.get("/reports", headers=TENANT)
     assert b"/help/reports" in resp.data
+
+
+# --- Property deletion (web UI) ---
+
+def test_property_delete_flow(tenant_client):
+    # Create a throwaway property
+    resp = tenant_client.post("/properties/new", data={
+        "name": "Smoke Delete Me",
+        "type": "single_family",
+        "address_line1": "1 Nowhere Ln",
+    }, headers=TENANT)
+    assert resp.status_code in REDIRECT_OK
+
+    resp = tenant_client.get("/properties/api/search?q=Smoke Delete Me", headers=TENANT)
+    matches = resp.get_json()
+    assert matches, "created property not found"
+    pid = matches[0]["id"]
+
+    # Delete it
+    resp = tenant_client.post(f"/properties/{pid}/delete", headers=TENANT)
+    assert resp.status_code == 302
+
+    resp = tenant_client.get("/properties/api/search?q=Smoke Delete Me", headers=TENANT)
+    assert resp.get_json() == []
+
+
+def test_property_delete_blocked_when_items_linked(tenant_client):
+    # Property 1 (Maple Court) has keys/items linked from the workflow tests.
+    resp = tenant_client.post("/properties/1/delete", headers=TENANT, follow_redirects=False)
+    assert resp.status_code == 302  # bounced back with an error flash
+    resp = tenant_client.get("/properties/api/search?q=Maple Court", headers=TENANT)
+    assert resp.get_json(), "property with linked items must not be deleted"

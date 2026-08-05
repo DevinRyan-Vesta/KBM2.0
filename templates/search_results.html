@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Search{% if query %} — {{ query }}{% endif %} - KBM{% endblock %}
+{% block title %}Search{% if query %} — {{ query }}{% endif %} - VKeys{% endblock %}
 
 {% block head %}
 <style>
@@ -104,7 +104,7 @@
     <p class="text-small">Try a shorter or different term, or check spelling.</p>
   </div>
 {% else %}
-  {% set icons = {'lockbox':'🔒','key':'🔑','sign':'🪧','item':'📦','property':'🏘️','contact':'👤','smartlock':'🔐','receipt':'🧾'} %}
+  {% set icons = {'lockbox':'lock','key':'key-round','sign':'signpost','item':'package','property':'building','contact':'users','smartlock':'lock-keyhole','receipt':'receipt-text'} %}
   <p class="search-summary">{{ total }} match{{ '' if total == 1 else 'es' }} for <strong>{{ query }}</strong></p>
 
   <div class="search-results-grid">
@@ -117,7 +117,7 @@
         </h2>
         {% for r in section.results %}
         <a href="{{ r.url }}" class="search-result-item">
-          <span class="search-result-icon">{{ icons.get(r.type, '•') }}</span>
+          <span class="search-result-icon">{% if r.type in icons %}<i data-lucide="{{ icons[r.type] }}"></i>{% else %}•{% endif %}</span>
           <span class="search-result-text">
             <span class="search-result-label">{{ r.label }}</span>
             {% if r.subtitle %}<span class="search-result-subtitle">{{ r.subtitle }}</span>{% endif %}

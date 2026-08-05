@@ -106,15 +106,17 @@ def create_app():
             master_db.create_all()
             print("Master database schema created")
 
-    # 6b) Ensure the api_tokens table exists (added in 2.2.0). checkfirst
-    # makes this a no-op on every boot after the first — safe for existing
-    # deployments that never run AUTO_CREATE_SCHEMA.
+    # 6b) Ensure tables added after 2.x exist (api_tokens in 2.2.0,
+    # landing_subscribers in 2.4.0). checkfirst makes this a no-op on every
+    # boot after the first — safe for existing deployments that never run
+    # AUTO_CREATE_SCHEMA.
     try:
-        from utilities.master_database import ApiToken
+        from utilities.master_database import ApiToken, LandingSubscriber
         with app.app_context():
             ApiToken.__table__.create(master_db.engine, checkfirst=True)
+            LandingSubscriber.__table__.create(master_db.engine, checkfirst=True)
     except Exception as e:
-        print(f"WARNING: could not ensure api_tokens table: {e}")
+        print(f"WARNING: could not ensure master-db tables: {e}")
 
     # 6a) Apply pending tenant DB schema upgrades. Idempotent: each upgrade
     # checks whether its column/table is already present and only acts if
@@ -251,6 +253,12 @@ def create_app():
         subdomain = domain[: -len(suffix)]
         if not subdomain or "." in subdomain:
             return {"ok": False, "reason": "invalid-subdomain"}, 404
+
+        # Platform hosts, not tenants: the admin interface and www (which
+        # the middleware 301s to the apex). Approve them so cert issuance
+        # and the request gate let them through.
+        if subdomain in ("admin", "www"):
+            return {"ok": True, "kind": "platform", "subdomain": subdomain}, 200
 
         account = Account.query.filter_by(subdomain=subdomain).first()
         if not account or account.status != "active":

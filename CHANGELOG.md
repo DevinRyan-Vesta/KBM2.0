@@ -4,6 +4,31 @@ All notable changes to KBM (Keybox Manager) are documented here.
 Versioning: MAJOR.MINOR.PATCH. The running version is shown in the app
 sidebar and defined as `APP_VERSION` in `config.py`.
 
+## [2.4.0] — 2026-08-05
+
+Domain migration release: the platform now lives at **vkeys.app** (vkeys.io
+and the legacy buywithvesta.com redirect there).
+
+### Added
+- **Public landing page** on the apex domain: standalone marketing page
+  (light/dark aware) describing the product, with an email capture form
+  ("notify me when the app goes live"). Subscribers are stored in the
+  master DB; app admins can view/export them at Admin → Subscribers.
+- **Admin subdomain**: the app-admin interface now lives on
+  `admin.<BASE_DOMAIN>`. The apex serves only the public site; old
+  `/admin/*` and `/auth/login` bookmarks on the apex 301 to the admin host.
+- **www redirect**: `www.<BASE_DOMAIN>` now 301s to the apex (previously it
+  404'd as an unknown tenant).
+- **Expanded reserved subdomains**: ~120 infra/service names (smtp, mx,
+  ns1, status, billing, secure, …) can no longer be registered as tenant
+  subdomains.
+- **MCP server** (`mcp_server/`): control KBM from Claude or any MCP client
+  ("add a key for 12 Maple St", "what's overdue?") via the REST API.
+- Favicon (SVG key mark) served on all pages.
+- Multi-domain external-Traefik override (`compose.external-traefik.yaml`):
+  vkeys.app platform + tenant routers, vkeys.io and buywithvesta.com
+  HTTPS redirects, Hostinger DNS-01 wildcard resolver support.
+
 ## [2.3.0] — 2026-07-13
 
 ### Added
