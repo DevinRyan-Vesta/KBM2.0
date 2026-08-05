@@ -27,6 +27,12 @@ def get_tenant_session():
 from utilities.extensions import limiter
 
 
+@main_bp.route("/favicon.ico")
+def favicon_ico():
+    """Legacy favicon path (bots and old browsers request it directly)."""
+    return redirect(url_for("static", filename="favicon.svg"), code=301)
+
+
 @main_bp.route("/subscribe", methods=["POST"])
 @limiter.limit("5 per minute; 20 per hour")
 def subscribe():
