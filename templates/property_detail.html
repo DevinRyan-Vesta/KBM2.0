@@ -9,6 +9,14 @@
   </div>
   <div class="toolbar">
     <a class="btn" href="{{ url_for('properties.edit_property', property_id=property.id) }}">Edit</a>
+    {% if (current_user.role or '')|lower in ('admin', 'owner', 'app_admin') %}
+    <form method="post" action="{{ url_for('properties.delete_property', property_id=property.id) }}"
+          onsubmit="return confirm('Delete property {{ property.name|e }}? This cannot be undone.');"
+          style="margin: 0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn danger">Delete</button>
+    </form>
+    {% endif %}
     <a class="btn ghost" href="{{ url_for('properties.list_properties') }}">Back</a>
   </div>
 </div>

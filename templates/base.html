@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>{% block title %}KBM{% endblock %}</title>
+    <title>{% block title %}VKeys{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
@@ -78,6 +78,22 @@
       .btn,
       table a {
         text-decoration: none;
+      }
+
+      /* Buttons are actions, not prose links: the visited-link colors above
+         must never bleed into them (red-on-red "View All" bug). */
+      a.btn, a.btn:visited, a.btn:hover {
+        color: var(--color-text);
+        text-decoration: none;
+      }
+      a.btn.primary, a.btn.primary:visited, a.btn.primary:hover {
+        color: #fff;
+      }
+      a.btn.danger, a.btn.danger:visited {
+        color: #ff6b6b;
+      }
+      body.light a.btn.danger, body.light a.btn.danger:visited {
+        color: #b91c1c;
       }
 
 
@@ -182,6 +198,17 @@
         align-items: center;
         justify-content: center;
       }
+
+      /* Lucide icons: size to the surrounding text, sit on the baseline. */
+      svg.lucide {
+        width: 18px;
+        height: 18px;
+        stroke-width: 2;
+        flex-shrink: 0;
+        vertical-align: -0.2em;
+      }
+      .global-search-icon svg.lucide,
+      .global-search-icon-cell svg.lucide { width: 16px; height: 16px; }
 
       .nav-back {
         color: var(--color-muted) !important;
@@ -1180,11 +1207,18 @@
   </style>
     {% block head %}{% endblock %}
   </head>
-  <body class="dark">
+  <body class="light">
+    <script>
+      // Apply the stored theme before first paint to avoid a flash.
+      if (localStorage.getItem('kbm-theme') === 'dark') {
+        document.body.classList.remove('light');
+        document.body.classList.add('dark');
+      }
+    </script>
     <div class="layout">
       <aside class="sidebar">
         <div class="brand">
-          KBM <span>2.0</span>
+          VKeys <span>{{ config.get('APP_VERSION', '').rsplit('.', 1)[0] or '2.4' }}</span>
         </div>
         <nav class="nav-links">
           {% if request.blueprint == 'app_admin' %}
@@ -1192,84 +1226,84 @@
             <div class="nav-section">
               <div class="nav-section-label">System Administration</div>
               <a href="{{ url_for('app_admin.dashboard') }}" class="{% if request.endpoint == 'app_admin.dashboard' %}active{% endif %}">
-                <span class="nav-icon">📊</span> Dashboard
+                <i data-lucide="layout-dashboard" class="nav-icon"></i> Dashboard
               </a>
               <a href="{{ url_for('app_admin.list_accounts') }}" class="{% if request.endpoint in ['app_admin.list_accounts', 'app_admin.view_account'] %}active{% endif %}">
-                <span class="nav-icon">🏢</span> Accounts
+                <i data-lucide="building-2" class="nav-icon"></i> Accounts
               </a>
               <a href="{{ url_for('app_admin.list_app_admins') }}" class="{% if request.endpoint in ['app_admin.list_app_admins', 'app_admin.create_app_admin'] %}active{% endif %}">
-                <span class="nav-icon">👥</span> Administrators
+                <i data-lucide="shield" class="nav-icon"></i> Administrators
               </a>
               <a href="{{ url_for('app_admin.list_subscribers') }}" class="{% if request.endpoint == 'app_admin.list_subscribers' %}active{% endif %}">
-                <span class="nav-icon">📬</span> Subscribers
+                <i data-lucide="mail" class="nav-icon"></i> Subscribers
               </a>
             </div>
             <div class="nav-section">
               <div class="nav-section-label">System</div>
               <a href="{{ url_for('app_admin.system_updates') }}" class="{% if request.endpoint == 'app_admin.system_updates' %}active{% endif %}">
-                <span class="nav-icon">⚙️</span> Updates
+                <i data-lucide="refresh-cw" class="nav-icon"></i> Updates
               </a>
             </div>
           {% else %}
             {# Tenant Navigation #}
             <div class="nav-section">
               <a href="{{ url_for('main.home') }}" class="{% if request.endpoint == 'main.home' %}active{% endif %}">
-                <span class="nav-icon">🏠</span> Home
+                <i data-lucide="house" class="nav-icon"></i> Home
               </a>
             </div>
             <div class="nav-section">
               <div class="nav-section-label">Inventory</div>
               <a href="{{ url_for('inventory.list_lockboxes') }}" class="{% if request.endpoint == 'inventory.list_lockboxes' %}active{% endif %}">
-                <span class="nav-icon">🔒</span> Lockboxes
+                <i data-lucide="lock" class="nav-icon"></i> Lockboxes
               </a>
               <a href="{{ safe_url('inventory.list_keys') }}" class="{% if request.endpoint and request.endpoint.endswith('list_keys') %}active{% endif %}">
-                <span class="nav-icon">🔑</span> Keys
+                <i data-lucide="key-round" class="nav-icon"></i> Keys
               </a>
               <a href="{{ safe_url('inventory.list_signs') }}" class="{% if request.endpoint and request.endpoint.endswith('list_signs') %}active{% endif %}">
-                <span class="nav-icon">🪧</span> Signs
+                <i data-lucide="signpost" class="nav-icon"></i> Signs
               </a>
             </div>
             <div class="nav-section">
               <div class="nav-section-label">Operations</div>
               <a href="{{ safe_url('checkout.start') }}" class="{% if request.endpoint and request.endpoint.startswith('checkout') %}active{% endif %}">
-                <span class="nav-icon">📝</span> Check In/Out
+                <i data-lucide="clipboard-check" class="nav-icon"></i> Check In/Out
               </a>
               <a href="{{ url_for('inventory.receipt_lookup') }}" class="{% if request.endpoint == 'inventory.receipt_lookup' %}active{% endif %}">
-                <span class="nav-icon">🧾</span> Receipts
+                <i data-lucide="receipt-text" class="nav-icon"></i> Receipts
               </a>
               <a href="{{ safe_url('audits.list_audits') }}" class="{% if request.endpoint and request.endpoint.startswith('audits.') %}active{% endif %}">
-                <span class="nav-icon">📋</span> Audits
+                <i data-lucide="clipboard-list" class="nav-icon"></i> Audits
               </a>
               <a href="{{ url_for('main.reports') }}" class="{% if request.endpoint == 'main.reports' %}active{% endif %}">
-                <span class="nav-icon">📊</span> Reports
+                <i data-lucide="chart-column" class="nav-icon"></i> Reports
               </a>
             </div>
             <div class="nav-section">
               <div class="nav-section-label">Management</div>
               <a href="{{ url_for('properties.list_properties') }}" class="{% if request.endpoint and request.endpoint.startswith('properties.') %}active{% endif %}">
-                <span class="nav-icon">🏘️</span> Properties
+                <i data-lucide="building" class="nav-icon"></i> Properties
               </a>
               <a href="{{ url_for('contacts.list_contacts') }}" class="{% if request.endpoint and request.endpoint.startswith('contacts.') %}active{% endif %}">
-                <span class="nav-icon">👤</span> Contacts
+                <i data-lucide="users" class="nav-icon"></i> Contacts
               </a>
               <a href="{{ url_for('smartlocks.list_smartlocks') }}" class="{% if request.endpoint and request.endpoint.startswith('smartlocks.') %}active{% endif %}">
-                <span class="nav-icon">🔐</span> Smart Locks
+                <i data-lucide="lock-keyhole" class="nav-icon"></i> Smart Locks
               </a>
             </div>
             {% if current_user.is_authenticated and (current_user.role or '').lower() in ['admin', 'owner'] %}
             <div class="nav-section">
               <div class="nav-section-label">Administration</div>
               <a href="{{ url_for('auth.list_users') }}" class="{% if request.endpoint and request.endpoint.startswith('auth.list_users') %}active{% endif %}">
-                <span class="nav-icon">👥</span> Users
+                <i data-lucide="user-round" class="nav-icon"></i> Users
               </a>
               <a href="{{ url_for('auth.activity_logs') }}" class="{% if request.endpoint == 'auth.activity_logs' %}active{% endif %}">
-                <span class="nav-icon">📋</span> Activity Logs
+                <i data-lucide="scroll-text" class="nav-icon"></i> Activity Logs
               </a>
               <a href="{{ url_for('settings.api_keys') }}" class="{% if request.endpoint and request.endpoint.startswith('settings.api_key') %}active{% endif %}">
-                <span class="nav-icon">🔑</span> API Keys
+                <i data-lucide="key-square" class="nav-icon"></i> API Keys
               </a>
               <a href="{{ url_for('settings.settings_page') }}" class="{% if request.endpoint in ('settings.settings_page', 'settings.save_settings') %}active{% endif %}">
-                <span class="nav-icon">⚙️</span> Settings
+                <i data-lucide="settings" class="nav-icon"></i> Settings
               </a>
             </div>
             {% endif %}
@@ -1282,10 +1316,10 @@
               <span>{{ (current_user.role or 'member')|capitalize }}</span>
             </div>
             <div class="toolbar toolbar-column">
-              <a class="btn ghost" href="{{ url_for('help.index') }}">❓ Help Center</a>
+              <a class="btn ghost" href="{{ url_for('help.index') }}"><i data-lucide="circle-help" class="nav-icon"></i> Help Center</a>
               <a class="btn ghost" href="{{ url_for('auth.profile') }}">Profile</a>
               {% if not is_root_domain %}
-              <a class="btn ghost" href="{{ url_for('settings.api_keys') }}">🔑 API Keys</a>
+              <a class="btn ghost" href="{{ url_for('settings.api_keys') }}"><i data-lucide="key-square" class="nav-icon"></i> API Keys</a>
               {% endif %}
               <button class="btn ghost" type="button" data-theme-toggle>Toggle Dark Mode</button>
               <a class="btn danger" href="{{ url_for('auth.logout') }}">Logout</a>
@@ -1293,18 +1327,18 @@
           {% else %}
             <a class="btn primary" href="{{ url_for('auth.login') }}">Login</a>
           {% endif %}
-          <div class="muted text-small" style="text-align: center;">KBM v{{ config.get('APP_VERSION', '') }}</div>
+          <div class="muted text-small" style="text-align: center;">VKeys v{{ config.get('APP_VERSION', '') }}</div>
         </div>
       </aside>
 
       <div class="content">
         <header class="topbar">
           <div class="topbar-left">
-            <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Toggle menu">☰</button>
+            <button class="sidebar-toggle" type="button" data-sidebar-toggle aria-label="Toggle menu"><i data-lucide="menu"></i></button>
             {% if current_user.is_authenticated and not is_root_domain %}
               <form class="global-search" id="global-search" role="search"
                     action="{{ url_for('search.search') }}" method="get" autocomplete="off">
-                <span class="global-search-icon">🔍</span>
+                <span class="global-search-icon"><i data-lucide="search"></i></span>
                 <input
                   type="search"
                   name="q"
@@ -1364,8 +1398,12 @@
 
     <script>
       const body = document.body;
+      // Light is the default; dark is opt-in via the toggle.
       const storedTheme = localStorage.getItem('kbm-theme');
-      if (storedTheme === 'light') {
+      if (storedTheme === 'dark') {
+        body.classList.remove('light');
+        body.classList.add('dark');
+      } else {
         body.classList.remove('dark');
         body.classList.add('light');
       }
@@ -1565,8 +1603,8 @@
         const searchUrl = form.getAttribute('action');
 
         const ICONS = {
-          lockbox: '🔒', key: '🔑', sign: '🪧', item: '📦',
-          property: '🏘️', contact: '👤', smartlock: '🔐', receipt: '🧾'
+          lockbox: 'lock', key: 'key-round', sign: 'signpost', item: 'package',
+          property: 'building', contact: 'users', smartlock: 'lock-keyhole', receipt: 'receipt-text'
         };
 
         let debounceTimer = null;
@@ -1602,7 +1640,8 @@
 
           let html = '';
           results.forEach(function (r, i) {
-            const icon = ICONS[r.type] || '•';
+            const icon = ICONS[r.type]
+              ? '<i data-lucide="' + ICONS[r.type] + '"></i>' : '•';
             html +=
               '<a href="' + escapeHtml(r.url) + '" class="global-search-item" data-idx="' + i + '">' +
                 '<span class="global-search-icon-cell">' + icon + '</span>' +
@@ -1617,6 +1656,7 @@
           html += '<a href="' + escapeHtml(fullSearchUrl) + '" class="global-search-footer">' +
                   'View all results for "' + escapeHtml(query) + '"</a>';
           dropdown.innerHTML = html;
+          if (window.lucide) lucide.createIcons();
           open();
         }
 
@@ -1686,5 +1726,7 @@
         });
       })();
     </script>
+    <script src="{{ url_for('static', filename='js/lucide.min.js') }}"></script>
+    <script>if (window.lucide) lucide.createIcons();</script>
   </body>
 </html>

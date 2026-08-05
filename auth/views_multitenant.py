@@ -441,7 +441,17 @@ def activity_logs():
         .limit(200)
         .all()
     )
-    return render_template("activity_logs.html", logs=logs)
+
+    # ActivityLog.user_id points at MasterUser (master DB) — there is no ORM
+    # relationship across databases, so resolve names here in one query.
+    # (Without this every row rendered as "System".)
+    user_ids = {log.user_id for log in logs if log.user_id}
+    user_map = {}
+    if user_ids:
+        user_map = {
+            u.id: u for u in MasterUser.query.filter(MasterUser.id.in_(user_ids)).all()
+        }
+    return render_template("activity_logs.html", logs=logs, user_map=user_map)
 
 
 @auth_bp.route("/activity-logs/export", methods=["GET"])

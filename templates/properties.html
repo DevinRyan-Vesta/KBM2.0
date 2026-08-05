@@ -1,5 +1,5 @@
 ﻿{% extends "base.html" %}
-{% block title %}Properties - KBM{% endblock %}
+{% block title %}Properties - VKeys{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -28,7 +28,17 @@
           <div class="muted">{{ prop.address_line1 }}{% if prop.city %}, {{ prop.city }}{% endif %}{% if prop.state %}, {{ prop.state }}{% endif %}</div>
           <div class="muted text-small" style="margin-top: 4px;">{{ (prop.type or 'Unknown').replace('_',' ')|title }}</div>
         </div>
-        <a class="btn" href="{{ url_for('properties.property_detail', property_id=prop.id) }}">View</a>
+        <div class="toolbar" style="gap: 8px;">
+          <a class="btn" href="{{ url_for('properties.property_detail', property_id=prop.id) }}">View</a>
+          {% if (current_user.role or '')|lower in ('admin', 'owner', 'app_admin') %}
+          <form method="post" action="{{ url_for('properties.delete_property', property_id=prop.id) }}"
+                onsubmit="return confirm('Delete property {{ prop.name|e }}? This cannot be undone.');"
+                style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn danger">Delete</button>
+          </form>
+          {% endif %}
+        </div>
       </div>
       <div class="divider"></div>
       <div class="info-grid" style="grid-template-columns: repeat(3, minmax(100px, 1fr));">

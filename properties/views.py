@@ -406,6 +406,63 @@ def delete_unit(property_id: int, unit_id: int):
     return redirect(url_for("properties.property_detail", property_id=property_id))
 
 
+@properties_bp.route("/<int:property_id>/delete", methods=["POST"])
+@login_required
+@tenant_required
+def delete_property(property_id: int):
+    """Delete a property (admin/owner). Blocked while items are linked to it;
+    units are removed with the property (they're blocked separately if any
+    keys reference them)."""
+    from flask_login import current_user
+    from utilities.database import log_activity
+
+    role = (getattr(current_user, 'role', '') or '').lower()
+    if role not in ('admin', 'owner', 'app_admin'):
+        flash("You must be an admin to delete properties.", "error")
+        return redirect(url_for("properties.property_detail", property_id=property_id))
+
+    property_obj = _get_property_or_404(property_id)
+
+    linked_items = tenant_query(Item).filter_by(property_id=property_id).count()
+    if linked_items:
+        flash(
+            f"Cannot delete '{property_obj.name}': {linked_items} inventory "
+            "item(s) are linked to it. Unlink or delete those items first.",
+            "error",
+        )
+        return redirect(url_for("properties.property_detail", property_id=property_id))
+
+    unit_keys = tenant_query(Item).filter(
+        Item.property_unit_id.in_(
+            tenant_query(PropertyUnit.id).filter_by(property_id=property_id).scalar_subquery()
+        )
+    ).count()
+    if unit_keys:
+        flash(
+            f"Cannot delete '{property_obj.name}': {unit_keys} key(s) are "
+            "assigned to its units. Reassign those keys first.",
+            "error",
+        )
+        return redirect(url_for("properties.property_detail", property_id=property_id))
+
+    name = property_obj.name
+    for unit in tenant_query(PropertyUnit).filter_by(property_id=property_id).all():
+        get_tenant_session().delete(unit)
+    get_tenant_session().delete(property_obj)
+    log_activity(
+        "property_deleted",
+        user=current_user,
+        target_type="Property",
+        target_id=property_id,
+        summary=f"Deleted property {name}",
+        commit=False,
+    )
+    tenant_commit()
+
+    flash(f"Property '{name}' deleted.", "success")
+    return redirect(url_for("properties.list_properties"))
+
+
 @properties_bp.route("/api/search", methods=["GET"])
 @login_required
 @tenant_required

@@ -314,3 +314,35 @@ def test_help_button_present_on_pages(tenant_client):
     assert b"/help/keys" in resp.data
     resp = tenant_client.get("/reports", headers=TENANT)
     assert b"/help/reports" in resp.data
+
+
+# --- Property deletion (web UI) ---
+
+def test_property_delete_flow(tenant_client):
+    # Create a throwaway property
+    resp = tenant_client.post("/properties/new", data={
+        "name": "Smoke Delete Me",
+        "type": "single_family",
+        "address_line1": "1 Nowhere Ln",
+    }, headers=TENANT)
+    assert resp.status_code in REDIRECT_OK
+
+    resp = tenant_client.get("/properties/api/search?q=Smoke Delete Me", headers=TENANT)
+    matches = resp.get_json()
+    assert matches, "created property not found"
+    pid = matches[0]["id"]
+
+    # Delete it
+    resp = tenant_client.post(f"/properties/{pid}/delete", headers=TENANT)
+    assert resp.status_code == 302
+
+    resp = tenant_client.get("/properties/api/search?q=Smoke Delete Me", headers=TENANT)
+    assert resp.get_json() == []
+
+
+def test_property_delete_blocked_when_items_linked(tenant_client):
+    # Property 1 (Maple Court) has keys/items linked from the workflow tests.
+    resp = tenant_client.post("/properties/1/delete", headers=TENANT, follow_redirects=False)
+    assert resp.status_code == 302  # bounced back with an error flash
+    resp = tenant_client.get("/properties/api/search?q=Maple Court", headers=TENANT)
+    assert resp.get_json(), "property with linked items must not be deleted"

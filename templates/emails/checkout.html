@@ -2,7 +2,7 @@
 {% block subject %}Item issued: {{ item_label }}{% endblock %}
 {% block content %}
 <p style="margin:0 0 12px;">Hi {{ recipient_name or 'there' }},</p>
-<p style="margin:0 0 16px;"><strong>{{ tenant_name or 'KBM' }}</strong> has issued the following item to you:</p>
+<p style="margin:0 0 16px;"><strong>{{ tenant_name or 'VKeys' }}</strong> has issued the following item to you:</p>
 
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin:0 0 16px;background:#f5f7fb;border-radius:8px;">
   <tr><td style="padding:12px 14px 4px;font-weight:600;font-size:16px;">{{ item_label }}{% if item_custom_id %} <span style="color:#6b7280;font-weight:400;">({{ item_custom_id }})</span>{% endif %}</td></tr>
