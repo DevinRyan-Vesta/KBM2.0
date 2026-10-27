@@ -20,7 +20,7 @@ This guide will help you set up Cloudflare Tunnel for KBM 2.0, which eliminates 
 
 Before starting, you need:
 1. **Cloudflare account** (free)
-2. **Domain registered** (you have buywithvesta.com)
+2. **Domain registered** (you have vkeys.app)
 3. **SSH access to NAS**
 
 ---
@@ -38,7 +38,7 @@ Before starting, you need:
 
 1. Log into Cloudflare dashboard
 2. Click **"Add a site"**
-3. Enter: `buywithvesta.com`
+3. Enter: `vkeys.app`
 4. Click **"Add site"**
 5. Select **"Free"** plan
 6. Click **"Continue"**
@@ -60,7 +60,7 @@ lara.ns.cloudflare.com
 **Update your nameservers at Namecheap:**
 
 1. Log into Namecheap
-2. Go to **Domain List** → **Manage** (for buywithvesta.com)
+2. Go to **Domain List** → **Manage** (for vkeys.app)
 3. Find **"Nameservers"** section
 4. Change from **"Namecheap BasicDNS"** to **"Custom DNS"**
 5. Enter the two Cloudflare nameservers
@@ -88,7 +88,7 @@ sudo bash setup_cloudflare_tunnel.sh
 1. Install `cloudflared` tool
 2. Open browser for Cloudflare authentication
 3. Create a tunnel named `kbm-tunnel`
-4. Configure DNS routing for buywithvesta.com and *.buywithvesta.com
+4. Configure DNS routing for vkeys.app and *.vkeys.app
 5. Set up automatic startup
 
 **During the script:**
@@ -102,14 +102,14 @@ After the script completes, wait 1-2 minutes for the tunnel to establish.
 
 **Test from any device:**
 ```
-https://buywithvesta.com
+https://vkeys.app
 ```
 
 You should see your KBM login page - served through Cloudflare!
 
 **Test tenant subdomains:**
 ```
-https://yourcompany.buywithvesta.com
+https://yourcompany.vkeys.app
 ```
 
 ---
@@ -187,7 +187,7 @@ Since you're now using Cloudflare Tunnel, you can **remove the port forwarding r
 
 ## Cloudflare Dashboard Overview
 
-In the Cloudflare dashboard for buywithvesta.com:
+In the Cloudflare dashboard for vkeys.app:
 
 ### Traffic Tab
 - See real-time traffic to your site
@@ -197,8 +197,8 @@ In the Cloudflare dashboard for buywithvesta.com:
 ### DNS Tab
 - Manage DNS records
 - You'll see CNAME records for the tunnel:
-  - `buywithvesta.com` → `<tunnel-id>.cfargotunnel.com`
-  - `*.buywithvesta.com` → `<tunnel-id>.cfargotunnel.com`
+  - `vkeys.app` → `<tunnel-id>.cfargotunnel.com`
+  - `*.vkeys.app` → `<tunnel-id>.cfargotunnel.com`
 
 ### Zero Trust Tab (optional advanced features)
 - Access controls
@@ -226,7 +226,7 @@ sudo journalctl -u cloudflared -f
 
 **Check nameserver propagation:**
 ```bash
-dig NS buywithvesta.com
+dig NS vkeys.app
 ```
 
 You should see Cloudflare nameservers in the response.
@@ -313,11 +313,11 @@ credentials-file: /root/.cloudflared/<tunnel-id>.json
 
 ingress:
   # Main domain
-  - hostname: buywithvesta.com
+  - hostname: vkeys.app
     service: http://localhost:8080
 
   # Wildcard subdomains
-  - hostname: "*.buywithvesta.com"
+  - hostname: "*.vkeys.app"
     service: http://localhost:8080
 
   # Catch-all (required)
