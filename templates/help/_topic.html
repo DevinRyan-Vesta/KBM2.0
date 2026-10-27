@@ -22,16 +22,15 @@
     font-size: 13px;
   }
   .help-nav a {
+    display: flex; align-items: center; gap: 8px;
     padding: 7px 10px;
     border-radius: 8px;
-    text-decoration: none;
-    color: var(--color-muted);
+    color: var(--text-dim);
   }
-  .help-nav a.active,
-  .help-nav a:hover {
-    background: var(--color-accent-soft);
-    color: var(--color-accent);
-  }
+  .help-nav a svg.lucide { width: 15px; height: 15px; color: var(--muted); }
+  .help-nav a:hover { background: var(--surface-2); color: var(--text); }
+  .help-nav a.active { background: var(--nav-active); color: var(--text); font-weight: 650; }
+  .help-nav a.active svg.lucide { color: var(--accent); }
   .help-article h2 {
     margin: 26px 0 10px;
     font-size: 18px;
@@ -45,7 +44,7 @@
   .help-article ol, .help-article ul { padding-left: 22px; }
   .help-article li { margin-bottom: 6px; }
   .help-article code {
-    background: rgba(148, 163, 184, 0.14);
+    background: var(--surface-2);
     border-radius: 5px;
     padding: 1px 6px;
     font-size: 13px;
@@ -58,20 +57,20 @@
     margin: 14px 0;
     font-size: 13.5px;
   }
-  .help-callout.tip { border-left-color: #4ade80; background: rgba(74, 222, 128, 0.10); }
+  .help-callout.tip { border-left-color: var(--success); background: var(--ok-soft); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>{{ meta.icon }} {{ meta.title }}</h1>
-  <a class="btn ghost" href="{{ url_for('help.index') }}">← All help topics</a>
+  <h1><i data-lucide="{{ meta.icon }}"></i> {{ meta.title }}</h1>
+  <a class="btn ghost" href="{{ url_for('help.index') }}"><i data-lucide="arrow-left"></i> All help topics</a>
 </div>
 
 <div class="help-layout">
   <nav class="help-nav card" aria-label="Help topics">
     {% for s, t in topics.items() %}
-      <a href="{{ url_for('help.topic', slug=s) }}" class="{% if s == slug %}active{% endif %}">{{ t.icon }} {{ t.title }}</a>
+      <a href="{{ url_for('help.topic', slug=s) }}" class="{% if s == slug %}active{% endif %}"><i data-lucide="{{ t.icon }}"></i> {{ t.title }}</a>
     {% endfor %}
   </nav>
   <article class="help-article card">

@@ -14,6 +14,27 @@ ADMIN = {"Host": "admin.localhost"}
 REDIRECT_OK = (200, 302)
 
 
+def _row_id(table, column, value, extra=""):
+    """Look up a tenant row id by a column value.
+
+    Ids are not stable across the session-scoped DB (the API suite creates
+    records first), so the workflow tests resolve ids from the labels/names
+    they created rather than hard-coding them.
+    """
+    import os
+    import sqlite3
+
+    con = sqlite3.connect(os.path.join(os.getcwd(), "tenant_dbs", "acme.db"))
+    try:
+        row = con.execute(
+            f"SELECT id FROM {table} WHERE {column} = ? {extra} ORDER BY id DESC LIMIT 1", (value,)
+        ).fetchone()
+    finally:
+        con.close()
+    assert row, f"no {table} row where {column} = {value!r}"
+    return row[0]
+
+
 def test_health(client):
     resp = client.get("/health", headers=ROOT)
     assert resp.status_code == 200
@@ -59,8 +80,9 @@ class TestWorkflows:
             "postal_code": "62704",
         }, headers=TENANT)
         assert resp.status_code in REDIRECT_OK
-        assert tenant_client.get("/properties/1", headers=TENANT).status_code == 200
-        resp = tenant_client.post("/properties/1/units", data={"label": "Unit 1A"}, headers=TENANT)
+        prop_id = _row_id("properties", "name", "Maple Court")
+        assert tenant_client.get(f"/properties/{prop_id}", headers=TENANT).status_code == 200
+        resp = tenant_client.post(f"/properties/{prop_id}/units", data={"label": "Unit 1A"}, headers=TENANT)
         assert resp.status_code in REDIRECT_OK
 
     def test_create_contact(self, tenant_client):
@@ -71,15 +93,17 @@ class TestWorkflows:
             "phone": "555-0100",
         }, headers=TENANT)
         assert resp.status_code in REDIRECT_OK
-        assert tenant_client.get("/contacts/1", headers=TENANT).status_code == 200
+        contact_id = _row_id("contacts", "name", "Jane Contractor")
+        assert tenant_client.get(f"/contacts/{contact_id}", headers=TENANT).status_code == 200
 
     def test_create_inventory(self, tenant_client):
         assert tenant_client.post("/inventory/lockboxes/new", data={
             "label": "LB-001", "code": "1234", "location": "Office",
         }, headers=TENANT).status_code in REDIRECT_OK
+        prop_id = _row_id("properties", "name", "Maple Court")
         assert tenant_client.post("/inventory/keys/new", data={
             "label": "KEY-001", "total_copies": "5",
-            "key_hook_number": "H1", "property_id": "1",
+            "key_hook_number": "H1", "property_id": str(prop_id),
         }, headers=TENANT).status_code in REDIRECT_OK
         assert tenant_client.post("/inventory/signs/new", data={
             "label": "SIGN-001", "sign_subtype": "Piece", "piece_type": "Frame",
@@ -87,23 +111,28 @@ class TestWorkflows:
         }, headers=TENANT).status_code in REDIRECT_OK
 
     def test_item_pages_render(self, tenant_client):
-        for item_id in (1, 2, 3):
+        for label in ("LB-001", "KEY-001", "SIGN-001"):
+            item_id = _row_id("items", "label", label)
             assert tenant_client.get(f"/inventory/items/{item_id}", headers=TENANT).status_code == 200
-        assert tenant_client.get("/inventory/item/2/qrcode", headers=TENANT).status_code == 200
-        assert tenant_client.get("/inventory/item/2/label", headers=TENANT).status_code == 200
+        key_id = _row_id("items", "label", "KEY-001")
+        assert tenant_client.get(f"/inventory/item/{key_id}/qrcode", headers=TENANT).status_code == 200
+        assert tenant_client.get(f"/inventory/item/{key_id}/label", headers=TENANT).status_code == 200
 
     def test_key_checkout_and_receipt(self, tenant_client):
         from datetime import date, timedelta
         return_date = (date.today() + timedelta(days=7)).isoformat()
-        resp = tenant_client.post("/inventory/keys/2/checkout", data={
+        key_id = _row_id("items", "label", "KEY-001")
+        contact_id = _row_id("contacts", "name", "Jane Contractor")
+        resp = tenant_client.post(f"/inventory/keys/{key_id}/checkout", data={
             "copies": "2",
             "checked_out_to": "Jane Contractor",
-            "contact_id": "1",
+            "contact_id": str(contact_id),
             "purpose": "Showing",
             "expected_return_date": return_date,
         }, headers=TENANT)
         assert resp.status_code in REDIRECT_OK
-        assert tenant_client.get("/inventory/checkout/1/receipt", headers=TENANT).status_code == 200
+        checkout_id = _row_id("item_checkouts", "item_id", key_id, extra="AND is_active = 1")
+        assert tenant_client.get(f"/inventory/checkout/{checkout_id}/receipt", headers=TENANT).status_code == 200
         assert tenant_client.get("/inventory/receipts", headers=TENANT).status_code == 200
 
     def test_reports_and_exports_with_data(self, tenant_client):
@@ -125,8 +154,10 @@ class TestWorkflows:
         assert resp.status_code == 302  # nothing overdue -> friendly redirect
 
     def test_key_checkin(self, tenant_client):
-        resp = tenant_client.post("/inventory/keys/2/checkin", data={
-            "copies": "2", "checkout_id": "1",
+        key_id = _row_id("items", "label", "KEY-001")
+        checkout_id = _row_id("item_checkouts", "item_id", key_id, extra="AND is_active = 1")
+        resp = tenant_client.post(f"/inventory/keys/{key_id}/checkin", data={
+            "copies": "2", "checkout_id": str(checkout_id),
         }, headers=TENANT)
         assert resp.status_code in REDIRECT_OK
 

@@ -286,7 +286,7 @@
         onSubmit(formData) {
           const code = (formData.get("code") || "").trim();
           if (!code) {
-            alert("Enter the current code to continue.");
+            toast("Enter the current code to continue.", { type: 'error' });
             return false;
           }
           submitAction(
@@ -326,7 +326,7 @@
         onSubmit(formData) {
           const copies = parseInt(formData.get("copies"), 10) || 0;
           if (copies < 1 || (available && copies > available)) {
-            alert(`Enter a valid number of copies (1-${available || "∞"})`);
+            toast(`Enter a valid number of copies (1-${available || "∞"})`, { type: 'error' });
             return false;
           }
           submitAction(
@@ -395,7 +395,7 @@
         onSubmit(formData) {
           const code = (formData.get("code") || "").trim();
           if (!code) {
-            alert("Enter the current code to continue.");
+            toast("Enter the current code to continue.", { type: 'error' });
             return false;
           }
           submitAction(
@@ -423,7 +423,7 @@
         })
         .then((data) => {
           if (!data.checkouts || !data.checkouts.length) {
-            alert("No active checkouts found for this key.");
+            toast("No active checkouts found for this key.", { type: 'error' });
             return;
           }
           const options = [["", "-- Select Checkout --"]].concat(
@@ -449,7 +449,7 @@
             onSubmit(formData) {
               const checkoutId = formData.get("checkout_id");
               if (!checkoutId) {
-                alert("Select the checkout being returned.");
+                toast("Select the checkout being returned.", { type: 'error' });
                 return false;
               }
               submitAction(actionUrl, { checkout_id: checkoutId }, redirectUrl, redirectAnchor);
@@ -458,7 +458,7 @@
         })
         .catch((error) => {
           console.error("Failed to load checkouts", error);
-          alert("Unable to load active checkout information. Please try again.");
+          toast("Unable to load active checkout information. Please try again.", { type: 'error' });
         });
       return;
     }
@@ -519,13 +519,13 @@
           const locationValue = (formData.get("location") || "").trim();
 
           if (assignmentType === "contractor" && !expectedReturn) {
-            alert("Expected return date is required for contractor assignments.");
+            toast("Expected return date is required for contractor assignments.", { type: 'error' });
             return false;
           }
 
           if (assignmentType === "property") {
             if (!propertyId) {
-              alert("Select a property for this assignment.");
+              toast("Select a property for this assignment.", { type: 'error' });
               return false;
             }
             const propertyInfo = propertyMap[propertyId] || null;
@@ -542,7 +542,7 @@
               addressValue = addressParts.filter(Boolean).join(", ");
             }
           } else if (!assigneeValue) {
-            alert("Specify who the lockbox is assigned to.");
+            toast("Specify who the lockbox is assigned to.", { type: 'error' });
             return false;
           }
 
@@ -593,18 +593,18 @@
           let assignedTo = (formData.get("assigned_to") || "").trim();
 
           if (copies < 1 || (available && copies > available)) {
-            alert(`Enter a valid number of copies (1-${available || "∞"})`);
+            toast(`Enter a valid number of copies (1-${available || "∞"})`, { type: 'error' });
             return false;
           }
 
           if (assignmentType === "contractor" && !expectedReturn) {
-            alert("Expected return date is required for contractor assignments.");
+            toast("Expected return date is required for contractor assignments.", { type: 'error' });
             return false;
           }
 
           if (assignmentType === "property") {
             if (!propertyId && !propertyUnitId) {
-              alert("Select a property or unit for this assignment.");
+              toast("Select a property or unit for this assignment.", { type: 'error' });
               return false;
             }
             const propertyInfo = propertyMap[propertyId] || null;
@@ -618,7 +618,7 @@
               }
             }
           } else if (!assignedTo) {
-            alert("Please specify who you are assigning the key to.");
+            toast("Please specify who you are assigning the key to.", { type: 'error' });
             return false;
           }
 
@@ -709,7 +709,7 @@
       onSubmit(formData) {
         const newTotal = parseInt(formData.get("new_total"), 10);
         if (Number.isNaN(newTotal) || newTotal < 0) {
-          alert("Enter a non-negative number for total copies.");
+          toast("Enter a non-negative number for total copies.", { type: 'error' });
           return false;
         }
         submitAction(
@@ -767,7 +767,7 @@
             assigned_to: (formData.get("assigned_to") || "").trim(),
           };
           if (!payload.label) {
-            alert("Label is required.");
+            toast("Label is required.", { type: 'error' });
             return false;
           }
           submitAction(actionUrl, payload, redirectUrl, redirectAnchor);
@@ -814,7 +814,7 @@
             property_unit_id: (formData.get("property_unit_id") || "").trim(),
           };
           if (!payload.label) {
-            alert("Label is required.");
+            toast("Label is required.", { type: 'error' });
             return false;
           }
           submitAction(actionUrl, payload, redirectUrl, redirectAnchor);
@@ -871,7 +871,7 @@
             assigned_to: (formData.get("assigned_to") || "").trim(),
           };
           if (!payload.label) {
-            alert("Label is required.");
+            toast("Label is required.", { type: 'error' });
             return false;
           }
           submitAction(actionUrl, payload, redirectUrl, redirectAnchor);

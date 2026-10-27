@@ -3,73 +3,14 @@
 
 {% block content %}
 <style>
-  .bulkbar {
-    display: none;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-    background: rgba(229, 57, 53, 0.08);
-    color: var(--color-text);
-    margin-bottom: 18px;
-  }
-  .bulkbar.show { display: flex; }
-  .select-col { width: 40px; }
-  .row-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-  .actions-col { width: 380px; }
-  .sign-type-badge {
-    display: inline-flex;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .sign-type-badge.piece { background: rgba(96, 165, 250, 0.18); color: #60a5fa; }
-  .sign-type-badge.assembled { background: rgba(168, 85, 247, 0.18); color: #a855f7; }
-  .piece-indicator {
-    font-size: 11px;
-    color: var(--color-muted);
-    font-style: italic;
-  }
-  .condition-badge {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 11px;
-  }
-  .condition-excellent { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
-  .condition-good { background: rgba(34, 197, 94, 0.18); color: #22c55e; }
-  .condition-fair { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
-  .condition-poor { background: rgba(248, 113, 113, 0.18); color: #f87171; }
-  .condition-needs_repair { background: rgba(239, 68, 68, 0.18); color: #ef4444; }
-
-  
-  /* Export dropdown menu */
-  .dropdown-menu {
-    position: absolute;
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
-    min-width: 150px;
-  }
-  .dropdown-menu a {
-    display: block;
-    padding: 10px 14px;
-    color: var(--color-text);
-    text-decoration: none;
-    border-bottom: 1px solid var(--color-border);
-    transition: background 0.2s ease;
-  }
-  .dropdown-menu a:last-child {
-    border-bottom: none;
-  }
-  .dropdown-menu a:hover {
-    background: rgba(229, 57, 53, 0.12);
-    color: var(--color-accent);
-  }
+  .sign-type-badge { display: inline-flex; padding: 0.18rem 0.55rem; border-radius: var(--radius-pill); font-size: 0.74rem; font-weight: 650; }
+  .sign-type-badge.piece { background: var(--info-soft); color: var(--info-ink); }
+  .sign-type-badge.assembled { background: var(--purple-soft); color: var(--purple-ink); }
+  .piece-indicator { font-size: var(--fs-xs); color: var(--muted); font-style: italic; }
+  .condition-badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 650; background: var(--neutral-soft); color: var(--neutral-ink); }
+  .condition-excellent, .condition-good { background: var(--ok-soft); color: var(--ok-ink); }
+  .condition-fair { background: var(--warn-soft); color: var(--warn-ink); }
+  .condition-poor, .condition-needs_repair { background: var(--bad-soft); color: var(--bad-ink); }
 </style>
 
 {% set status_options = status_options or ['available', 'assigned', 'checked_out', 'maintenance', 'retired'] %}
@@ -85,11 +26,11 @@
         <a class="btn small" href="{{ url_for('inventory.list_signs') }}">Clear</a>
       {% endif %}
     </form>
-    <button type="button" class="btn small" onclick="toggleFilters()" data-tooltip="Filter signs by status, piece type, or condition">Filters ▾</button>
-      <a class="btn small" href="{{ url_for('inventory.import_signs') }}" data-tooltip="Bulk-load signs from a CSV or Excel spreadsheet">Import</a>
-    <button type="button" class="btn small" onclick="showExportMenu(event, 'signs')" data-tooltip="Download the sign inventory as CSV, Excel, or PDF">Export ▾</button>
+    <button type="button" class="btn small" onclick="toggleFilters()" data-tooltip="Filter signs by status, piece type, or condition"><i data-lucide="sliders-horizontal"></i> Filters</button>
+      <a class="btn small" href="{{ url_for('inventory.import_signs') }}" data-tooltip="Bulk-load signs from a CSV or Excel spreadsheet"><i data-lucide="upload"></i> Import</a>
+    <button type="button" class="btn small" onclick="showExportMenu(event, 'signs')" data-tooltip="Download the sign inventory as CSV, Excel, or PDF"><i data-lucide="download"></i> Export</button>
     <a class="btn primary" href="{{ url_for('inventory.build_sign') }}">Build Sign</a>
-    <a class="btn primary" href="{{ url_for('inventory.add_sign') }}" data-tooltip="Add an individual sign piece (frame, sign, or rider)">Add Sign/Piece</a>
+    <a class="btn primary" href="{{ url_for('inventory.add_sign') }}" data-tooltip="Add an individual sign piece (frame, sign, or rider)"><i data-lucide="plus"></i> Add Sign/Piece</a>
   </div>
 </div>
 
@@ -158,7 +99,7 @@
 <div class="card table-card">
   {% set viewer_role = (current_user.role or '').lower() if current_user.is_authenticated else '' %}
   {% if signs %}
-    <table>
+    <table data-sortable>
       <thead>
         <tr>
           <th class="select-col"><input type="checkbox" id="th-select-all" onclick="toggleSelectAll(this)" style="margin: 0;"></th>
@@ -257,14 +198,14 @@
                 {% endif %}
 
                 {% if is_assembled %}
-                  <form method="post" action="{{ url_for('inventory.disassemble_sign', item_id=sign.id) }}" onsubmit="return confirm('Disassemble {{ sign.label }}? Individual pieces will become available.');">
+                  <form method="post" action="{{ url_for('inventory.disassemble_sign', item_id=sign.id) }}" data-confirm="Disassemble {{ sign.label }}? Individual pieces will become available." >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button class="btn small" type="submit">Disassemble</button>
                   </form>
                 {% endif %}
 
                 {% if viewer_role != 'agent' and not has_parent %}
-                  <form method="post" action="{{ url_for('inventory.delete_sign', item_id=sign.id) }}" onsubmit="return confirm('Remove sign {{ sign.label }}? This cannot be undone.');">
+                  <form method="post" action="{{ url_for('inventory.delete_sign', item_id=sign.id) }}" data-confirm="Remove sign {{ sign.label }}? This cannot be undone." >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button class="btn small danger" type="submit">Delete</button>
                   </form>
@@ -299,7 +240,7 @@
       <h3>No signs yet</h3>
       <p>Track for-sale signs, riders, and storage locations.</p>
       <div class="toolbar">
-        <a class="btn primary" href="{{ url_for('inventory.add_sign') }}">Add your first sign</a>
+        <a class="btn primary" href="{{ url_for('inventory.add_sign') }}"><i data-lucide="plus"></i> Add your first sign</a>
         <a class="btn ghost" href="{{ url_for('inventory.import_signs') }}">Import from CSV</a>
       </div>
     </div>
@@ -600,7 +541,7 @@
         };
 
         if (!payload.label) {
-          alert('Label is required');
+          toast('Label is required', { type: 'error' });
           return;
         }
 
@@ -729,13 +670,13 @@
   async function executeBulkAction() {
     const selectedIds = getSelectedItems();
     if (selectedIds.length === 0) {
-      alert('Please select at least one item.');
+      toast('Select at least one item first.', { type: 'warning' });
       return;
     }
 
     const action = document.getElementById('bulk-action').value;
     if (!action) {
-      alert('Please select an action.');
+      toast('Choose an action first.', { type: 'warning' });
       return;
     }
 
@@ -762,19 +703,19 @@
       form.submit();
       document.body.removeChild(form);
     } else if (action === 'delete') {
-      if (!confirm(`Are you sure you want to delete ${selectedIds.length} item(s)? This cannot be undone.`)) {
+      if (!(await confirmAction({ title: `Delete ${selectedIds.length} item(s)?`, body: 'This cannot be undone.', danger: true, confirmLabel: 'Delete' }))) {
         return;
       }
       await bulkDelete(selectedIds);
     } else if (action === 'change-status') {
-      const newStatus = prompt('Enter new status (available, assigned, checked_out, maintenance, retired):');
-      if (newStatus) {
-        await bulkUpdateStatus(selectedIds, newStatus);
+      const picked = await confirmAction({ title: 'Change status', body: `Set a new status for ${selectedIds.length} item(s).`, confirmLabel: 'Change status', input: { label: 'New status', type: 'select', options: ['available', 'assigned', 'checked_out', 'maintenance', 'retired'] } });
+      if (picked && picked.value) {
+        await bulkUpdateStatus(selectedIds, picked.value);
       }
     } else if (action === 'assign') {
-      const assignTo = prompt('Enter person to assign to (leave blank to unassign):');
-      if (assignTo !== null) {
-        await bulkAssign(selectedIds, assignTo);
+      const picked = await confirmAction({ title: 'Assign items', body: `Assign ${selectedIds.length} item(s) to a person. Leave blank to unassign.`, confirmLabel: 'Assign', input: { label: 'Assign to', placeholder: 'Name' } });
+      if (picked) {
+        await bulkAssign(selectedIds, picked.value);
       }
     }
   }

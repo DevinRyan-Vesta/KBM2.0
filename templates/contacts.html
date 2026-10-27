@@ -12,13 +12,13 @@
         <a class="btn small" href="{{ url_for('contacts.list_contacts') }}">Clear</a>
       {% endif %}
     </form>
-    <a class="btn primary" href="{{ url_for('contacts.create_contact') }}" data-tooltip="Add a staff member, contractor, tenant, or agent">Add Contact</a>
+    <a class="btn primary" href="{{ url_for('contacts.create_contact') }}" data-tooltip="Add a staff member, contractor, tenant, or agent"><i data-lucide="plus"></i> Add Contact</a>
   </div>
 </div>
 
 <div class="card table-card">
   {% if contacts %}
-    <table>
+    <table data-sortable>
       <thead>
         <tr>
           <th>Name</th>
@@ -60,8 +60,7 @@
       <h3>No contacts yet</h3>
       <p>Add tenants, contractors, agents, and staff. Contact email addresses are used for checkout / overdue notifications.</p>
       <div class="toolbar">
-        <a class="btn primary" href="{{ url_for('contacts.create_contact') }}">Add your first contact</a>
-        <a class="btn ghost" href="{{ safe_url('contacts.import_contacts') }}">Import from CSV</a>
+        <a class="btn primary" href="{{ url_for('contacts.create_contact') }}"><i data-lucide="plus"></i> Add your first contact</a>
       </div>
     </div>
   {% endif %}

@@ -2,112 +2,6 @@
 {% block title %}Keys - VKeys{% endblock %}
 
 {% block content %}
-<style>
-  .bulkbar {
-    display: none;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--color-border);
-    background: rgba(229, 57, 53, 0.08);
-    color: var(--color-text);
-    margin-bottom: 18px;
-  }
-  .bulkbar.show { display: flex; }
-  .select-col { width: 40px; }
-  .row-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-  .actions-col { width: 360px; }
-  .copy-info { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
-  .copy-badge {
-    display: inline-flex;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .copy-badge.full   { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
-  .copy-badge.low    { background: rgba(248, 113, 113, 0.18); color: var(--color-danger); }
-  .copy-badge.medium { background: rgba(251, 191, 36, 0.18); color: #fbbf24; }
-  body.light .copy-badge.full   { background: rgba(21, 128, 61, 0.15); color: #15803d; }
-  body.light .copy-badge.low    { background: rgba(185, 28, 28, 0.15); color: #991b1b; }
-  body.light .copy-badge.medium { background: rgba(180, 83, 9, 0.15); color: #92400e; }
-
-  /* Autocomplete styles */
-  .autocomplete-wrapper {
-    position: relative;
-  }
-  .autocomplete-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: var(--color-card);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    margin-top: 4px;
-  }
-  .autocomplete-item {
-    padding: 10px 14px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-text);
-  }
-  .autocomplete-item:last-child {
-    border-bottom: none;
-  }
-  .autocomplete-item:hover,
-  .autocomplete-item.selected {
-    background: var(--color-accent-soft);
-    color: var(--color-accent);
-  }
-  .autocomplete-name {
-    font-weight: 600;
-    color: inherit;
-  }
-  .autocomplete-meta {
-    font-size: 12px;
-    color: var(--color-muted, #666);
-    margin-top: 2px;
-  }
-  
-  
-  /* Export dropdown menu */
-  .dropdown-menu {
-    position: absolute;
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
-    min-width: 150px;
-  }
-  .dropdown-menu a {
-    display: block;
-    padding: 10px 14px;
-    color: var(--color-text);
-    text-decoration: none;
-    border-bottom: 1px solid var(--color-border);
-    transition: background 0.2s ease;
-  }
-  .dropdown-menu a:last-child {
-    border-bottom: none;
-  }
-  .dropdown-menu a:hover {
-    background: rgba(229, 57, 53, 0.12);
-    color: var(--color-accent);
-  }
-  .btn-group {
-    display: flex;
-    gap: 8px;
-  }
-</style>
 
 {% set status_options = status_options or ['available', 'assigned', 'checked_out'] %}
 {% set status_options_lower = status_options | map('lower') | list %}
@@ -123,10 +17,10 @@
       {% endif %}
     </form>
     <div class="btn-group">
-      <button type="button" class="btn small" onclick="toggleFilters()" data-tooltip="Filter keys by status, property, or hook number">Filters ▾</button>
-      <button type="button" class="btn small" onclick="showExportMenu(event, 'keys')" data-tooltip="Download the key inventory as CSV, Excel, or PDF">Export ▾</button>
-      <a class="btn small" href="{{ url_for('inventory.import_keys') }}" data-tooltip="Bulk-load keys from a CSV or Excel spreadsheet">Import</a>
-      <a class="btn primary" href="{{ url_for('inventory.add_key') }}" data-tooltip="Add one key and its copies to inventory">Add Key</a>
+      <button type="button" class="btn small" onclick="toggleFilters()" data-tooltip="Filter keys by status, property, or hook number"><i data-lucide="sliders-horizontal"></i> Filters</button>
+      <button type="button" class="btn small" onclick="showExportMenu(event, 'keys')" data-tooltip="Download the key inventory as CSV, Excel, or PDF"><i data-lucide="download"></i> Export</button>
+      <a class="btn small" href="{{ url_for('inventory.import_keys') }}" data-tooltip="Bulk-load keys from a CSV or Excel spreadsheet"><i data-lucide="upload"></i> Import</a>
+      <a class="btn primary" href="{{ url_for('inventory.add_key') }}" data-tooltip="Add one key and its copies to inventory"><i data-lucide="plus"></i> Add Key</a>
     </div>
   </div>
 </div>
@@ -201,7 +95,7 @@
 <div class="card table-card">
   {% set viewer_role = (current_user.role or '').lower() if current_user.is_authenticated else '' %}
   {% if keys %}
-    <table>
+    <table data-sortable>
       <thead>
         <tr>
           <th class="select-col"><input type="checkbox" id="th-select-all" onclick="toggleSelectAll(this)" style="margin: 0;"></th>
@@ -322,7 +216,7 @@
                 </button>
 
                 {% if viewer_role != 'agent' %}
-                  <form method="post" action="{{ url_for('inventory.delete_key', item_id=key.id) }}" onsubmit="return confirm('Remove key {{ key.label }}? This cannot be undone.');">
+                  <form method="post" action="{{ url_for('inventory.delete_key', item_id=key.id) }}" data-confirm="Remove key {{ key.label }}? This cannot be undone." >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button class="btn small danger" type="submit">Delete</button>
                   </form>
@@ -357,7 +251,7 @@
       <h3>No keys yet</h3>
       <p>Track keys, copies, and who has them.</p>
       <div class="toolbar">
-        <a class="btn primary" href="{{ url_for('inventory.add_key') }}">Add your first key</a>
+        <a class="btn primary" href="{{ url_for('inventory.add_key') }}"><i data-lucide="plus"></i> Add your first key</a>
         <a class="btn ghost" href="{{ url_for('inventory.import_keys') }}">Import from CSV</a>
       </div>
     </div>
@@ -698,7 +592,7 @@
       ], (formData) => {
         const copies = parseInt(formData.get('copies')) || 0;
         if (copies < 1 || copies > available) {
-          alert(`Please enter a valid number of copies (1-${available})`);
+          toast(`Please enter a valid number of copies (1-${available})`, { type: 'error' });
           return;
         }
         submitAction(actionUrl, {
@@ -850,18 +744,18 @@
         let assignedTo = (formData.get('assigned_to') || '').trim();
 
         if (copies < 1 || copies > available) {
-          alert(`Please enter a valid number of copies (1-${available})`);
+          toast(`Please enter a valid number of copies (1-${available})`, { type: 'error' });
           return;
         }
 
         if (assignmentType === 'contractor' && !expectedReturn) {
-          alert('Expected return date is required for contractor assignments');
+          toast('Expected return date is required for contractor assignments', { type: 'error' });
           return;
         }
 
         if (assignmentType === 'property') {
           if (!propertyId && !propertyUnitId) {
-            alert('Select a property or unit to complete this assignment.');
+            toast('Select a property or unit to complete this assignment.', { type: 'error' });
             return;
           }
           if (!assignedTo) {
@@ -878,7 +772,7 @@
             }
           }
         } else if (!assignedTo) {
-          alert('Please specify who the key is assigned to.');
+          toast('Please specify who the key is assigned to.', { type: 'error' });
           return;
         }
 
@@ -912,12 +806,12 @@
         const data = await response.json();
 
         if (data.error) {
-          alert(data.error);
+          toast(data.error, { type: 'error' });
           return;
         }
 
         if (!data.checkouts || data.checkouts.length === 0) {
-          alert('No active checkouts found for this key.');
+          toast('No active checkouts found for this key.', { type: 'error' });
           return;
         }
 
@@ -933,14 +827,14 @@
         ], (formData) => {
           const checkoutId = formData.get('checkout_id');
           if (!checkoutId) {
-            alert('Please select a checkout to return');
+            toast('Please select a checkout to return', { type: 'error' });
             return;
           }
           submitAction(actionUrl, { checkout_id: checkoutId });
         });
       } catch (error) {
         console.error('Error fetching checkouts:', error);
-        alert('Failed to load checkout information. Please try again.');
+        toast('Failed to load checkout information. Please try again.', { type: 'error' });
       }
     });
   });
@@ -959,7 +853,7 @@
       ], (formData) => {
         const newTotal = parseInt(formData.get('new_total')) || 0;
         if (newTotal < 0) {
-          alert('Total copies cannot be negative');
+          toast('Total copies cannot be negative', { type: 'error' });
           return;
         }
         submitAction(actionUrl, {
@@ -1008,7 +902,7 @@
         };
 
         if (!payload.label) {
-          alert('Label is required');
+          toast('Label is required', { type: 'error' });
           return;
         }
 
@@ -1128,13 +1022,13 @@
   async function executeBulkAction() {
     const selectedIds = getSelectedItems();
     if (selectedIds.length === 0) {
-      alert('Please select at least one item.');
+      toast('Select at least one item first.', { type: 'warning' });
       return;
     }
 
     const action = document.getElementById('bulk-action').value;
     if (!action) {
-      alert('Please select an action.');
+      toast('Choose an action first.', { type: 'warning' });
       return;
     }
 
@@ -1161,19 +1055,19 @@
       form.submit();
       document.body.removeChild(form);
     } else if (action === 'delete') {
-      if (!confirm(`Are you sure you want to delete ${selectedIds.length} item(s)? This cannot be undone.`)) {
+      if (!(await confirmAction({ title: `Delete ${selectedIds.length} item(s)?`, body: 'This cannot be undone.', danger: true, confirmLabel: 'Delete' }))) {
         return;
       }
       await bulkDelete(selectedIds);
     } else if (action === 'change-status') {
-      const newStatus = prompt('Enter new status (available, assigned, checked_out):');
-      if (newStatus) {
-        await bulkUpdateStatus(selectedIds, newStatus);
+      const picked = await confirmAction({ title: 'Change status', body: `Set a new status for ${selectedIds.length} item(s).`, confirmLabel: 'Change status', input: { label: 'New status', type: 'select', options: ['available', 'assigned', 'checked_out'] } });
+      if (picked && picked.value) {
+        await bulkUpdateStatus(selectedIds, picked.value);
       }
     } else if (action === 'assign') {
-      const assignTo = prompt('Enter person to assign to (leave blank to unassign):');
-      if (assignTo !== null) {
-        await bulkAssign(selectedIds, assignTo);
+      const picked = await confirmAction({ title: 'Assign items', body: `Assign ${selectedIds.length} item(s) to a person. Leave blank to unassign.`, confirmLabel: 'Assign', input: { label: 'Assign to', placeholder: 'Name' } });
+      if (picked) {
+        await bulkAssign(selectedIds, picked.value);
       }
     }
   }

@@ -136,7 +136,7 @@
   <div class="divider"></div>
 
   {% if tokens %}
-  <table class="keys-table">
+  <table class="keys-table" data-sortable>
     <thead>
       <tr>
         <th>Name</th>
@@ -166,9 +166,7 @@
         </td>
         <td>
           {% if not t.revoked_at and not expired %}
-          <form method="post" action="{{ url_for('settings.revoke_api_key', token_id=t.id) }}"
-                onsubmit="return confirm('Revoke API key “{{ t.name }}”? Anything using it will stop working immediately.');"
-                style="display:inline;">
+          <form method="post" action="{{ url_for('settings.revoke_api_key', token_id=t.id) }}" data-confirm="Revoke API key “{{ t.name }}”? Anything using it will stop working immediately." style="display:inline;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <button type="submit" class="btn danger">Revoke</button>
           </form>

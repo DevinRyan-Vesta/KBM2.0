@@ -144,7 +144,7 @@
   <div class="divider" style="border-color: rgba(239, 68, 68, 0.2);"></div>
   <p class="muted" style="margin-bottom: 16px;">Permanently delete this account and all its data. This action cannot be undone!</p>
 
-  <form method="POST" action="{{ url_for('app_admin.delete_account', account_id=account.id) }}" onsubmit="return confirm('Type the subdomain \'{{ account.subdomain }}\' to confirm deletion.');">
+  <form method="POST" action="{{ url_for('app_admin.delete_account', account_id=account.id) }}" data-confirm="Permanently delete this account and all of its data?" data-confirm-danger data-confirm-label="Delete account" >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="form-field" style="max-width: 480px;">
       <label>Type "{{ account.subdomain }}" to confirm:</label>

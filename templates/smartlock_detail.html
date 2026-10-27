@@ -74,8 +74,7 @@
     <a class="btn" href="{{ url_for('smartlocks.list_smartlocks') }}">Back</a>
     <a class="btn ghost" href="{{ url_for('smartlocks.edit_smartlock', lock_id=smartlock.id) }}">Edit</a>
     <form method="post" action="{{ url_for('smartlocks.delete_smartlock', lock_id=smartlock.id) }}"
-          style="display: inline;"
-          onsubmit="return confirm('Delete this smart lock and all its images? This cannot be undone.');">
+          style="display: inline;" data-confirm="Delete this smart lock and all its images? This cannot be undone." >
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
       <button type="submit" class="btn danger">Delete</button>
     </form>
@@ -178,8 +177,7 @@
               {{ image.caption or image.original_filename or 'Image' }}
             </span>
             <form method="post" action="{{ url_for('smartlocks.delete_smartlock_image', lock_id=smartlock.id, image_id=image.id) }}"
-                  style="display: inline;"
-                  onsubmit="return confirm('Delete this image? Cannot be undone.');">
+                  style="display: inline;" data-confirm="Delete this image? Cannot be undone." >
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
               <button type="submit" class="image-tile-delete" title="Delete">×</button>
             </form>

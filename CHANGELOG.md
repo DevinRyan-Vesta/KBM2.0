@@ -4,6 +4,63 @@ All notable changes to KBM (Keybox Manager) are documented here.
 Versioning: MAJOR.MINOR.PATCH. The running version is shown in the app
 sidebar and defined as `APP_VERSION` in `config.py`.
 
+## [2.5.0] — 2026-10-27
+
+Quality pass: VKeys now shares the Vesta OS design system so the two apps
+read as one family, and the rough edges of the web UI (native dialogs,
+unstyled pages, duplicated page CSS) are gone.
+
+### Changed
+- **Design system** moved out of the base template into `static/css/app.css`
+  with the Vesta OS tokens: light-first `#f5f6f8` page on white cards, one
+  brand red (`#d92632`) for primary actions and active marks, blue text
+  actions, Inter/Segoe type at 15px, 12px card radius, roomy tables with no
+  zebra striping, pill status badges using the shared ok/info/warn/bad/purple
+  tone pairs, and the matching dark palette. Every old `--color-*` variable
+  is aliased, so page-level styles keep working.
+- **Shell**: 236px white rail with the key-mark logo, section labels, active
+  item marked with a red icon, and a user card (initials avatar, name, role)
+  with help / API keys / profile / theme icon buttons and a Sign out button
+  in the rail footer. Sticky white toolbar with a centred search pill
+  (`Ctrl K` or `/` focuses it) and a help icon for the current page. On
+  phones the rail is an off-canvas drawer with a backdrop that closes on
+  navigation; modals become bottom sheets; targets grow to 44px.
+- **Theme** is `data-theme` on `<html>` (persisted as `vkeys-theme`,
+  migrating the old `kbm-theme` key) with a sun/moon toggle. `body.light` /
+  `body.dark` stay in sync for existing overrides.
+- **Dialogs**: every native `confirm()` / `prompt()` / `alert()` is gone.
+  Destructive forms carry `data-confirm` and open a confirm sheet (title,
+  what-it-does box, red confirm button, Esc/Enter, focus trap); bulk
+  status / assign use the same sheet with a select or text field;
+  validation messages are toasts. `confirmAction()` and `undoToast()` are
+  available to every page.
+- **Toasts** are bottom-centre white cards with Lucide icons and a dismiss
+  button; flash messages get an icon and the same tone colours.
+- **Tables** on every list page sort client-side by clicking a header
+  (`<table data-sortable>`); toolbar buttons (Filters, Export, Import, Add)
+  carry icons.
+- **Sign-in, sign-up and the app-admin dashboard** were written against
+  Tailwind classes that were never loaded and rendered unstyled; they now
+  use the design system (360px sign-in card, grouped sign-up form, summary
+  strip + sortable accounts table).
+- **Help Center** topic icons are Lucide glyphs instead of emoji.
+- One brand red everywhere: app, landing page, favicon and notification
+  emails (`#d92632`); the email header no longer says "VKeys 2.0".
+- Shared CSS (bulk bar, export menu, autocomplete, copy badges, lockbox code
+  chips, dashboard stat strip, report tabs) lives in `app.css` instead of
+  being repeated in each page.
+
+### Added
+- Export (CSV / Excel) on the Properties page.
+- A shared export menu (`showExportMenu(event, type, formats)`) any page can
+  use.
+
+### Fixed
+- Contacts empty state no longer links to a non-existent import page.
+- The smoke tests resolve record ids from the labels they create instead of
+  hard-coding `1` / `2`, so the suite passes regardless of test order (the
+  upcoming-returns export test failed whenever the API tests ran first).
+
 ## [2.4.0] — 2026-08-05
 
 Domain migration release: the platform now lives at **vkeys.app** (vkeys.io

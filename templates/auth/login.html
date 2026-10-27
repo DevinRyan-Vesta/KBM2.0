@@ -1,62 +1,41 @@
 {% extends "base.html" %}
 
-{% block title %}Sign In{% endblock %}
+{% block title %}Sign in — VKeys{% endblock %}
 
 {% block content %}
-<div class="max-w-md mx-auto mt-12">
-    <div class="bg-white shadow-md rounded-lg p-8">
-        {% if is_tenant %}
-        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Sign In to {{ g.tenant.company_name if g.tenant else 'Your Account' }}</h1>
-        {% else %}
-        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">App Admin Sign In</h1>
-        {% endif %}
-
-        <form method="POST" class="space-y-4">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            <div>
-                <label for="pin" class="block text-sm font-medium text-gray-700 mb-2">
-                    Enter your PIN
-                </label>
-                <input
-                    type="password"
-                    id="pin"
-                    name="pin"
-                    required
-                    autofocus
-                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="****"
-                >
-            </div>
-
-            <div class="flex items-center">
-                <input
-                    type="checkbox"
-                    id="remember"
-                    name="remember"
-                    value="1"
-                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                >
-                <label for="remember" class="ml-2 block text-sm text-gray-700">
-                    Remember me
-                </label>
-            </div>
-
-            <button
-                type="submit"
-                class="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-            >
-                Sign In
-            </button>
-        </form>
-
-        {% if not is_tenant %}
-        <div class="mt-6 pt-6 border-t text-center">
-            <p class="text-sm text-gray-600">Don't have an account?</p>
-            <a href="{{ url_for('accounts.signup') }}" class="text-blue-600 hover:text-blue-700 font-medium">
-                Create a Company Account
-            </a>
-        </div>
-        {% endif %}
+<div class="login-wrap">
+  <div class="card login-card">
+    <div class="brand">
+      <img class="brand-mark" src="{{ url_for('static', filename='favicon.svg') }}" alt="">
+      <span>VKeys</span>
     </div>
+    {% if is_tenant %}
+      <h1>Sign in to {{ g.tenant.company_name if g.tenant else 'your account' }}</h1>
+    {% else %}
+      <h1>App admin sign in</h1>
+    {% endif %}
+    <p class="lead">Enter your PIN to continue.</p>
+
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <div class="form-field">
+        <label for="pin">PIN</label>
+        <input type="password" id="pin" name="pin" required autofocus autocomplete="current-password"
+               inputmode="numeric" placeholder="••••">
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="remember" name="remember" value="1">
+        <label for="remember">Remember me on this device</label>
+      </div>
+      <button type="submit" class="btn primary block"><i data-lucide="log-in"></i> Sign in</button>
+    </form>
+
+    {% if not is_tenant %}
+    <div class="foot">
+      Don't have an account?
+      <a href="{{ url_for('accounts.signup') }}">Create a company account</a>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

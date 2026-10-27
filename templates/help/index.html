@@ -19,11 +19,14 @@
     transition: border-color 0.15s ease, transform 0.15s ease;
   }
   .help-card:hover {
-    border-color: rgba(229, 57, 53, 0.45);
+    border-color: var(--border);
+    box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
     color: inherit;
+    text-decoration: none;
   }
-  .help-card .icon { font-size: 26px; }
+  .help-card .icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+  .help-card .icon svg.lucide { width: 18px; height: 18px; }
   .help-card h3 { margin: 10px 0 6px; font-size: 15px; }
   .help-card p { margin: 0; font-size: 13px; color: var(--color-muted); line-height: 1.5; }
 </style>
@@ -35,7 +38,7 @@
 </div>
 
 <p class="muted" style="max-width: 720px; margin-top: -8px;">
-  Guides for everything in VKeys. You can also click the <strong>? Help</strong>
+  Guides for everything in VKeys. You can also click the <strong>?</strong> help
   button in the top bar on any page to jump straight to the guide for the page
   you're on, and hover over buttons marked with tooltips for quick hints.
 </p>
@@ -43,7 +46,7 @@
 <div class="help-grid" style="margin-top: 18px;">
   {% for slug, t in topics.items() %}
     <a class="help-card" href="{{ url_for('help.topic', slug=slug) }}">
-      <span class="icon">{{ t.icon }}</span>
+      <span class="icon"><i data-lucide="{{ t.icon }}"></i></span>
       <h3>{{ t.title }}</h3>
       <p>{{ t.summary }}</p>
     </a>

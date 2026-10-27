@@ -12,16 +12,16 @@
         <a class="btn small" href="{{ url_for('smartlocks.list_smartlocks') }}">Clear</a>
       {% endif %}
     </form>
-    <a class="btn ghost" href="{{ url_for('smartlocks.import_smartlocks') }}" data-tooltip="Bulk-load smart locks from a CSV or Excel spreadsheet">Import</a>
+    <a class="btn ghost" href="{{ url_for('smartlocks.import_smartlocks') }}" data-tooltip="Bulk-load smart locks from a CSV or Excel spreadsheet"><i data-lucide="upload"></i> Import</a>
     <a class="btn ghost" href="{{ url_for('smartlocks.export_smartlocks', q=q, format='csv') }}">Export CSV</a>
     <a class="btn ghost" href="{{ url_for('smartlocks.export_smartlocks', q=q, format='excel') }}">Export Excel</a>
-    <a class="btn primary" href="{{ url_for('smartlocks.create_smartlock') }}" data-tooltip="Add a smart lock and its current code">Add Smart Lock</a>
+    <a class="btn primary" href="{{ url_for('smartlocks.create_smartlock') }}" data-tooltip="Add a smart lock and its current code"><i data-lucide="plus"></i> Add Smart Lock</a>
   </div>
 </div>
 
 <div class="card table-card">
   {% if smartlocks %}
-    <table>
+    <table data-sortable>
       <thead>
         <tr>
           <th>Label</th>
@@ -60,7 +60,7 @@
         <h3>No smart locks yet</h3>
         <p>Track door locks and pairing codes — never lose a Schlage sticker again.</p>
         <div class="toolbar">
-          <a class="btn primary" href="{{ url_for('smartlocks.create_smartlock') }}">Add your first smart lock</a>
+          <a class="btn primary" href="{{ url_for('smartlocks.create_smartlock') }}"><i data-lucide="plus"></i> Add your first smart lock</a>
           <a class="btn ghost" href="{{ url_for('smartlocks.import_smartlocks') }}">Import from CSV</a>
         </div>
       {% endif %}
