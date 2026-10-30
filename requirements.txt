@@ -17,11 +17,11 @@ PyMySQL==1.1.1
 pytest==9.0.3
 SQLAlchemy==2.0.37
 typing_extensions==4.12.2
-Werkzeug==3.1.6
+Werkzeug==3.1.9
 alembic==1.13.1
 openpyxl==3.1.5
 reportlab==4.2.5
-Pillow==12.3.0
+Pillow==13.0.0
 python-barcode==0.16.1
 limits==3.6.0
 qrcode==7.4.2

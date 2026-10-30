@@ -55,6 +55,13 @@ unstyled pages, duplicated page CSS) are gone.
 - A shared export menu (`showExportMenu(event, type, formats)`) any page can
   use.
 
+### Security
+- Pillow 12.3.0 → 13.0.0, closing the 41 open Dependabot alerts against it.
+  Pillow is only used for QR label rendering and smart-lock photo
+  validation; both are covered by the smoke suite.
+- Werkzeug 3.1.6 → 3.1.9 (`safe_join()` accepted Windows special device
+  names, GHSA-g6x2-hccm-hh4m).
+
 ### Fixed
 - Contacts empty state no longer links to a non-existent import page.
 - The smoke tests resolve record ids from the labels they create instead of
