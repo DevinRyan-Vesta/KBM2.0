@@ -1,12 +1,12 @@
 # KBM 2.0 - Key & Lockbox Management System
 
-![Version](https://img.shields.io/badge/version-2.2.0-blue) ![Status](https://img.shields.io/badge/status-production_ready-green) ![Security](https://img.shields.io/badge/security-hardened-brightgreen) ![Python](https://img.shields.io/badge/python-3.11+-blue)
+![Version](https://img.shields.io/badge/version-2.5.0-blue) ![Status](https://img.shields.io/badge/status-production_ready-green) ![Security](https://img.shields.io/badge/security-hardened-brightgreen) ![Python](https://img.shields.io/badge/python-3.11+-blue)
 
 **Multi-Tenant Property Management Solution**
 
 Complete web application for managing keys, lockboxes, signs, and smart locks for property management businesses.
 
-Current version: **2.2.0** — see [CHANGELOG.md](CHANGELOG.md) for the full version history.
+Current version: **2.5.0** — see [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ---
 

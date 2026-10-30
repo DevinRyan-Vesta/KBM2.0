@@ -158,9 +158,9 @@ KBM 2.0 install complete.
 
 Next steps:
   1. Point DNS at this VPS:
-       A     ${BASE_DOMAIN:-buywithvesta.com}      -> $(curl -s ifconfig.me 2>/dev/null || echo '<this-vps-ip>')
-       A     *.${BASE_DOMAIN:-buywithvesta.com}    -> $(curl -s ifconfig.me 2>/dev/null || echo '<this-vps-ip>')
-       (or use a CNAME for www -> ${BASE_DOMAIN:-buywithvesta.com})
+       A     ${BASE_DOMAIN:-vkeys.app}      -> $(curl -s ifconfig.me 2>/dev/null || echo '<this-vps-ip>')
+       A     *.${BASE_DOMAIN:-vkeys.app}    -> $(curl -s ifconfig.me 2>/dev/null || echo '<this-vps-ip>')
+       (or use a CNAME for www -> ${BASE_DOMAIN:-vkeys.app})
 
   2. Migrate data from the NAS:
        bash deploy/migrate_from_nas.sh user@nas-host:/path/to/KBM

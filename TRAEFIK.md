@@ -82,7 +82,7 @@ of up to half an hour. Setup is one-time and then completely hands-off.
 One-time setup:
 
 1. **Add the zone to Cloudflare**: create a free Cloudflare account and add
-   `buywithvesta.com` as a site. Cloudflare imports your existing records.
+   `vkeys.app` as a site. Cloudflare imports your existing records.
 2. **Point nameservers at Cloudflare**: in the **Namecheap** dashboard →
    Domain List → Manage → Nameservers → switch from BasicDNS to **Custom DNS**
    and enter the two nameservers Cloudflare gives you. This is a UI change —
@@ -90,7 +90,7 @@ One-time setup:
    (usually minutes).
 3. **Create a scoped API token**: Cloudflare → My Profile → API Tokens →
    Create Token → **"Edit zone DNS"** template → scope it to the
-   `buywithvesta.com` zone. The token gets `Zone:DNS:Edit` + `Zone:Zone:Read`,
+   `vkeys.app` zone. The token gets `Zone:DNS:Edit` + `Zone:Zone:Read`,
    which is exactly what lego needs to write the `_acme-challenge` TXT record.
 
 Then add to `.env`:

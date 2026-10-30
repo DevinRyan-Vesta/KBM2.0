@@ -268,7 +268,7 @@
 
   // Perform update
   async function performUpdate(rebuild) {
-    if (!confirm(`Perform system update${rebuild ? ' with rebuild' : ''}? The application will be temporarily unavailable.`)) {
+    if (!(await confirmAction({ title: `Perform system update${rebuild ? ' with rebuild' : ''}?`, body: 'The application will be temporarily unavailable while it updates.', confirmLabel: 'Update now' }))) {
       return;
     }
 
@@ -384,7 +384,7 @@
 
   // Restart containers
   async function restartContainers() {
-    if (!confirm('Restart all containers? The application will be temporarily unavailable.')) {
+    if (!(await confirmAction({ title: 'Restart all containers?', body: 'The application will be temporarily unavailable.', confirmLabel: 'Restart' }))) {
       return;
     }
 
@@ -408,14 +408,14 @@
       const data = await response.json();
 
       if (data.success) {
-        alert('Container restart scheduled! The application will restart in about 10 seconds. This page will reload automatically in 30 seconds.');
+        toast('Restart scheduled. The app restarts in about 10 seconds; this page reloads in 30.', { type: 'success', duration: 0 });
         // Wait 30 seconds for containers to restart before reloading
         setTimeout(() => location.reload(), 30000);
       } else {
-        alert(`Failed to restart containers: ${data.message}`);
+        toast(`Failed to restart containers: ${data.message}`, { type: 'error', duration: 0 });
       }
     } catch (error) {
-      alert(`Error restarting containers: ${error.message}`);
+      toast(`Error restarting containers: ${error.message}`, { type: 'error', duration: 0 });
     }
   }
 

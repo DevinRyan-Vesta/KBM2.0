@@ -12,54 +12,6 @@
     gap: 12px;
     margin-bottom: 16px;
   }
-  .count-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 12px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-    background: rgba(148, 163, 184, 0.12);
-    color: var(--color-muted);
-  }
-  .count-badge.alert {
-    background: rgba(248, 113, 113, 0.18);
-    color: var(--color-danger);
-  }
-  .count-badge.warn {
-    background: rgba(251, 191, 36, 0.18);
-    color: #fbbf24;
-  }
-  .count-badge.success {
-    background: rgba(74, 222, 128, 0.18);
-    color: #4ade80;
-  }
-  .report-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: 4px;
-  }
-  .report-tab {
-    padding: 8px 16px;
-    border-radius: 8px 8px 0 0;
-    background: transparent;
-    border: none;
-    color: var(--color-muted);
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-  }
-  .report-tab:hover {
-    background: rgba(148, 163, 184, 0.08);
-    color: var(--color-text);
-  }
-  .report-tab.active {
-    background: var(--color-accent-soft);
-    color: var(--color-accent);
-  }
   .report-content {
     display: none;
   }
@@ -74,14 +26,15 @@
   }
   .report-export-dropdown {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 6px);
     right: 0;
-    background: var(--color-card);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    min-width: 150px;
+    padding: 0.35rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-popover);
+    min-width: 200px;
     display: none;
   }
   .report-export-dropdown.show {
@@ -89,25 +42,22 @@
   }
   .report-export-dropdown a {
     display: block;
-    padding: 10px 14px;
-    color: var(--color-text);
-    text-decoration: none;
-    transition: background 0.2s ease;
-    border-bottom: 1px solid var(--color-border);
-  }
-  .report-export-dropdown a:last-child {
-    border-bottom: none;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: var(--fs-base);
+    transition: background 0.1s ease;
   }
   .report-export-dropdown a:hover {
-    background: var(--color-accent-soft);
-    color: var(--color-accent);
+    background: var(--surface-2);
+    color: var(--text);
   }
 </style>
 
 <div class="page-header">
   <h1>Reports & Analytics</h1>
   <div class="toolbar">
-    <a class="btn ghost" href="{{ url_for('main.home') }}">Back to Dashboard</a>
+    <a class="btn ghost" href="{{ url_for('main.home') }}"><i data-lucide="arrow-left"></i> Dashboard</a>
   </div>
 </div>
 
@@ -130,7 +80,7 @@
       </span>
       {% if all_overdue %}
       <div class="report-export-btn">
-        <button type="button" class="btn small" onclick="toggleReportExport(event, 'overdue-returns')">Export ▾</button>
+        <button type="button" class="btn small" onclick="toggleReportExport(event, 'overdue-returns')"><i data-lucide="download"></i> Export</button>
         <div class="report-export-dropdown" id="export-overdue-returns">
           <a href="/exports/reports/overdue-returns?format=csv">Export as CSV</a>
           <a href="/exports/reports/overdue-returns?format=excel">Export as Excel</a>
@@ -207,7 +157,7 @@
       </span>
       {% if all_upcoming %}
       <div class="report-export-btn">
-        <button type="button" class="btn small" onclick="toggleReportExport(event, 'upcoming-returns')">Export ▾</button>
+        <button type="button" class="btn small" onclick="toggleReportExport(event, 'upcoming-returns')"><i data-lucide="download"></i> Export</button>
         <div class="report-export-dropdown" id="export-upcoming-returns">
           <a href="/exports/reports/upcoming-returns?format=csv">Export as CSV</a>
           <a href="/exports/reports/upcoming-returns?format=excel">Export as Excel</a>
@@ -278,7 +228,7 @@
       </span>
       {% if long_term %}
       <div class="report-export-btn">
-        <button type="button" class="btn small" onclick="toggleReportExport(event, 'long-term-checkouts')">Export ▾</button>
+        <button type="button" class="btn small" onclick="toggleReportExport(event, 'long-term-checkouts')"><i data-lucide="download"></i> Export</button>
         <div class="report-export-dropdown" id="export-long-term-checkouts">
           <a href="/exports/reports/long-term-checkouts?format=csv">Export as CSV</a>
           <a href="/exports/reports/long-term-checkouts?format=excel">Export as Excel</a>
@@ -356,7 +306,7 @@
         </span>
         {% if all_keys_low %}
         <div class="report-export-btn">
-          <button type="button" class="btn small" onclick="toggleReportExport(event, 'low-keys')">Export ▾</button>
+          <button type="button" class="btn small" onclick="toggleReportExport(event, 'low-keys')"><i data-lucide="download"></i> Export</button>
           <div class="report-export-dropdown" id="export-low-keys">
             <a href="/exports/reports/low-keys?format=csv">Export as CSV</a>
             <a href="/exports/reports/low-keys?format=excel">Export as Excel</a>
@@ -419,7 +369,7 @@
         </span>
         {% if keys_no_available %}
         <div class="report-export-btn">
-          <button type="button" class="btn small" onclick="toggleReportExport(event, 'checked-out-keys')">Export ▾</button>
+          <button type="button" class="btn small" onclick="toggleReportExport(event, 'checked-out-keys')"><i data-lucide="download"></i> Export</button>
           <div class="report-export-dropdown" id="export-checked-out-keys">
             <a href="/exports/reports/checked-out-keys?format=csv">Export as CSV</a>
             <a href="/exports/reports/checked-out-keys?format=excel">Export as Excel</a>

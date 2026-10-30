@@ -6,7 +6,7 @@
 
 set -e
 
-DOMAIN="buywithvesta.com"
+DOMAIN="vkeys.app"
 TUNNEL_NAME="kbm-tunnel"
 PROJECT_DIR="/volume1/KBM/KBM2.0"
 

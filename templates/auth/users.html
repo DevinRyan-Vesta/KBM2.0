@@ -13,7 +13,7 @@
 </div>
 
 <div class="card table-card">
-  <table>
+  <table data-sortable>
     <thead>
       <tr>
         <th>Name</th>
@@ -42,8 +42,7 @@
               Edit
             </a>
             {% if user.id != current_user.id %}
-            <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" style="display: inline;"
-                  onsubmit="return confirm('Delete user {{ user.name }}?');">
+            <form method="POST" action="{{ url_for('auth.delete_user', user_id=user.id) }}" style="display: inline;" data-confirm="Delete user {{ user.name }}?" >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
               <button type="submit" class="btn small danger">
                 Delete

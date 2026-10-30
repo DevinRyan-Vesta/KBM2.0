@@ -19,7 +19,7 @@
 
 <div class="card table-card">
   {% if audits %}
-    <table>
+    <table data-sortable>
       <thead>
         <tr>
           <th>Audit Date</th>
@@ -64,8 +64,7 @@
                 {% if audit.status != 'completed' %}
                   <a href="{{ url_for('audits.input_results', audit_id=audit.id) }}" class="btn small primary">Input Results</a>
                 {% endif %}
-                <form method="POST" action="{{ url_for('audits.delete_audit', audit_id=audit.id) }}" style="display: inline;"
-                      onsubmit="return confirm('Delete this audit? This cannot be undone.');">
+                <form method="POST" action="{{ url_for('audits.delete_audit', audit_id=audit.id) }}" style="display: inline;" data-confirm="Delete this audit? This cannot be undone." >
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                   <button type="submit" class="btn small danger">Delete</button>
                 </form>

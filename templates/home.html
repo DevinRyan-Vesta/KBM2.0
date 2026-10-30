@@ -2,42 +2,6 @@
 {% block title %}Home - VKeys{% endblock %}
 
 {% block content %}
-<style>
-  .stat-grid {
-    display: grid;
-    gap: 12px;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-  .stat-box {
-    padding: 16px;
-    border-radius: 12px;
-    background: rgba(148, 163, 184, 0.06);
-    border: 1px solid var(--color-border);
-  }
-  .stat-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--color-text);
-    margin-bottom: 4px;
-  }
-  .stat-label {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-muted);
-  }
-  .alert-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    background: rgba(248, 113, 113, 0.18);
-    color: var(--color-danger);
-    margin-left: 8px;
-  }
-</style>
 
 <div class="page-header">
   <h1>Operations Dashboard</h1>
@@ -67,7 +31,7 @@
       </div>
     </div>
     <div class="toolbar spaced">
-      <a class="btn primary" href="{{ safe_url('inventory.list_lockboxes') }}">View All</a>
+      <a class="btn" href="{{ safe_url('inventory.list_lockboxes') }}">View all</a>
       <a class="btn ghost" href="{{ safe_url('inventory.add_lockbox') }}">Add Lockbox</a>
     </div>
   </div>
@@ -89,7 +53,7 @@
       </div>
     </div>
     <div class="toolbar spaced">
-      <a class="btn primary" href="{{ safe_url('inventory.list_keys') }}">View All</a>
+      <a class="btn" href="{{ safe_url('inventory.list_keys') }}">View all</a>
       <a class="btn ghost" href="{{ safe_url('inventory.add_key') }}">Add Key</a>
     </div>
   </div>
@@ -111,7 +75,7 @@
       </div>
     </div>
     <div class="toolbar spaced">
-      <a class="btn primary" href="{{ safe_url('inventory.list_signs') }}">View All</a>
+      <a class="btn" href="{{ safe_url('inventory.list_signs') }}">View all</a>
       <a class="btn ghost" href="{{ safe_url('inventory.add_sign') }}">Add Sign</a>
     </div>
   </div>
@@ -151,7 +115,7 @@
       <div class="empty-state">No overdue items</div>
     {% endif %}
     <div class="toolbar spaced">
-      <a class="btn small" href="{{ url_for('main.reports') }}">View All Reports</a>
+      <a class="btn link small" href="{{ url_for('main.reports') }}">View all reports</a>
     </div>
   </div>
 

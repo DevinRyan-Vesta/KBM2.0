@@ -43,6 +43,16 @@ Notes:
 [✓] Properties can be deleted from the web UI (admin/owner; blocked while items are linked)
 [✓] Activity log shows real user names instead of "System"
 
+--- 2026-10-27: Vesta OS design-system quality pass (v2.5.0) ---
+[✓] Design system moved to static/css/app.css with the Vesta OS tokens (light-first, one brand red #d92632, blue text actions, Inter type, 12px cards, pill badges, matching dark palette)
+[✓] New shell: white 236px rail with logo + user card + icon buttons, sticky toolbar with centred search pill (Ctrl K), help icon, mobile drawer with backdrop
+[✓] All native confirm()/prompt()/alert() replaced by the confirm sheet + toasts (data-confirm on destructive forms; confirmAction() / undoToast() for scripts)
+[✓] Sign-in, sign-up and app-admin dashboard rebuilt (they used Tailwind classes that were never loaded)
+[✓] Client-side column sorting on every list table; icons on Filters / Export / Import / Add buttons
+[✓] Properties page export (CSV/Excel); dead "Import from CSV" link removed from Contacts
+[✓] Help Center icons are Lucide glyphs; one brand red across app, landing page, favicon and emails
+[✓] Smoke tests resolve ids from labels (suite was order-dependent and failed after the API tests)
+
 === TODO ===
 
 ========================================
@@ -55,9 +65,9 @@ HIGH PRIORITY - Missing Core Features
 
 [✓] No export on reports page (key reports section) - FIXED
 
-[ ] No export or Import on receipts page
+[✓] No export or Import on receipts page - Export DONE (CSV/Excel); import not planned
 
-[ ] Smart Locks Import/Export functionality
+[✓] Smart Locks Import/Export functionality - DONE
 
 ========================================
 MEDIUM PRIORITY - User Experience
@@ -73,7 +83,7 @@ MEDIUM PRIORITY - User Experience
 
 [ ] Calendar View - Visual calendar for viewing checkouts, reservations, and expected returns
 
-[ ] Barcode/QR Code Generation - Generate printable barcodes/QR codes for quick item lookup and checkout
+[✓] Barcode/QR Code Generation - DONE (QR code + printable label per item, batch labels from bulk actions)
 
 [ ] Photo Uploads - Attach photos to items, properties, and units for better identification
 
@@ -128,15 +138,15 @@ LONG TERM
 
 [ ] Role-Based Permissions - More granular permissions (read-only users, checkout-only users)
 
-[ ] Better Mobile Responsiveness - Optimize for phone/tablet use
+[✓] Better Mobile Responsiveness - DONE (v2.5.0: off-canvas drawer with backdrop, bottom-sheet modals, 44px touch targets)
 
 [ ] Loading States - Show spinners/progress indicators during operations
 
-[ ] Confirmation Dialogs - Ask "Are you sure?" before deleting items
+[✓] Confirmation Dialogs - DONE (v2.5.0: confirm sheet with what-it-does box; no native confirm/prompt/alert left)
 
 [✓] Toast Notifications - Non-intrusive success/error messages that auto-dismiss - DONE
 
-[ ] Keyboard Shortcuts - Speed up common actions for power users
+[✓] Keyboard Shortcuts - DONE (v2.5.0: Ctrl/Cmd+K or / focuses search, Esc closes dialogs, Enter confirms); more can be added
 
 [ ] Export Format Customization - Let users choose which columns to include in exports
 
@@ -158,7 +168,7 @@ LONG TERM
 
 [ ] Backup Monitoring - Dashboard showing backup status and history
 
-[ ] User Documentation - In-app help, tooltips, user manual
+[✓] User Documentation - DONE (Help Center, tooltips, USER_QUICKSTART_GUIDE.md)
 
 [ ] Property/Unit Hierarchy Visualization - Tree view or visual representation of properties and their units
 

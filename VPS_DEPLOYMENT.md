@@ -26,7 +26,7 @@ On the VPS:
 
 Off the VPS:
 
-- DNS control for `buywithvesta.com`
+- DNS control for `vkeys.app`
 - SSH access from the VPS to the NAS (key-based) for the data migration step
 
 ---
@@ -36,12 +36,12 @@ Off the VPS:
 At your DNS provider:
 
 ```
-A     buywithvesta.com       -> <VPS public IP>
-A     *.buywithvesta.com     -> <VPS public IP>
-A     www.buywithvesta.com   -> <VPS public IP>   (optional; CNAME also fine)
+A     vkeys.app       -> <VPS public IP>
+A     *.vkeys.app     -> <VPS public IP>
+A     www.vkeys.app   -> <VPS public IP>   (optional; CNAME also fine)
 ```
 
-The wildcard is **required** — every tenant gets `<subdomain>.buywithvesta.com`,
+The wildcard is **required** — every tenant gets `<subdomain>.vkeys.app`,
 and Let's Encrypt needs DNS to resolve before it'll issue a cert.
 
 If DNS still lives at Cloudflare, set those records to **DNS only** (grey cloud),
@@ -83,7 +83,7 @@ What it does:
 7. Polls `/health` until the app responds.
 
 **Before it builds, edit `.env`** if you need to change `BASE_DOMAIN`,
-`SERVER_NAME`, or `ACME_EMAIL` (defaults assume `buywithvesta.com`). The script
+`SERVER_NAME`, or `ACME_EMAIL` (defaults assume `vkeys.app`). The script
 will refuse to continue if any required value is still a placeholder.
 
 The old `.env.production` that was committed to the repo had a `SECRET_KEY`
@@ -120,7 +120,7 @@ the DNS cutover.
 
 After the migration:
 
-1. Visit `https://<some-tenant>.buywithvesta.com` from a machine that resolves
+1. Visit `https://<some-tenant>.vkeys.app` from a machine that resolves
    DNS to the new VPS (override `/etc/hosts` if you want to test before the
    cutover).
 2. Watch Caddy issue the cert: `docker compose logs -f caddy` — you should see
@@ -181,10 +181,10 @@ docker compose exec caddy ls /data/caddy/certificates/acme-v02.api.letsencrypt.o
 ### Adding a new tenant
 
 Create the tenant in the app admin UI as usual. The first time someone visits
-`<new-subdomain>.buywithvesta.com`, Caddy will:
+`<new-subdomain>.vkeys.app`, Caddy will:
 
 1. See the new SNI name.
-2. Call `http://python-app:8000/_internal/check-domain?secret=...&domain=<new-subdomain>.buywithvesta.com`.
+2. Call `http://python-app:8000/_internal/check-domain?secret=...&domain=<new-subdomain>.vkeys.app`.
 3. App confirms the tenant exists and is active → Caddy issues a Let's Encrypt
    cert.
 

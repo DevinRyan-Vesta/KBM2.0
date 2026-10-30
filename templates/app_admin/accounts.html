@@ -59,8 +59,7 @@
   </form>
 </div>
 
-<form id="bulk-form" method="POST" action="{{ url_for('app_admin.bulk_delete_accounts') }}"
-      onsubmit="return confirmBulkDelete()">
+<form id="bulk-form" method="POST" action="{{ url_for('app_admin.bulk_delete_accounts') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
   <div class="bulk-bar" id="bulk-bar">
@@ -70,7 +69,7 @@
   </div>
 
   <div class="card table-card">
-    <table>
+    <table data-sortable>
       <thead>
         <tr>
           <th style="width: 36px;">
@@ -160,11 +159,21 @@
     updateBulkBar();
   }
 
-  function confirmBulkDelete() {
+  document.getElementById('bulk-form').addEventListener('submit', async function (e) {
+    if (this.dataset.confirmed === '1') return;
+    e.preventDefault();
     const n = selectedRows().length;
-    if (n === 0) return false;
-    return confirm(`Delete ${n} account${n === 1 ? '' : 's'} permanently? This drops the tenant database file too. Cannot be undone.`);
-  }
+    if (n === 0) { toast('Select at least one account first.', { type: 'warning' }); return; }
+    const ok = await confirmAction({
+      title: `Delete ${n} account${n === 1 ? '' : 's'} permanently?`,
+      body: 'This drops each tenant database file too.',
+      effect: 'Accounts, their users and all inventory data are removed. This cannot be undone.',
+      danger: true, confirmLabel: 'Delete accounts',
+    });
+    if (!ok) return;
+    this.dataset.confirmed = '1';
+    this.submit();
+  });
 
   function postForm(action, fields) {
     const form = document.createElement('form');
@@ -182,13 +191,20 @@
     form.submit();
   }
 
-  function deleteAccount(id, subdomain) {
-    if (!confirm(`Permanently delete "${subdomain}"? This drops the tenant database file too. Cannot be undone.`)) return;
+  async function deleteAccount(id, subdomain) {
+    const ok = await confirmAction({
+      title: `Permanently delete "${subdomain}"?`,
+      body: 'This drops the tenant database file too.',
+      effect: 'The account, its users and all inventory data are removed. This cannot be undone.',
+      danger: true, confirmLabel: 'Delete account',
+    });
+    if (!ok) return;
     postForm(`/admin/accounts/${id}/delete`, { confirmed: 'quick' });
   }
 
-  function approveAccount(id, subdomain) {
-    if (!confirm(`Approve "${subdomain}"? Its admin will be able to log in.`)) return;
+  async function approveAccount(id, subdomain) {
+    const ok = await confirmAction({ title: `Approve "${subdomain}"?`, body: 'Its admin will be able to log in.', confirmLabel: 'Approve' });
+    if (!ok) return;
     postForm(`/admin/accounts/${id}/approve`, {});
   }
 </script>

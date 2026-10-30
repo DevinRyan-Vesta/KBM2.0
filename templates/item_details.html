@@ -677,7 +677,7 @@
         {% endif %}
 
         {% if item_type_lower == 'sign' and item.sign_subtype == 'Assembled Unit' %}
-          <form method="post" action="{{ url_for('inventory.disassemble_sign', item_id=item.id) }}" onsubmit="return confirm('Disassemble this sign? Pieces will become available individually.');">
+          <form method="post" action="{{ url_for('inventory.disassemble_sign', item_id=item.id) }}" data-confirm="Disassemble this sign? Pieces will become available individually." >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <button class="btn" type="submit">Disassemble</button>
           </form>
@@ -730,7 +730,7 @@
           </button>
 
           {% if not (item.sign_subtype == 'Assembled Unit' and component_pieces) %}
-            <form method="post" action="{{ url_for('inventory.delete_' + item_type_lower, item_id=item.id) }}" onsubmit="return confirm('Delete {{ item.label }}? This cannot be undone.');">
+            <form method="post" action="{{ url_for('inventory.delete_' + item_type_lower, item_id=item.id) }}" data-confirm="Delete {{ item.label }}? This cannot be undone." >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
               <button class="btn danger" type="submit">Delete</button>
             </form>
@@ -864,7 +864,7 @@
     const selectedPiece = newPieceSelect.value;
     if (!selectedPiece) {
       e.preventDefault();
-      alert('Please select a piece to swap with');
+      toast('Please select a piece to swap with', { type: 'error' });
     }
   });
 
